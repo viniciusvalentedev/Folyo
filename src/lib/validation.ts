@@ -3,9 +3,9 @@ import { z } from 'zod'
 /**
  * Regras de validação dos dados que entram no site (URLs e formulários).
  *
- * Hoje elas rodam no navegador para dar retorno rápido ao aluno. Quando o banco
- * existir, as MESMAS regras rodam de novo no servidor antes de gravar — nunca
- * confiamos só na validação do navegador, porque ela pode ser burlada.
+ * As mesmas regras rodam no navegador (retorno rápido para o aluno) e de novo no
+ * servidor, antes de falar com o Supabase. Nunca confiamos só no navegador,
+ * porque ele pode ser burlado. O banco ainda tem os próprios limites (CHECK).
  */
 
 /** Ids que aparecem na URL (cursos, aulas, projetos): só letras minúsculas, números e hífen. */
@@ -37,21 +37,44 @@ export function safeUrl(value: string | null | undefined) {
   return value && urlSchema.safeParse(value).success ? value : null
 }
 
-export const emailSchema = z.string().trim().max(254).email('Digite um e-mail válido.')
+export const emailSchema = z.string().trim().toLowerCase().max(254).email('Digite um e-mail válido.')
 
-/** Formulário de entrar. */
-export const loginSchema = z.object({
-  email: emailSchema,
-  password: z.string().min(6, 'A senha precisa ter pelo menos 6 caracteres.').max(128),
-})
+/** Senha nova: mínimo 8 caracteres (o Supabase aceita no máximo 72). */
+export const newPasswordSchema = z
+  .string()
+  .min(8, 'A senha precisa ter pelo menos 8 caracteres.')
+  .max(72, 'Use no máximo 72 caracteres.')
+
+export const personNameSchema = z.string().trim().min(2, 'Digite seu nome.').max(80, 'Use no máximo 80 caracteres.')
 
 /**
- * Formulário de criar conta.
- * Quando o Supabase Auth entrar, a senha vai direto para ele (que guarda só um hash).
- * Nosso código nunca deve salvar, registrar em log ou exibir a senha.
+ * Formulário de entrar. Aqui não exigimos tamanho mínimo: quem decide se a senha
+ * está certa é o Supabase. A senha nunca é salva, registrada em log ou exibida.
  */
-export const signUpSchema = loginSchema.extend({
-  name: z.string().trim().min(2, 'Digite seu nome.').max(80, 'Use no máximo 80 caracteres.'),
+export const loginSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, 'Digite sua senha.').max(72, 'Senha muito longa.'),
+})
+
+/** Formulário de criar conta. A senha vai direto para o Supabase, que guarda só um hash. */
+export const signUpSchema = z.object({
+  name: personNameSchema,
+  email: emailSchema,
+  password: newPasswordSchema,
+})
+
+/** "Esqueci minha senha". */
+export const emailOnlySchema = z.object({ email: emailSchema })
+
+/** Criar nova senha (com confirmação). */
+export const resetPasswordSchema = z
+  .object({ password: newPasswordSchema, confirm: z.string().max(72) })
+  .refine((v) => v.password === v.confirm, { path: ['confirm'], message: 'As senhas não são iguais.' })
+
+/** Link que chega por e-mail (confirmar conta ou criar nova senha). */
+export const emailLinkSchema = z.object({
+  token_hash: z.string().regex(/^[A-Za-z0-9_-]{8,256}$/),
+  type: z.enum(['email', 'signup', 'recovery', 'email_change']),
 })
 
 /** Transforma os erros do zod em { campo: mensagem } para mostrar no formulário. */
@@ -103,13 +126,26 @@ export const skillFormSchema = z.object({
   inCV: z.boolean(),
 })
 
-/** Dados pessoais (Configurações). */
-export const personalDataSchema = z.object({
-  name: z.string().trim().min(1, 'Informe seu nome.').max(80),
-  email: z.string().trim().max(254).email('Use um e-mail no formato nome@dominio.com.'),
-  phone: z.string().trim().max(30),
-  city: z.string().trim().max(80),
+/** Dados pessoais (Configurações): por enquanto só o nome fica salvo no banco. */
+export const personalDataSchema = z.object({ name: personNameSchema })
+
+/** Ids de objetivos e cursos (iguais aos do catálogo). */
+const idSchema = z.string().regex(/^[a-z0-9-]{1,40}$/)
+
+/** Respostas do primeiro acesso. */
+export const onboardingSchema = z.object({
+  goal: idSchema,
+  stage: z.string().min(1).max(120),
+  weekly: z.number().int().min(1).max(20),
 })
+
+/** Objetivos de carreira (1 principal + até 2 acompanhados). */
+export const goalsSchema = z.object({
+  primary: idSchema,
+  secondary: z.array(idSchema).max(2),
+})
+
+export const weeklyGoalSchema = z.number().int().min(1).max(20)
 
 /** Editar perfil. */
 export const profileSchema = z.object({

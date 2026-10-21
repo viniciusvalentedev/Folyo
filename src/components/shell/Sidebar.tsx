@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Suspense, useEffect, useRef, useState } from 'react'
+import { signOutAction } from '@/app/(auth)/actions'
 import { Mark, Wordmark } from '@/components/brand/Logo'
 import { useApp } from '@/components/providers/AppState'
 import { Icon } from '@/components/ui/Icon'
@@ -101,7 +102,7 @@ function UserMenu() {
         <Avatar name={s.user.name} size={34} />
         <span className="nav-text user-meta">
           <b>{s.user.name}</b>
-          <small>Plano Pro · demo</small>
+          <small>{s.user.email}</small>
         </span>
         <Icon name="Ellipsis" size={16} className="nav-text" />
       </button>
@@ -116,11 +117,13 @@ function UserMenu() {
             Configurações
           </button>
           <hr />
-          {/* Sem login real ainda: "sair" só volta para a tela de entrada. */}
-          <button role="menuitem" type="button" onClick={() => go('/entrar')}>
-            <Icon name="LogOut" size={16} />
-            Sair da conta
-          </button>
+          {/* Sair de verdade: a sessão é encerrada no servidor. */}
+          <form action={signOutAction}>
+            <button role="menuitem" type="submit">
+              <Icon name="LogOut" size={16} />
+              Sair da conta
+            </button>
+          </form>
         </div>
       )}
     </div>

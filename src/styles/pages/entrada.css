@@ -15,3 +15,19 @@
 .login-form { width: 100%; max-width: 380px; display: grid; gap: 18px; }
 .login-form h2 { font-size: 30px; }
 .login-foot { text-align: center; }
+
+/* ---------- Login de verdade (etapa 1) ---------- */
+.login-form-wrap { --prog-soft: var(--blue-soft); --prog-ink: var(--blue); --err-bg: var(--err-soft); --link: var(--blue); }
+.login-row { display: flex; justify-content: flex-end; margin-top: -8px; }
+.login-row a { font-size: 13.5px; font-weight: 500; }
+.auth-panel { display: grid; gap: 14px; }
+.auth-panel .auth-ico { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; background: var(--blue-soft); color: var(--blue); }
+.auth-panel h2 { font-size: 28px; }
+.auth-panel p { color: var(--mute); }
+.auth-panel p b { color: var(--fg); }
+.auth-panel .auth-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.auth-panel form { display: contents; }
+.login-form .muted.small a, .auth-panel .muted.small a { font-weight: 500; }
+.login-form .login-alert, .auth-panel .login-alert { margin: 0; align-items: center; }
+.login-alert .ico, .login-alert svg { flex: none; }
+.auth-panel .btn-primary { justify-self: start; }

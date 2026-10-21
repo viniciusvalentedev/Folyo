@@ -55,7 +55,9 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
       setErrors(fieldErrors(parsed.error))
       return
     }
-    a.setUser({ ...parsed.data, first: parsed.data.name.split(' ')[0] })
+    const { name, ...rest } = parsed.data
+    a.setUser(rest)
+    if (name !== s.user.name) a.saveName(name)
     toast('Perfil atualizado.', 'ok')
     onClose()
   }
@@ -138,10 +140,12 @@ export function ProfileView() {
             <h1 className="display">{s.user.name}</h1>
             <p className="ph-headline">{s.user.headline}</p>
             <p className="ph-meta">
-              <span>
-                <Icon name="MapPin" size={15} />
-                {s.user.city}
-              </span>
+              {s.user.city && (
+                <span>
+                  <Icon name="MapPin" size={15} />
+                  {s.user.city}
+                </span>
+              )}
               <span>
                 <Icon name="Calendar" size={15} />
                 Na Folyo desde {formatDate(s.user.joined)}
@@ -178,11 +182,19 @@ export function ProfileView() {
         <div className="profile-main">
           <section className="pf-sec">
             <h2 className="h-sec">Sobre</h2>
-            <p className="pf-bio">{s.user.bio}</p>
+            {s.user.bio ? (
+              <p className="pf-bio">{s.user.bio}</p>
+            ) : (
+              <p className="muted">Conte um pouco sobre você em &quot;Editar perfil&quot;.</p>
+            )}
           </section>
           <section className="pf-sec">
             <h2 className="h-sec">Objetivo de carreira</h2>
-            <p>{s.user.objective}</p>
+            {s.user.objective ? (
+              <p>{s.user.objective}</p>
+            ) : (
+              <p className="muted">Escreva seu objetivo profissional em &quot;Editar perfil&quot; ou no currículo.</p>
+            )}
             {d.goal && (
               <p className="muted small">
                 Objetivo principal na Folyo: <Link href="/objetivos">{d.goal.title}</Link>
@@ -209,6 +221,7 @@ export function ProfileView() {
           </section>
           <section className="pf-sec">
             <h2 className="h-sec">Experiências</h2>
+            {!s.user.experiences.length && <p className="muted">Nenhuma experiência ainda. Adicione no currículo.</p>}
             <ul className="pf-list">
               {s.user.experiences.map((x) => (
                 <li key={x.id}>
@@ -221,6 +234,7 @@ export function ProfileView() {
           </section>
           <section className="pf-sec">
             <h2 className="h-sec">Formação</h2>
+            {!s.user.education.length && <p className="muted">Nenhuma formação ainda. Adicione no currículo.</p>}
             <ul className="pf-list">
               {s.user.education.map((e) => (
                 <li key={e.id}>
@@ -236,6 +250,7 @@ export function ProfileView() {
         <aside className="profile-side">
           <section className="side-card">
             <p className="eyebrow">Competências principais</p>
+            {!topSkills.length && <p className="muted small">Suas competências aparecem aqui conforme você estuda.</p>}
             <ul className="pf-skills">
               {topSkills.map((k) => (
                 <li key={k.id}>
@@ -250,6 +265,7 @@ export function ProfileView() {
           </section>
           <section className="side-card">
             <p className="eyebrow">Áreas de interesse</p>
+            {!s.user.interests.length && <p className="muted small">Escolha suas áreas em &quot;Editar perfil&quot;.</p>}
             <div className="chips">
               {s.user.interests.map((x) => (
                 <span key={x} className="chip-static">
@@ -260,6 +276,9 @@ export function ProfileView() {
           </section>
           <section className="side-card">
             <p className="eyebrow">Cursos e certificados</p>
+            {!d.completedCourses.length && !d.inProgress.length && (
+              <p className="muted small">Nenhum curso começado ainda.</p>
+            )}
             <ul className="pf-mini">
               {d.completedCourses.map((c) => (
                 <li key={c.id}>

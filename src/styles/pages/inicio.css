@@ -74,3 +74,6 @@
 .career-cv small { color: var(--mute); font-size: 12.5px; }
 .career-cv b { font: 600 20px var(--f-display); }
 .career .btn { justify-self: start; }
+.beta-note { flex-basis: 100%; display: flex; gap: 10px; align-items: flex-start; margin: 0; padding: 12px 14px; border-radius: 12px; font-size: 13.5px; line-height: 1.5; color: #D9D7E6; background: rgba(242,169,59,.1); border: 1px solid rgba(242,169,59,.22); max-width: 760px; }
+.beta-note svg { flex: none; margin-top: 2px; color: #F2A93B; }
+.beta-note b { color: #fff; }

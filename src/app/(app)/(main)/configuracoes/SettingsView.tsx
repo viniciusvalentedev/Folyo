@@ -1,13 +1,13 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { signOutAction } from '@/app/(auth)/actions'
 import { useApp } from '@/components/providers/AppState'
-import { Button } from '@/components/ui/Button'
+import { Button, ButtonLink } from '@/components/ui/Button'
 import { Field, Seg, Select, Toggle } from '@/components/ui/controls'
 import { Icon, type IconName } from '@/components/ui/Icon'
-import { ConfirmModal } from '@/components/ui/Modal'
 import { PageHead } from '@/components/ui/PageHead'
+import { siteConfig } from '@/lib/config'
 import type { Settings } from '@/lib/types'
 import { fieldErrors, personalDataSchema } from '@/lib/validation'
 
@@ -24,31 +24,27 @@ const SECTIONS: { id: Section; label: string; icon: IconName }[] = [
 
 export function SettingsView() {
   const { s, a, toast } = useApp()
-  const router = useRouter()
   const [section, setSection] = useState<Section>('dados')
-  const [form, setForm] = useState({ name: s.user.name, email: s.user.email, phone: s.user.phone, city: s.user.city })
+  const [name, setName] = useState(s.user.name)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const [askReset, setAskReset] = useState(false)
-  const [askLeave, setAskLeave] = useState(false)
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => a.setSetting(k, v)
 
   const saveData = () => {
-    const parsed = personalDataSchema.safeParse(form)
+    const parsed = personalDataSchema.safeParse({ name })
     if (!parsed.success) {
       setErrors(fieldErrors(parsed.error))
-      toast('Revise os campos destacados.', 'err')
       return
     }
     setErrors({})
-    a.setUser({ ...parsed.data, first: parsed.data.name.split(' ')[0] })
-    toast('Dados pessoais salvos.', 'ok')
+    a.saveName(parsed.data.name)
+    toast('Nome salvo.', 'ok')
   }
 
   return (
     <div className="page surface-paper settings-page">
       <PageHead
         title="Configurações"
-        lead="Nesta versão de demonstração, as alterações ficam só nesta aba e somem ao recarregar a página."
+        lead="Seu nome e sua meta semanal ficam salvos na sua conta. As outras preferências passam a ser salvas em breve."
       />
       <div className="settings-grid">
         <nav className="settings-nav" aria-label="Seções de configuração">
@@ -71,32 +67,17 @@ export function SettingsView() {
               <h2>Dados pessoais</h2>
               <div className="grid-form">
                 <Field label="Nome completo" id="st-name" error={errors.name}>
-                  <input id="st-name" className="inp" maxLength={80} autoComplete="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-                </Field>
-                <Field label="E-mail" id="st-email" error={errors.email}>
                   <input
-                    id="st-email"
-                    type="email"
+                    id="st-name"
                     className="inp"
-                    maxLength={254}
-                    autoComplete="email"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    maxLength={80}
+                    autoComplete="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
                   />
                 </Field>
-                <Field label="Telefone" id="st-phone" error={errors.phone}>
-                  <input
-                    id="st-phone"
-                    type="tel"
-                    className="inp"
-                    maxLength={30}
-                    autoComplete="tel"
-                    value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  />
-                </Field>
-                <Field label="Cidade" id="st-city" error={errors.city}>
-                  <input id="st-city" className="inp" maxLength={80} value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} />
+                <Field label="E-mail" id="st-email" hint="É o e-mail que você usa para entrar.">
+                  <input id="st-email" type="email" className="inp" value={s.user.email} readOnly />
                 </Field>
               </div>
               <div className="row gap-s">
@@ -169,7 +150,7 @@ export function SettingsView() {
                     set('weeklyGoal', Number(v))
                     toast(`Meta ajustada para ${v} aulas por semana.`, 'ok')
                   }}
-                  options={['3', '5', '7', '10']}
+                  options={['2', '4', '6', '8', '10']}
                 />
               </Field>
               <Field label="Horário preferido para estudar" id="st-time">
@@ -223,47 +204,43 @@ export function SettingsView() {
               <h2>Conta</h2>
               <div className="set-row">
                 <div>
-                  <b>Sair da conta</b>
-                  <small>Volta para a tela de entrada.</small>
+                  <b>Trocar senha</b>
+                  <small>Escolha uma senha nova para entrar na Folyo.</small>
                 </div>
-                <Button variant="quiet" icon="LogOut" onClick={() => setAskLeave(true)}>
-                  Sair
-                </Button>
+                <ButtonLink variant="quiet" icon="Lock" href="/redefinir-senha">
+                  Trocar senha
+                </ButtonLink>
               </div>
               <div className="set-row">
                 <div>
-                  <b>Restaurar demonstração</b>
-                  <small>Desfaz tudo que você alterou e volta aos dados originais da Ana.</small>
+                  <b>Sair da conta</b>
+                  <small>Sai só deste aparelho. Você pode entrar de novo quando quiser.</small>
                 </div>
-                <Button variant="danger" icon="RotateCcw" onClick={() => setAskReset(true)}>
-                  Restaurar
-                </Button>
+                <form action={signOutAction}>
+                  <Button type="submit" variant="quiet" icon="LogOut">
+                    Sair
+                  </Button>
+                </form>
+              </div>
+              <div className="set-row">
+                <div>
+                  <b>Apagar conta e dados</b>
+                  <small>
+                    Por enquanto, peça pelo e-mail {siteConfig.supportEmail}. Apagamos sua conta e todos os seus dados.
+                  </small>
+                </div>
+                <ButtonLink
+                  variant="quiet"
+                  icon="Mail"
+                  href={`mailto:${siteConfig.supportEmail}?subject=Apagar%20minha%20conta`}
+                >
+                  Pedir
+                </ButtonLink>
               </div>
             </section>
           )}
         </div>
       </div>
-
-      <ConfirmModal
-        open={askReset}
-        onClose={() => setAskReset(false)}
-        danger
-        title="Restaurar dados de demonstração?"
-        confirmLabel="Restaurar"
-        body="Aulas concluídas, projetos, currículo e competências voltam ao estado inicial."
-        onConfirm={() => {
-          a.reset()
-          toast('Demonstração restaurada.', 'ok')
-        }}
-      />
-      <ConfirmModal
-        open={askLeave}
-        onClose={() => setAskLeave(false)}
-        title="Sair da conta?"
-        confirmLabel="Sair"
-        body="Você pode entrar de novo a qualquer momento."
-        onConfirm={() => router.push('/entrar')}
-      />
     </div>
   )
 }

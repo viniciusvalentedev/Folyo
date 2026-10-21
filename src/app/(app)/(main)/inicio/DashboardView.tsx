@@ -219,6 +219,14 @@ export function DashboardView() {
             )}
           </p>
         </div>
+        <p className="beta-note" role="note">
+          <Icon name="FlaskConical" size={16} />
+          <span>
+            <b>Fase de testes.</b> Por enquanto, a Folyo guarda seu nome, seu objetivo e sua meta semanal. Aulas
+            concluídas, projetos e currículo ainda voltam ao zero quando você recarrega a página. Isso muda nas próximas
+            etapas.
+          </span>
+        </p>
       </section>
 
       {startHere.length > 0 && (

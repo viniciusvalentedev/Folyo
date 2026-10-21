@@ -8,9 +8,6 @@ import type { CareerGoal, Category, Course } from '@/lib/types'
  * este arquivo diretamente, assim a troca para o banco mexe em um lugar só.
  */
 
-/** Data de referência dos dados de demonstração. */
-export const DEMO_REFERENCE_DATE = '2026-10-19'
-
 export const categories: Category[] = [
   {
     id: "marketing",

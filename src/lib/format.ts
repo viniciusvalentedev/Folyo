@@ -1,5 +1,3 @@
-import { DEMO_REFERENCE_DATE } from '@/lib/mock/catalog'
-
 const MONTHS_SHORT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
 const MONTHS = [
   'janeiro',
@@ -56,12 +54,10 @@ export function monthShort(i: number) {
 
 /**
  * Data de hoje (AAAA-MM-DD) para registrar ações (ex.: aula concluída).
- * Nos dados de demonstração nunca é antes da data de referência.
- * Use só em eventos (cliques), não durante a renderização.
+ * Use só em eventos (cliques); durante a renderização, use useNow().
  */
 export function todayISO(now: Date = new Date()) {
-  const t = localISODate(now)
-  return t < DEMO_REFERENCE_DATE ? DEMO_REFERENCE_DATE : t
+  return localISODate(now)
 }
 
 /** AAAA-MM-DD no fuso horário do aluno (toISOString usaria o horário de Londres). */

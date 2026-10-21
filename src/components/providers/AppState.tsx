@@ -4,6 +4,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { deriveUserData } from '@/lib/domain/derive'
 import { findCourse, sameText } from '@/lib/domain/catalog'
 import { newId, todayISO } from '@/lib/format'
+import {
+  saveGoalsAction,
+  saveNameAction,
+  saveWeeklyGoalAction,
+  type ActionResult,
+} from '@/lib/actions/profile'
 import type {
   Catalog,
   Derived,
@@ -30,18 +36,21 @@ export type Toast = {
 type ToastOptions = Omit<Toast, 'id' | 'text' | 'kind'>
 
 /**
- * Estado do aluno no navegador (versão de demonstração).
+ * Estado do aluno no navegador.
  *
- * Hoje tudo fica só na memória: ao recarregar a página, volta para a conta de
- * demonstração. Quando o banco existir, cada ação abaixo vai chamar uma
- * "server action" que valida os dados, confere quem é o usuário e grava no Supabase.
- * Os componentes não precisam mudar: eles continuam chamando as mesmas ações.
+ * Etapa 1: o perfil (nome, objetivos, meta semanal, primeiro acesso) é salvo no
+ * banco por "server actions" (src/lib/actions/profile.ts), que conferem quem está
+ * logado e validam tudo de novo no servidor. O resto (aulas, projetos,
+ * competências, currículo) ainda fica só na memória desta aba e passa a ser salvo
+ * na etapa 2 — os componentes continuam chamando as mesmas ações.
  */
-function useActions(commit: <R>(fn: (s: UserState) => R) => R, catalog: Catalog, reset: () => void) {
+function useActions(
+  commit: <R>(fn: (s: UserState) => R) => R,
+  catalog: Catalog,
+  persist: (pending: Promise<ActionResult>) => void,
+) {
   return useMemo(
     () => ({
-      /** Volta para os dados originais da conta de demonstração. */
-      reset,
       startCourse: (cid: string) =>
         commit((s) => {
           if (!s.started[cid]) s.started[cid] = todayISO()
@@ -217,25 +226,42 @@ function useActions(commit: <R>(fn: (s: UserState) => R) => R, catalog: Catalog,
           s.resume.dirty = false
           s.resume.savedAt = new Date().toISOString()
         }),
-      setGoal: (id: string) =>
-        commit((s) => {
-          if (s.goals.primary === id) return
+      setGoal: (id: string) => {
+        const goals = commit((s) => {
+          if (s.goals.primary === id) return null
           s.goals.secondary = [s.goals.primary, ...s.goals.secondary.filter((g) => g !== id)]
             .filter((g): g is string => !!g)
             .slice(0, 2)
           s.goals.primary = id
-        }),
-      toggleSecondaryGoal: (id: string) =>
-        commit((s) => {
-          if (id === s.goals.primary) return
+          return { primary: id, secondary: s.goals.secondary }
+        })
+        if (goals) persist(saveGoalsAction(goals))
+      },
+      toggleSecondaryGoal: (id: string) => {
+        const goals = commit((s) => {
+          if (id === s.goals.primary || !s.goals.primary) return null
           s.goals.secondary = s.goals.secondary.includes(id)
             ? s.goals.secondary.filter((g) => g !== id)
             : [...s.goals.secondary, id].slice(-2)
-        }),
-      setSetting: <K extends keyof Settings>(key: K, value: Settings[K]) =>
+          return { primary: s.goals.primary, secondary: s.goals.secondary }
+        })
+        if (goals) persist(saveGoalsAction(goals))
+      },
+      setSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => {
         commit((s) => {
           s.settings[key] = value
-        }),
+        })
+        if (key === 'weeklyGoal') persist(saveWeeklyGoalAction(value as number))
+      },
+      /** Troca o nome (salvo no banco). */
+      saveName: (name: string) => {
+        const clean = name.trim()
+        commit((s) => {
+          s.user.name = clean
+          s.user.first = clean.split(' ')[0] || clean
+        })
+        persist(saveNameAction(clean))
+      },
       markNotification: (id: string) =>
         commit((s) => {
           const n = s.notifications.find((x) => x.id === id)
@@ -249,6 +275,7 @@ function useActions(commit: <R>(fn: (s: UserState) => R) => R, catalog: Catalog,
         commit((s) => {
           s.notifications.unshift({ id: newId('n'), text, to, read: false, date: todayISO() })
         }),
+      /** Atualiza a tela depois que o primeiro acesso foi salvo no banco. */
       completeOnboarding: ({ goal, stage, weekly }: { goal: string; stage: string; weekly: number }) =>
         commit((s) => {
           s.onboarded = true
@@ -258,7 +285,7 @@ function useActions(commit: <R>(fn: (s: UserState) => R) => R, catalog: Catalog,
           s.settings.weeklyGoal = weekly
         }),
     }),
-    [commit, catalog, reset],
+    [commit, catalog, persist],
   )
 }
 
@@ -297,15 +324,6 @@ export function AppStateProvider({
     return result
   }, [])
 
-  const reset = useCallback(() => {
-    const fresh = structuredClone(initialState)
-    stateRef.current = fresh
-    setState(fresh)
-  }, [initialState])
-
-  const a = useActions(commit, catalog, reset)
-  const d = useMemo(() => deriveUserData(state, catalog), [state, catalog])
-
   const dismissToast = useCallback((id: string) => setToasts((t) => t.filter((x) => x.id !== id)), [])
   const toast = useCallback(
     (text: string, kind: ToastKind = 'ok', opts: ToastOptions = {}) => {
@@ -315,6 +333,21 @@ export function AppStateProvider({
     },
     [dismissToast],
   )
+
+  /** Espera o servidor salvar; se der errado, avisa o aluno. */
+  const persist = useCallback(
+    (pending: Promise<ActionResult>) => {
+      pending
+        .then((r) => {
+          if (!r.ok) toast(r.error, 'err')
+        })
+        .catch(() => toast('Sem conexão com o servidor. A alteração pode não ter sido salva.', 'err'))
+    },
+    [toast],
+  )
+
+  const a = useActions(commit, catalog, persist)
+  const d = useMemo(() => deriveUserData(state, catalog), [state, catalog])
 
   useEffect(() => {
     document.documentElement.classList.toggle('calm', !!state.settings.reduceMotion)

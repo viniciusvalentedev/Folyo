@@ -1,40 +1,30 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { Wordmark } from '@/components/brand/Logo'
 import { CourseArt } from '@/components/course/CourseBits'
 import { useApp } from '@/components/providers/AppState'
 import { Button } from '@/components/ui/Button'
-import { Icon, type IconName } from '@/components/ui/Icon'
+import { Icon } from '@/components/ui/Icon'
+import { completeOnboardingAction } from '@/lib/actions/profile'
 import { categoryOf, findCourse, lessonsOf } from '@/lib/domain/catalog'
 import { GOAL_ICONS } from '@/lib/goal-icons'
+import { PACES, STAGES } from '@/lib/onboarding'
 import type { Course } from '@/lib/types'
 
-
-const STAGES: { value: string; label: string; icon: IconName }[] = [
-  { value: 'Estudante do ensino médio', label: 'Estou no ensino médio', icon: 'BookOpen' },
-  { value: 'Estudante de graduação ou curso técnico', label: 'Estou na faculdade ou em curso técnico', icon: 'GraduationCap' },
-  { value: 'Em busca da primeira oportunidade', label: 'Já me formei e busco a primeira oportunidade', icon: 'Rocket' },
-  { value: 'Profissional em desenvolvimento', label: 'Já trabalho e quero crescer ou mudar de área', icon: 'Briefcase' },
-]
-
-const PACES = [
-  { value: 2, label: 'Pouco', detail: 'cerca de 30 min por semana' },
-  { value: 4, label: 'Moderado', detail: 'cerca de 1 hora por semana' },
-  { value: 8, label: 'Intenso', detail: '2 horas ou mais por semana' },
-]
 
 const TITLES = ['Qual é o seu objetivo agora?', 'Em que momento você está?', 'Seu ponto de partida']
 
 /** Primeiro acesso: 3 passos para escolher objetivo, momento e ritmo. */
 export function OnboardingView() {
-  const { s, a, catalog } = useApp()
+  const { s, a, toast, catalog } = useApp()
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [goalId, setGoalId] = useState<string | null>(null)
   const [stage, setStage] = useState<string | null>(null)
   const [pace, setPace] = useState(4)
+  const [saving, startSaving] = useTransition()
   const title = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => {
@@ -47,13 +37,22 @@ export function OnboardingView() {
   const firstCourse = goalCourses[0]
   const firstLesson = firstCourse ? lessonsOf(firstCourse)[0] : null
 
+  /** Salva as respostas no banco e só então segue para o app. */
   const finish = (to: 'aula' | string) => {
-    if (!goalId || !stage) return
-    a.completeOnboarding({ goal: goalId, stage, weekly: pace })
-    if (to === 'aula' && firstCourse && firstLesson) {
-      a.openLesson(firstCourse.id, firstLesson.id)
-      router.replace(`/aula/${firstCourse.id}/${firstLesson.id}`)
-    } else router.replace(to)
+    if (!goalId || !stage || saving) return
+    const answers = { goal: goalId, stage, weekly: pace }
+    startSaving(async () => {
+      const result = await completeOnboardingAction(answers)
+      if (!result.ok) {
+        toast(result.error, 'err')
+        return
+      }
+      a.completeOnboarding(answers)
+      if (to === 'aula' && firstCourse && firstLesson) {
+        a.openLesson(firstCourse.id, firstLesson.id)
+        router.replace(`/aula/${firstCourse.id}/${firstLesson.id}`)
+      } else router.replace(to)
+    })
   }
 
   const canGo = step === 0 ? !!goalId : step === 1 ? !!stage : true
@@ -142,7 +141,7 @@ export function OnboardingView() {
               novos cursos chegam.
             </p>
             <div className="onb-first-actions">
-              <Button variant="go" onClick={() => finish('/cursos')}>
+              <Button variant="go" disabled={saving} onClick={() => finish('/cursos')}>
                 Explorar cursos
               </Button>
             </div>
@@ -175,10 +174,10 @@ export function OnboardingView() {
                   </span>
                 </p>
                 <div className="onb-first-actions">
-                  <Button variant="go" icon="Play" onClick={() => finish('aula')}>
+                  <Button variant="go" icon="Play" disabled={saving} onClick={() => finish('aula')}>
                     Começar a primeira aula
                   </Button>
-                  <Button variant="quiet" onClick={() => finish('/cursos/' + firstCourse.id)}>
+                  <Button variant="quiet" disabled={saving} onClick={() => finish('/cursos/' + firstCourse.id)}>
                     Ver o curso
                   </Button>
                 </div>
@@ -228,7 +227,7 @@ export function OnboardingView() {
             Continuar
           </Button>
         ) : (
-          <Button variant="quiet" iconRight="ArrowRight" onClick={() => finish('/inicio')}>
+          <Button variant="quiet" iconRight="ArrowRight" disabled={saving} onClick={() => finish('/inicio')}>
             Ir para o início
           </Button>
         )}
