@@ -1,0 +1,51 @@
+/* Reset e tipografia
+   Extraído do protótipo da Folyo (artefato da Gigi). */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { background: var(--ink); color: #F3F2F8; }
+body { margin: 0; font: 400 15px/1.55 var(--f-ui); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 60; background: var(--ink); }
+#root { min-height: 100%; }
+h1, h2, h3, h4 { font-family: var(--f-display); font-weight: 600; margin: 0; letter-spacing: -0.015em; text-wrap: balance; color: var(--fg); }
+p { margin: 0; }
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 3px; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+input, textarea, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+img, svg { max-width: 100%; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip { position: fixed; left: 12px; top: -60px; z-index: 100; background: var(--lime); color: var(--ink); padding: 10px 14px; border-radius: 8px; font-weight: 600; }
+.skip:focus { top: calc(12px + env(safe-area-inset-top, 0px)); }
+.ico { flex: none; }
+.mono { font-family: var(--f-mono); }
+.muted { color: var(--mute); }
+.muted-on-dark { color: #A6A4BA; }
+.muted-on-blue { color: rgba(255,255,255,.72); }
+.small { font-size: 13px; }
+.row { display: flex; align-items: center; }
+.gap-s { gap: 10px; }
+.wrap { flex-wrap: wrap; }
+.w-full { width: 100%; justify-content: center; }
+.stack { display: grid; gap: 16px; }
+.hl { color: var(--lime); font-weight: 600; }
+
+/* ---------- Tipografia ---------- */
+.eyebrow { font: 500 12px/1.4 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--mute); margin-bottom: 8px; }
+.eyebrow.cap::first-letter { text-transform: uppercase; }
+.eyebrow.on-blue { color: rgba(255,255,255,.75); }
+.display { font-size: clamp(32px, 4.2vw, 52px); line-height: 1.04; font-weight: 600; letter-spacing: -0.03em; }
+.display-xl { font-size: clamp(36px, 5.6vw, 72px); line-height: 1; font-weight: 600; letter-spacing: -0.035em; }
+.lead { font-size: 17px; color: var(--mute); max-width: 62ch; margin-top: 10px; }
+.h-sec { font-size: 20px; margin-bottom: 14px; }
+.u-mark { position: relative; white-space: nowrap; color: var(--blue); }
+.u-mark::after { content: ""; position: absolute; left: 0; right: 0; bottom: .02em; height: .14em; background: var(--lime); border-radius: 99px; z-index: -1; transform-origin: left; animation: markIn .8s .25s var(--ease) both; }
+.section-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.section-head h2 { font-size: 20px; }
+.section-head .h-sec { margin-bottom: 0; }
+.link-sm { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; font-weight: 500; }
+.link-btn { background: none; border: 0; padding: 0; color: var(--link); font-size: 14px; font-weight: 500; display: inline-flex; gap: 6px; align-items: center; }
+.link-btn:hover { text-decoration: underline; text-underline-offset: 3px; }
+.link-btn.danger { color: var(--err-c); }
+.link-btn.on { color: var(--ok-ink); }

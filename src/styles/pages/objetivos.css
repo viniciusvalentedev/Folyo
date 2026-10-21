@@ -1,0 +1,47 @@
+/* Página: Objetivos
+   Extraído do protótipo da Folyo (artefato da Gigi). */
+
+/* ---------- Objetivos ---------- */
+.goals-page > * + * { margin-top: 28px; }
+.goal-current { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 32px; background: var(--blue); color: #fff; border-radius: 26px; padding: 36px 40px; position: relative; overflow: hidden; isolation: isolate; }
+.goal-current::after { content: ""; position: absolute; width: 320px; height: 450px; left: -90px; bottom: -240px; transform: rotate(10deg); background: currentColor; color: rgba(255,255,255,.06); -webkit-mask: var(--mark-mask) center / contain no-repeat; mask: var(--mark-mask) center / contain no-repeat; z-index: -1; pointer-events: none; }
+.gc-main { display: grid; gap: 12px; align-content: start; }
+.gc-main h2 { color: #fff; font-size: clamp(28px, 3.2vw, 40px); line-height: 1.05; letter-spacing: -0.03em; }
+.gc-main p:not(.eyebrow) { color: rgba(255,255,255,.85); }
+.gc-prog { display: grid; gap: 8px; max-width: 420px; margin-top: 8px; }
+.gc-prog .progress { background: rgba(255,255,255,.18); }
+.gc-prog .progress span { background: var(--lime) !important; }
+.gc-prog span { font-size: 14px; color: rgba(255,255,255,.8); }
+.gc-actions ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.gc-actions button { width: 100%; display: flex; gap: 12px; align-items: center; text-align: left; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.1); color: #fff; transition: background var(--t); }
+.gc-actions button:hover { background: rgba(255,255,255,.14); }
+.gc-actions button > span:nth-child(2) { flex: 1; display: grid; gap: 1px; min-width: 0; }
+.gc-actions small { font-size: 12.5px; color: rgba(255,255,255,.7); }
+.gc-n { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; background: var(--lime); color: var(--ink); font: 600 12px var(--f-mono); flex: none; }
+.goal-detail { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+.goal-detail > section { min-width: 0; }
+.skill-split { display: grid; gap: 18px; }
+.gs-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.gs-list li { display: flex; gap: 8px; align-items: center; font-size: 14.5px; color: var(--mute); }
+.gs-list.ok li { color: var(--fg); }
+.gs-list.ok .ico { color: var(--lime-ink); }
+.goal-courses { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.goal-courses button { width: 100%; display: flex; gap: 12px; align-items: center; padding: 8px 12px 8px 8px; border-radius: 12px; border: 1px solid var(--line); background: var(--card); text-align: left; }
+.goal-courses button:hover { border-color: var(--line-2); }
+.goal-courses button > span { flex: 1; display: grid; min-width: 0; }
+.goal-courses b { font-weight: 600; font-size: 14px; }
+.goal-courses small { color: var(--mute); font-size: 12.5px; }
+.gc-art { width: 48px !important; border-radius: 9px; flex: none; }
+.gc-art .art-glyph { font-size: 20px; }
+.goal-projects { list-style: none; padding: 0; margin: 0 0 12px; display: grid; gap: 8px; }
+.goal-projects li { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; padding: 12px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
+.goal-projects .ico { color: var(--magenta-deep); margin-top: 3px; }
+.goal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 16px; }
+.goal-card { display: grid; gap: 6px; padding: 18px; border-radius: 16px; border: 1px solid var(--line); background: var(--card); align-content: start; transition: border-color var(--t); }
+.goal-card > .ico { color: var(--blue); margin-bottom: 6px; }
+.goal-card b { font-weight: 600; font-size: 15px; }
+.goal-card small { color: var(--mute); font-size: 13px; }
+.goal-card.primary { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue); }
+.goal-card.secondary { border-color: var(--line-2); background: var(--blue-soft); }
+.goal-card-actions { display: flex; gap: 12px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+.goal-badge { font: 600 11px var(--f-mono); text-transform: uppercase; letter-spacing: .06em; color: #fff; background: var(--blue); padding: 6px 8px; border-radius: 6px; }

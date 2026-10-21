@@ -1,0 +1,37 @@
+/* Página: Certificados
+   Extraído do protótipo da Folyo (artefato da Gigi). */
+
+/* ---------- Certificados ---------- */
+.certs-page > * + * { margin-top: 24px; }
+.demo-note { display: inline-flex; gap: 8px; align-items: center; font-size: 13.5px; color: var(--warn); margin-top: 12px; padding: 8px 12px; border-radius: 10px; background: rgba(242,169,59,.1); }
+.cert-grid { display: grid; gap: 22px; }
+.cert-card { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px; align-items: center; padding: 24px; border-radius: 24px; background: var(--ink-2); border: 1px solid var(--line); }
+.cert-thumb { border: 0; padding: 0; background: none; border-radius: 14px; overflow: hidden; transition: transform .4s var(--ease); text-align: left; }
+.cert-thumb:hover { transform: rotate(-.6deg) scale(1.01); }
+.cert-info { display: grid; gap: 20px; }
+.cert-info h2 { font-size: 24px; margin-bottom: 4px; }
+.cert-info .chips { margin-top: 12px; }
+.cert-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.cert-actions .toggle { margin-left: 6px; }
+.certsheet { position: relative; background: #FDFDFE; color: var(--ink); aspect-ratio: 1.414; padding: 6% 7%; display: flex; flex-direction: column; gap: 4px; overflow: hidden; border-radius: 12px; container-type: inline-size; font-size: clamp(9px, 2.2cqi, 15px); max-width: 100%; }
+.cs-watermark { position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%) rotate(-18deg); font: 700 13cqi/1 var(--f-display); color: rgba(45,36,200,.06); letter-spacing: .05em; pointer-events: none; white-space: nowrap; }
+.cs-top { display: flex; align-items: center; gap: 8px; margin-bottom: auto; }
+.cs-top .wordmark { height: 2.3em; width: auto; }
+.cs-top em { margin-left: auto; font: 500 .85em var(--f-mono); font-style: normal; text-transform: uppercase; letter-spacing: .08em; color: #6A6A74; }
+.cs-k { font-size: 1em; color: #55555F; }
+.cs-name { font: 600 2.4em/1.1 var(--f-display); letter-spacing: -0.02em; color: var(--ink); margin-bottom: 4px; }
+.cs-course { font: 600 1.6em/1.15 var(--f-display); color: var(--blue); }
+.cs-skills { font-size: .9em; color: #55555F; margin-bottom: auto; }
+.cs-foot { display: flex; gap: 6%; border-top: 1px solid #E2E0EC; padding-top: 3%; margin-top: 4%; }
+.cs-foot div { display: grid; }
+.cs-foot small { font-size: .78em; color: #6A6A74; text-transform: uppercase; letter-spacing: .06em; font-family: var(--f-mono); }
+.cs-foot b { font-size: .95em; font-weight: 600; }
+.cs-art { position: absolute; right: 0; top: 0; width: 26%; height: auto; }
+.cert-pending { padding: 24px; border-radius: 20px; border: 1px dashed var(--line-2); }
+.cert-pending ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; }
+.cert-pending li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 20px; align-items: center; }
+.cert-pending li a { color: var(--fg); }
+.cert-pending li .progress { grid-column: 1 / -1; }
+.cp-req { display: flex; gap: 14px; font-size: 13px; color: var(--mute); flex-wrap: wrap; }
+.cp-req span { display: inline-flex; gap: 5px; align-items: center; }
+.cp-req .ok { color: var(--lime); }

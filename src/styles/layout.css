@@ -1,0 +1,83 @@
+/* Estrutura do app: sidebar, topo, páginas e navegação móvel
+   Extraído do protótipo da Folyo (artefato da Gigi). */
+
+/* ---------- Estrutura ---------- */
+.app { display: grid; grid-template-columns: var(--side) minmax(0, 1fr); min-height: 100vh; background: var(--ink); transition: grid-template-columns var(--t) var(--ease); }
+.app.in-class { grid-template-columns: 76px minmax(0, 1fr); }
+.app-main { min-width: 0; display: flex; flex-direction: column; }
+main { flex: 1; outline: none; min-width: 0; }
+.route { animation: routeIn .38s var(--ease) both; min-height: 100%; }
+
+.sidebar { position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: var(--ink); color: var(--fg); padding: calc(20px + env(safe-area-inset-top, 0px)) 14px 16px max(14px, env(safe-area-inset-left, 0px)); border-right: 1px solid rgba(255,255,255,.06); }
+.brand { display: flex; align-items: center; gap: 10px; color: #fff; padding: 4px 10px 14px; }
+.brand:hover { text-decoration: none; }
+.brand-word { font: 600 21px/1 var(--f-display); letter-spacing: -0.02em; color: #fff; }
+.mark, .wordmark { display: block; flex: none; overflow: visible; }
+.brand .brand-compact { display: none; }
+.sidebar.compact .brand-full { display: none; }
+.sidebar.compact .brand-compact { display: block; }
+.brand .wordmark { transition: transform var(--t) var(--ease); transform-origin: left center; }
+.brand:hover .wordmark { transform: rotate(-2deg); }
+.nav-group { display: grid; gap: 2px; margin-bottom: 10px; }
+.nav-label { font: 500 11px/1 var(--f-mono); text-transform: uppercase; letter-spacing: .1em; color: #6F6D85; padding: 10px 12px 6px; }
+.nav-item { display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-radius: 10px; color: #C9C7DA; font-weight: 500; font-size: 14.5px; position: relative; transition: background var(--t), color var(--t); }
+.nav-item:hover { background: rgba(255,255,255,.05); color: #fff; text-decoration: none; }
+.nav-item.on { background: rgba(255,255,255,.08); color: #fff; }
+.nav-item.on::before { content: ""; position: absolute; left: -14px; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--magenta); }
+.nav-item.on .ico { color: var(--magenta); }
+.nav-badge { margin-left: auto; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 99px; background: rgba(255,255,255,.08); font: 600 11px/20px var(--f-ui); font-style: normal; text-align: center; color: #D7D5E6; }
+.sidebar-foot { margin-top: auto; display: grid; gap: 6px; border-top: 1px solid rgba(255,255,255,.06); padding-top: 12px; }
+.usermenu { position: relative; }
+.user-chip { width: 100%; display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 12px; background: none; border: 0; text-align: left; }
+.user-chip:hover { background: rgba(255,255,255,.05); }
+.user-meta { display: grid; min-width: 0; flex: 1; }
+.user-meta b { font-size: 14px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.user-meta small { font-size: 12px; color: #8D8BA3; }
+.menu { position: absolute; bottom: calc(100% + 6px); left: 0; right: 0; min-width: 210px; background: var(--ink-3); border: 1px solid rgba(255,255,255,.1); border-radius: 12px; padding: 6px; display: grid; z-index: 30; animation: popIn .18s var(--ease); box-shadow: 0 18px 40px -16px rgba(0,0,0,.6); }
+.menu button { display: flex; align-items: center; gap: 10px; background: none; border: 0; padding: 9px 10px; border-radius: 8px; text-align: left; font-size: 14px; color: #E7E6F0; }
+.menu button:hover { background: rgba(255,255,255,.06); }
+.menu hr { border: 0; border-top: 1px solid rgba(255,255,255,.08); margin: 4px 0; width: 100%; }
+.sidebar.compact { padding-left: 12px; padding-right: 12px; align-items: center; }
+.sidebar.compact .nav-text, .sidebar.compact .nav-label, .sidebar.compact .nav-badge, .sidebar.compact .brand-word { display: none; }
+.sidebar.compact .nav-item { width: 44px; justify-content: center; padding: 0; }
+.sidebar.compact .nav-item.on::before { left: -12px; }
+.sidebar.compact .brand { padding: 4px 0 14px; justify-content: center; }
+.sidebar.compact .nav-group { margin-bottom: 4px; }
+.sidebar.compact .menu { left: 0; right: auto; }
+
+.topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 40; height: 64px; display: flex; align-items: center; gap: 16px; background: rgba(11,11,18,.92); backdrop-filter: blur(10px); color: var(--fg); padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.gsearch { position: relative; min-width: 0; display: flex; align-items: center; gap: 10px; flex: 1; max-width: 520px; height: 40px; padding: 0 12px; border-radius: 10px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.07); color: #A6A4BA; transition: border-color var(--t), background var(--t); }
+.gsearch:focus-within { border-color: rgba(171,166,255,.5); background: rgba(255,255,255,.07); }
+.gsearch input { flex: 1; min-width: 0; width: 100%; background: none; border: 0; outline: none; color: #fff; font-size: 14px; }
+.gsearch input::placeholder { color: #807E97; }
+kbd { font: 500 11px/1 var(--f-mono); color: #8D8BA3; border: 1px solid rgba(255,255,255,.12); padding: 4px 6px; border-radius: 6px; }
+.gsearch-pop { position: absolute; top: calc(100% + 8px); left: 0; right: 0; background: var(--ink-3); border: 1px solid rgba(255,255,255,.1); border-radius: 12px; padding: 6px; display: grid; z-index: 50; animation: popIn .18s var(--ease); box-shadow: 0 24px 48px -20px rgba(0,0,0,.7); }
+.gsearch-pop button { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; border: 0; background: none; text-align: left; color: #E7E6F0; font-size: 14px; }
+.gsearch-pop button span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gsearch-pop button em { font: 500 11px var(--f-mono); font-style: normal; color: #8D8BA3; text-transform: uppercase; letter-spacing: .06em; }
+.gsearch-pop button.on { background: rgba(255,255,255,.07); }
+.gsearch-empty { padding: 12px; color: #A6A4BA; font-size: 14px; }
+.notif { position: relative; }
+.notif .dot { position: absolute; top: 9px; right: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--magenta); box-shadow: 0 0 0 2px var(--ink); }
+.notif-pop { position: absolute; right: 0; top: calc(100% + 8px); width: min(360px, calc(100vw - 32px)); background: var(--ink-3); border: 1px solid rgba(255,255,255,.1); border-radius: 14px; padding: 8px; z-index: 50; animation: popIn .18s var(--ease); box-shadow: 0 24px 48px -20px rgba(0,0,0,.7); }
+.notif-pop header { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px 10px; font-size: 14px; color: #fff; }
+.notif-item { width: 100%; display: grid; gap: 2px; text-align: left; padding: 10px 10px 10px 22px; border: 0; background: none; border-radius: 10px; font-size: 14px; color: #C9C7DA; position: relative; }
+.notif-item:hover { background: rgba(255,255,255,.05); }
+.notif-item small { color: #8D8BA3; font-size: 12px; }
+.notif-item.unread { color: #fff; }
+.notif-item.unread::before { content: ""; position: absolute; left: 9px; top: 17px; width: 6px; height: 6px; border-radius: 50%; background: var(--magenta); }
+.pad { padding: 12px; }
+
+.page { min-height: calc(100vh - 64px); background: var(--bg); color: var(--fg); padding-block: 36px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.page > * { max-width: 1240px; margin-left: auto; margin-right: auto; }
+.page.surface-paper { border-top-left-radius: 22px; }
+.app.in-class .page { border-radius: 0; }
+
+/* ---------- Navegação móvel ---------- */
+.only-mobile { display: none !important; }
+.mobilenav { display: none; }
+.drawer-scrim { position: fixed; inset: 0; z-index: 85; background: rgba(6,6,12,.6); animation: fadeIn .2s; }
+.drawer { position: absolute; left: 0; top: 0; bottom: 0; width: min(300px, 86vw); background: var(--ink); animation: drawerIn .3s var(--ease); }
+.drawer .sidebar { position: relative; height: 100%; border: 0; }
+.drawer-x { position: absolute; right: 8px; top: calc(14px + env(safe-area-inset-top, 0px)); z-index: 2; color: #fff; }

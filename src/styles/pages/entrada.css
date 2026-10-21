@@ -1,0 +1,17 @@
+/* Página: Entrada
+   Extraído do protótipo da Folyo (artefato da Gigi). */
+
+/* ---------- Entrada ---------- */
+.login { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); background: var(--ink); }
+.login-art { position: relative; overflow: hidden; isolation: isolate; padding-block: 40px; padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: 24px; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; background: var(--blue); color: #fff; }
+.login-brand { display: flex; align-items: center; gap: 10px; }
+.login-words { display: grid; font-size: clamp(48px, 7.5vw, 112px); line-height: .92; letter-spacing: -0.05em; color: #fff; font-weight: 600; }
+.login-words span { display: block; animation: wordIn .8s var(--ease) both; }
+.login-words span:nth-child(2) { animation-delay: .12s; }
+.login-words span:nth-child(3) { animation-delay: .24s; color: var(--lime); }
+.login-sub { color: rgba(255,255,255,.8); max-width: 40ch; font-size: 17px; }
+.login-svg { overflow: visible; position: absolute; right: -60px; top: -40px; width: 70%; max-width: 560px; z-index: -1; }
+.login-form-wrap { display: grid; place-items: center; padding-block: 40px; padding-left: 24px; padding-right: max(24px, env(safe-area-inset-right, 0px)); background: var(--paper); color: var(--ink); --fg: var(--ink); --mute: #5D5B72; --line: #E2E0EC; --line-2: #CFCCE0; --input: #fff; --focus: var(--blue); --err-c: var(--err-ink); --card: #fff; --card-2: var(--paper-3); --hover: rgba(45,36,200,.045); color-scheme: light; }
+.login-form { width: 100%; max-width: 380px; display: grid; gap: 18px; }
+.login-form h2 { font-size: 30px; }
+.login-foot { text-align: center; }
