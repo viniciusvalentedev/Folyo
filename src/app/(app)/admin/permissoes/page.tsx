@@ -80,7 +80,7 @@ async function Permissions({ searchParams }: { searchParams: PageProps<'/admin/p
                       <td>
                         <span className="ad-sub">
                           {fmtDateTime(m.grantedAt)}
-                          {m.grantedBy ? ` · por ${m.grantedBy.split(' · ')[0]}` : ' · configuração inicial'}
+                          {m.grantedBy ? ` · por ${m.grantedBy}` : ' · configuração inicial'}
                         </span>
                       </td>
                     </tr>
@@ -174,7 +174,7 @@ async function Permissions({ searchParams }: { searchParams: PageProps<'/admin/p
                         <span className="ad-sub">{(a.action === 'permissao.alterada' ? roleChangeText(a.detail) : a.detail) || '—'}</span>
                       </td>
                       <td>
-                        {a.actor.split(' · ')[0]} ({isRole(a.actorRole) ? ROLES[a.actorRole].label : a.actorRole})
+                        {a.actor} ({isRole(a.actorRole) ? ROLES[a.actorRole].label : a.actorRole})
                       </td>
                     </tr>
                   )

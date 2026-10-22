@@ -32,9 +32,10 @@ export type SessionUser = { id: string; email: string }
 /** Aluno logado ou null. Nunca use getSession() no servidor para isso (o cookie pode ser falsificado). */
 export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const supabase = await createSupabaseServerClient()
-  const { data, error } = await supabase.auth.getClaims()
-  const claims = data?.claims
-  if (error || !claims?.sub) return null
+  // Cookie corrompido ou forjado pode fazer o getClaims lançar erro: vale como "não logado".
+  const result = await supabase.auth.getClaims().catch(() => null)
+  const claims = result?.data?.claims
+  if (!result || result.error || !claims?.sub) return null
   return { id: claims.sub, email: typeof claims.email === 'string' ? claims.email : '' }
 })
 
@@ -63,11 +64,15 @@ export const getAccount = cache(async (): Promise<Account> => {
       console.error('Função my_account não encontrada: rode o SQL da etapa 4 no Supabase.')
       return { role: 'aluno', suspended: false }
     }
-    console.error('Falha ao ler a conta', { code: error.code })
+    // O Next encerra consultas ainda abertas quando termina um teste de pré-renderização
+    // ("During prerendering, fetch() rejects..."). Não é falha real: não polui o log.
+    if (!/During prerendering/i.test(error.message ?? '')) console.error('Falha ao ler a conta', { code: error.code })
     throw new Error('Não foi possível carregar sua conta agora.')
   }
   const parsed = accountSchema.safeParse(data)
-  return parsed.success ? parsed.data : { role: 'aluno', suspended: false }
+  // Resposta inesperada do banco: não arrisca (nem painel, nem conta liberada).
+  if (!parsed.success) throw new Error('Não foi possível carregar sua conta agora.')
+  return parsed.data
 })
 
 /** Colunas lidas do perfil (nunca "select *": coluna nova não vaza sem querer para a tela). */

@@ -152,7 +152,7 @@ async function Overview({ searchParams }: { searchParams: PageProps<'/admin'>['s
                     </div>
                     <small>
                       {fmtDateTime(r.at)}
-                      {r.by ? ` · ${r.by.split(' · ')[0]}` : ''}
+                      {r.by ? ` · ${r.by}` : ''}
                     </small>
                   </li>
                 )

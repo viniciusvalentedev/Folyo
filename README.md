@@ -9,7 +9,11 @@ Onde estamos:
   esqueci a senha). Contas novas começam vazias.
 - **Etapa 2 — dados do aluno** ✅ aulas concluídas, anotações, favoritos, projetos, competências, currículo e
   configurações ficam salvos no banco (salvam sozinhos enquanto o aluno usa o site).
-- **Próximas etapas** (uma de cada vez): painel admin; vídeo; certificados e PDF de verdade; pagamentos.
+- **Etapa 3 — proteção contra robôs** ✅ CAPTCHA (Cloudflare Turnstile) e limites de tentativas e de alterações.
+- **Etapa 4 — painel admin (fundação)** ✅ papéis (aluno / editor / administrador / proprietário), visão geral com
+  números reais, lista e ficha dos usuários, suspender e reativar contas, permissões e histórico de auditoria.
+  As demais áreas (cursos, categorias, aulas, mídia...) aparecem como "em breve".
+- **Próximas etapas** (uma de cada vez): cadastro de cursos e aulas no painel; vídeo; certificados e PDF de verdade; pagamentos.
 
 **Configurar o Supabase pela primeira vez:** siga o passo a passo em [`supabase/README.md`](supabase/README.md).
 
@@ -164,13 +168,35 @@ supabase/
 
 ---
 
+## Painel admin (`/admin`)
+
+- **Quem entra:** só quem tem papel na equipe (`private.staff_roles`). Aluno que abrir o endereço vê "sem acesso"
+  e nenhum dado do painel chega ao navegador dele.
+- **Quem decide é o banco:** as funções `admin_*` conferem o papel e a hierarquia (ninguém muda o próprio papel;
+  administrador só mexe em quem está abaixo dele; só o proprietário cria administradores). As Server Actions só
+  validam os dados e repassam. A tela (`src/lib/admin/roles.ts`) apenas esconde botões.
+- **Privacidade do aluno:** a equipe vê só um resumo (cadastro, atividade, progresso). Anotações, conteúdo dos
+  projetos e currículo nunca saem para o painel.
+- **Conta suspensa:** não lê nem grava nada (regras restritivas no banco) e cai em `/conta-suspensa`. Os dados
+  continuam guardados.
+- **Proprietário só pelo SQL Editor:** o painel não cria, não rebaixa e não suspende proprietários, e o banco
+  nunca deixa ficar sem um proprietário ativo.
+- **Auditoria:** troca de papel, suspensão e reativação ficam registradas em `private.admin_audit`, inclusive
+  as feitas direto no banco (SQL Editor). O histórico não pode ser editado nem apagado. Tentativas barradas
+  aparecem no log do servidor (Vercel → Logs: "Painel: ação negada").
+- **Limites:** todas as rotas têm limite de pedidos por IP (proxy). Login também tem limite de senhas erradas
+  por e-mail, e as ações do painel têm limite por minuto no banco.
+- **Virar proprietário (uma vez, no SQL Editor):** veja o passo a passo em [`supabase/README.md`](supabase/README.md).
+
+---
+
 ## O que ainda é demonstração (e entra depois)
 
 | Item | Situação hoje | Próxima etapa |
 | --- | --- | --- |
 | **Login / cadastro** | ✅ Supabase Auth, rotas protegidas, e-mail próprio (Zoho, usefolyo.com), CAPTCHA e limite de tentativas | Excluir/exportar conta (LGPD) |
 | **Banco de dados** | ✅ Perfil, progresso, anotações, projetos, competências e currículo, todos com RLS e limite de alterações por minuto | Certificado emitido pelo servidor |
-| **Painel admin** | Fora da v1 | Cursos, aulas, usuários, mídia, categorias, relatórios e permissões, com papéis (aluno / editor / admin / proprietário) |
+| **Painel admin** | ✅ Fundação: papéis, visão geral, usuários (suspender/reativar), permissões e auditoria. Papel e regras ficam no banco; a tela só esconde o que não se pode usar | Cursos, categorias, módulos e aulas, audiência, relatórios, mídia e configurações (hoje "em breve") |
 | **Player de aula** | Demonstrativo (sem vídeo) | Cloudflare Stream ou Bunny Stream |
 | **Currículo em PDF e certificados** | Só visual. Hoje "aula concluída" é marcada pelo próprio aluno | Certificado emitido pelo servidor (conferindo aulas e projeto) + código de verificação |
 | **Perfil público** | Ainda a decidir (`/u/nome` ou subdomínio) | Rota pública + controle de privacidade |

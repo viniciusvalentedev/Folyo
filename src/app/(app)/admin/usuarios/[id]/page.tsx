@@ -68,7 +68,7 @@ async function UserPage({ params }: { params: PageProps<'/admin/usuarios/[id]'>[
       {u.suspension && (
         <Notice tone="warn">
           Acesso suspenso em {fmtDateTime(u.suspension.at)}
-          {u.suspension.by ? ` por ${u.suspension.by.split(' · ')[0]}` : ''}
+          {u.suspension.by ? ` por ${u.suspension.by}` : ''}
           {u.suspension.reason ? `: ${u.suspension.reason}` : ''}. O histórico e o progresso continuam guardados.
         </Notice>
       )}

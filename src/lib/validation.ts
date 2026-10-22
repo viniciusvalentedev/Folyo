@@ -45,7 +45,18 @@ export const newPasswordSchema = z
   .min(8, 'A senha precisa ter pelo menos 8 caracteres.')
   .max(72, 'Use no máximo 72 caracteres.')
 
-export const personNameSchema = z.string().trim().min(2, 'Digite seu nome.').max(80, 'Use no máximo 80 caracteres.')
+/**
+ * Tira de nomes os caracteres invisíveis, de controle e o "·" (usado como separador
+ * no histórico do painel). Sem isso, alguém poderia se passar por outra pessoa lá.
+ * O banco também recusa esses caracteres (etapa 4b).
+ */
+const UNSAFE_NAME_CHARS = /[\u0000-\u001f\u007f-\u009f\u00ad\u200b-\u200f\u2028-\u202e\u2060-\u2069\ufeff\u00b7]/g
+export const cleanName = (v: string) => v.replace(UNSAFE_NAME_CHARS, '').replace(/\s{2,}/g, ' ').trim()
+
+export const personNameSchema = z
+  .string()
+  .transform(cleanName)
+  .pipe(z.string().min(2, 'Digite seu nome.').max(80, 'Use no máximo 80 caracteres.'))
 
 /**
  * Formulário de entrar. Aqui não exigimos tamanho mínimo: quem decide se a senha
@@ -149,7 +160,7 @@ export const weeklyGoalSchema = z.number().int().min(1).max(20)
 
 /** Editar perfil. */
 export const profileSchema = z.object({
-  name: z.string().trim().min(1, 'Informe seu nome.').max(80),
+  name: z.string().transform(cleanName).pipe(z.string().min(1, 'Informe seu nome.').max(80)),
   headline: z.string().trim().max(LIMITS.title),
   city: z.string().trim().max(80),
   bio: z.string().max(400, 'Use até 400 caracteres.'),
@@ -263,7 +274,7 @@ export const achievementSchema = z.object({ id: itemIdSchema, text: text(LIMITS.
  * link clicável, passe por safeUrl() antes.
  */
 export const storedProfileSchema = z.object({
-  name: z.string().trim().max(80),
+  name: z.string().transform(cleanName).pipe(z.string().max(80)),
   headline: text(LIMITS.title),
   city: text(80),
   email: text(254),

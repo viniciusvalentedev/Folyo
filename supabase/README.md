@@ -1,6 +1,7 @@
 # Supabase — passo a passo
 
-- **Etapa 3 (proteção contra robôs):** logo abaixo. Faça agora.
+- **Etapa 4 (painel admin):** logo abaixo. Faça agora.
+- **Etapa 3 (proteção contra robôs):** já feita; fica como referência.
 - **Etapa 2 (dados do aluno):** já feita; fica como referência.
 - **Etapa 1 (login + perfil):** mais para baixo. Já está feita; fica como referência.
 
@@ -8,6 +9,58 @@
 > A **secret key** (`sb_secret_...`) **não é usada** nesta etapa: não cole ela no `.env.local`, na Vercel,
 > no GitHub nem em conversas. Ela passa por cima de todas as regras de segurança do banco. Guarde só no
 > gerenciador de senhas.
+
+---
+
+# Etapa 4 — painel admin (papéis, suspensão e auditoria)
+
+Cria as tabelas privadas de papéis, suspensões e histórico, e as funções `admin_*` que conferem **no banco**
+quem pode fazer o quê. Sem este SQL o site continua funcionando como antes (todos como aluno), mas `/admin`
+não abre.
+
+## 1. Rodar os SQLs da etapa 4 (dois arquivos, nesta ordem)
+
+1. Supabase → **SQL Editor** → **New query**.
+2. Abra `supabase/migrations/20261022000002_etapa4_painel_admin.sql`, copie tudo, cole e clique em **Run**.
+   Deve aparecer *Success. No rows returned*.
+3. **New query** de novo, com `supabase/migrations/20261022000003_etapa4b_seguranca_painel.sql` (reforço de
+   segurança do painel). **Run**.
+
+Cada arquivo roda **uma vez só**. Se rodar de novo, aparece um erro dizendo que algo "already exists" e nada é
+alterado (o arquivo inteiro é desfeito), então não tem perigo.
+
+  ## 2. Virar proprietário (uma vez só)
+
+No SQL Editor, troque pelo e-mail com que você faz login na Folyo e rode:
+
+1. Confira antes em **Authentication → Users** que a sua conta aparece com o e-mail **confirmado**
+   (coluna *Last sign in* preenchida). Assim ninguém que tenha cadastrado o seu e-mail antes de você vira dono.
+2. Rode:
+
+```sql
+insert into private.staff_roles (user_id, role)
+select id, 'proprietario' from auth.users
+where email = lower('SEU_EMAIL') and email_confirmed_at is not null
+on conflict (user_id) do update set role = excluded.role;
+```
+
+Aparece *Success. 1 row affected*. Se aparecer 0 linhas, o e-```mail está errado, ainda não foi confirmado
+ou a conta ainda não existe.
+
+> **Proprietário só pelo SQL Editor.** O painel não cria, não rebaixa e não suspende nenhum proprietário
+> (nem o próprio dono consegue). Assim, mesmo que alguém consiga entrar com uma conta da equipe, não toma o
+> seu lugar. O banco também não deixa ficar sem nenhum proprietário ativo.
+
+## 3. Publicar e testar
+
+1. `git add .`, `git commit -m "Etapa 4: painel admin"` e `git push`. A Vercel publica sozinha.
+2. Entre na Folyo: no menu lateral aparece **Painel administrativo**. Abra `/admin`.
+3. Teste: veja a visão geral, abra um usuário, e em **Administração e permissões** use **Dar acesso ao painel**.
+4. Com uma segunda conta (aluno), confirme que `/admin` mostra "sem acesso".
+
+> **Security Advisor:** vai listar as funções `admin_*` como "security definer que o usuário logado pode
+> executar". É esperado: cada uma confere o papel lá dentro, e `anon` não consegue chamar nenhuma.
+> Aproveite e ligue a **proteção contra senhas vazadas** (Authentication → Attack Protection), se o plano permitir.
 
 ---
 

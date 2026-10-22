@@ -2,8 +2,8 @@
 
 import { redirect } from 'next/navigation'
 import { safeNext } from '@/lib/auth/redirects'
-import { getSessionUser } from '@/lib/data/user'
-import { AUTH_LIMITS, allow, clientIp, hit, limited } from '@/lib/security/rate-limit'
+import { getAccount, getSessionUser } from '@/lib/data/user'
+import { AUTH_LIMITS, allow, clientIp, hit, limited, reset } from '@/lib/security/rate-limit'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import {
   emailLinkSchema,
@@ -102,8 +102,16 @@ export async function signInAction(_prev: AuthFormState, formData: FormData): Pr
 
   const { ip, supabase } = await authClient()
   if (!allow('signin:' + ip, AUTH_LIMITS.signIn)) return { message: TOO_MANY, values }
+  // Senha errada demais para este e-mail (de qualquer IP): espera antes de tentar de novo.
+  const account = 'signin-fail:' + parsed.data.email.toLowerCase()
+  if (limited(account, AUTH_LIMITS.signInFailures)) return { message: TOO_MANY, values }
   const { error } = await supabase.auth.signInWithPassword({ ...parsed.data, options: { captchaToken: captchaToken(formData) } })
-  if (error) return { message: friendly(error.code, error.status), values }
+  if (error) {
+    // Só conta senha errada (CAPTCHA recusado ou limite do Supabase não contam).
+    if (error.code === 'invalid_credentials') hit(account, AUTH_LIMITS.signInFailures)
+    return { message: friendly(error.code, error.status), values }
+  }
+  reset(account)
 
   redirect(safeNext(formData.get('next')))
 }
@@ -198,6 +206,8 @@ export async function updatePasswordAction(_prev: AuthFormState, formData: FormD
   const parsed = resetPasswordSchema.safeParse({ password: formData.get('password'), confirm: formData.get('confirm') })
   if (!parsed.success) return { errors: fieldErrors(parsed.error) }
   if (!allow('password:' + user.id, AUTH_LIMITS.updatePassword)) return { message: TOO_MANY }
+  // Conta suspensa não troca a senha (nem mantém o acesso trocando a senha).
+  if ((await getAccount()).suspended) redirect('/conta-suspensa')
 
   const supabase = await createSupabaseServerClient()
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password })
