@@ -8,11 +8,14 @@ import { authCookieOptions, supabaseEnv } from './config'
  * e Route Handlers). Ele age "como o aluno logado": o banco aplica as regras RLS
  * com base no cookie de sessão. Crie um novo a cada uso (nunca compartilhe).
  */
-export async function createSupabaseServerClient() {
+export async function createSupabaseServerClient({ clientIp }: { clientIp?: string | null } = {}) {
   const cookieStore = await cookies()
   const { url, key } = supabaseEnv()
   return createServerClient(url, key, {
     cookieOptions: authCookieOptions,
+    // Telas de entrada: repassa o IP real do aluno (vindo da Vercel). Assim o CAPTCHA
+    // e os limites do Supabase Auth olham para o aluno, e não para o servidor da Vercel.
+    ...(clientIp ? { global: { headers: { 'X-Forwarded-For': clientIp } } } : {}),
     cookies: {
       getAll() {
         return cookieStore.getAll()

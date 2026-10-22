@@ -1,12 +1,65 @@
 # Supabase — passo a passo
 
-- **Etapa 2 (dados do aluno):** logo abaixo. Faça agora.
+- **Etapa 3 (proteção contra robôs):** logo abaixo. Faça agora.
+- **Etapa 2 (dados do aluno):** já feita; fica como referência.
 - **Etapa 1 (login + perfil):** mais para baixo. Já está feita; fica como referência.
 
 > **Regra de ouro:** a Folyo usa só a **URL do projeto** e a **publishable key** (`sb_publishable_...`).
 > A **secret key** (`sb_secret_...`) **não é usada** nesta etapa: não cole ela no `.env.local`, na Vercel,
 > no GitHub nem em conversas. Ela passa por cima de todas as regras de segurança do banco. Guarde só no
 > gerenciador de senhas.
+
+---
+
+# Etapa 3 — proteção contra robôs (CAPTCHA + limites)
+
+O que entra:
+
+- **CAPTCHA da Cloudflare (Turnstile)** em entrar, criar conta, reenviar confirmação e "esqueci a senha".
+  Quase sempre o aluno não precisa clicar em nada. Quem confere o comprovante é o **Supabase** (com a chave
+  secreta do Turnstile, que fica só no painel dele).
+- **Limite de alterações no banco:** cada aluno pode fazer até 120 alterações por minuto e 3000 por hora.
+  Vale para o site **e** para quem tentar usar a API direto. Uso normal fica muito abaixo disso.
+- **Limite de tentativas nas telas de entrada** (por IP e por e-mail de destino), no servidor da Folyo.
+- O servidor repassa o **IP real** do aluno ao Supabase, para o CAPTCHA e os limites do Supabase olharem para o
+  aluno (e não para o servidor da Vercel, que é o mesmo para todo mundo).
+
+> **A ordem importa.** Se você ligar o CAPTCHA no Supabase antes do código novo estar no ar, ninguém consegue
+> entrar nem criar conta (o site antigo não manda o comprovante).
+
+## 1. Criar o widget no Cloudflare
+
+1. [dash.cloudflare.com](https://dash.cloudflare.com) → menu **Turnstile** → **Add widget**.
+2. **Nome:** `Folyo`. **Hostnames:** `folyo-six.vercel.app`, `usefolyo.com`, `www.usefolyo.com` e `localhost`.
+3. **Widget mode:** `Managed`. *Pre-clearance:* `No`.
+4. Salve. Aparecem a **Site key** (pública) e a **Secret key** (segredo: só vai no painel do Supabase).
+
+## 2. Rodar o SQL da etapa 3
+
+Supabase → **SQL Editor** → **New query** → cole o arquivo inteiro
+`supabase/migrations/20261022000001_etapa3_limite_de_pedidos.sql` → **Run**.
+Pode rodar antes ou depois de publicar: não quebra o site antigo.
+
+## 3. Colocar a Site key na Vercel e publicar
+
+1. Vercel → **Settings** → **Environment Variables** → `NEXT_PUBLIC_TURNSTILE_SITE_KEY` = a **Site key**
+   (Production e Preview).
+2. No seu computador: `git status` (o `.env.local` não pode aparecer), depois `git add -A`,
+   `git commit -m "Etapa 3: CAPTCHA e limites"` e `git push`.
+3. Quando o deploy terminar, abra o site: na tela de entrar deve aparecer a caixinha da Cloudflare. **Entre na sua
+   conta** para confirmar que tudo funciona (o Supabase ainda não está exigindo o CAPTCHA).
+
+## 4. Ligar o CAPTCHA no Supabase (só agora)
+
+1. Supabase → **Authentication** → **Attack Protection** (ou *Bot and Abuse Protection*) → **Enable Captcha protection**.
+2. **Provider:** Turnstile. **Secret key:** a do Cloudflare. **Save**.
+3. Teste de novo: sair, entrar, criar uma conta nova, "esqueci a senha". Tudo deve funcionar.
+4. Se der problema, **desligue o CAPTCHA no Supabase** (o site volta a funcionar na hora) e me mande a mensagem.
+
+## 5. No seu computador (opcional)
+
+Para ver a caixinha rodando `npm run dev`, coloque no `.env.local`: `NEXT_PUBLIC_TURNSTILE_SITE_KEY=<a site key>`.
+Sem essa linha, o formulário funciona sem CAPTCHA (útil para testar com o CAPTCHA desligado no Supabase).
 
 ---
 
@@ -170,8 +223,9 @@ O envio de e-mails já usa o SMTP próprio (Zoho, `contato@usefolyo.com`), entã
   as novas. Diminui o risco se alguma chave antiga vazar.
 - **JWT Signing Keys** (Project Settings → JWT Keys): se aparecer *Legacy JWT secret*, migrar para as chaves novas
   (ECC). Deixa a checagem de login mais rápida.
-- **CAPTCHA no cadastro** (Cloudflare Turnstile) antes de divulgar o site.
-- **Limite de pedidos por minuto** (rate limit) nas ações do site antes de divulgar.
+- **Senhas vazadas** (se ainda não ligou): Authentication → Attack Protection → *Prevent use of leaked passwords* (se o plano permitir).
+- **Limite global de tentativas de login:** hoje o limite por IP do servidor é contado em cada servidor da Vercel
+  separadamente. Com muito tráfego, vale trocar por um contador compartilhado (ex.: Upstash Redis).
 - **Certificados de verdade** (com código de verificação): hoje "aula concluída" é marcada pelo próprio aluno.
   Antes de emitir certificado que vale como credencial, ele precisa ser gerado pelo servidor, conferindo as aulas
   (de preferência com registro de que o vídeo foi assistido) e o projeto.

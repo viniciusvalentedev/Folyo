@@ -35,9 +35,24 @@ export function AuthShell({ children }: { children: ReactNode }) {
 }
 
 /** Botão de enviar com indicador de carregamento. */
-export function SubmitButton({ pending, children, pendingLabel }: { pending: boolean; children: ReactNode; pendingLabel: string }) {
+export function SubmitButton({
+  pending,
+  children,
+  pendingLabel,
+  disabled = false,
+}: {
+  pending: boolean
+  children: ReactNode
+  pendingLabel: string
+  /** Ex.: enquanto a verificação anti-robô (CAPTCHA) não termina. */
+  disabled?: boolean
+}) {
   return (
-    <button type="submit" className={'btn btn-primary btn-lg w-full' + (pending ? ' loading' : '')} disabled={pending}>
+    <button
+      type="submit"
+      className={'btn btn-primary btn-lg w-full' + (pending ? ' loading' : '')}
+      disabled={pending || disabled}
+    >
       {pending ? (
         <>
           <span className="spinner" />

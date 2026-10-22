@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation'
 import { safeNext } from '@/lib/auth/redirects'
 import { getSessionUser } from '@/lib/data/user'
+import { AUTH_LIMITS, allow, clientIp, hit, limited } from '@/lib/security/rate-limit'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import {
   emailLinkSchema,
@@ -19,6 +20,12 @@ import {
  * Cada ação é tratada como uma porta aberta para a internet: valida tudo de
  * novo com zod, nunca devolve detalhes técnicos e nunca guarda nem registra a
  * senha. As mensagens não revelam se um e-mail tem conta ou não.
+ *
+ * Proteção contra robôs, em camadas:
+ *  1. CAPTCHA (Cloudflare Turnstile): o formulário traz um comprovante que o
+ *     próprio Supabase confere (quando o CAPTCHA está ligado no painel dele);
+ *  2. limite de tentativas por IP aqui no servidor (src/lib/security/rate-limit.ts);
+ *  3. limites do próprio Supabase Auth.
  */
 
 export type AuthFormState = {
@@ -35,6 +42,8 @@ export type AuthFormState = {
 }
 
 const GENERIC = 'Não foi possível concluir agora. Tente de novo em alguns minutos.'
+const TOO_MANY = 'Muitas tentativas seguidas. Espere alguns minutos e tente de novo.'
+const CAPTCHA = 'Não conseguimos confirmar que você é uma pessoa. Espere a verificação terminar e tente de novo.'
 
 /** Traduz os códigos de erro do Supabase em mensagens amigáveis (e seguras). */
 function friendly(code: string | undefined, status?: number) {
@@ -45,7 +54,9 @@ function friendly(code: string | undefined, status?: number) {
       return 'Confirme seu e-mail antes de entrar. Procure o link que enviamos (olhe também o spam).'
     case 'over_request_rate_limit':
     case 'over_email_send_rate_limit':
-      return 'Muitas tentativas seguidas. Espere alguns minutos e tente de novo.'
+      return TOO_MANY
+    case 'captcha_failed':
+      return CAPTCHA
     case 'weak_password':
       return 'Essa senha é fácil de adivinhar. Escolha uma senha mais forte.'
     case 'same_password':
@@ -70,13 +81,28 @@ function friendly(code: string | undefined, status?: number) {
 
 const text = (v: FormDataEntryValue | null) => (typeof v === 'string' ? v : '')
 
+/** Comprovante do CAPTCHA que o widget da Cloudflare coloca no formulário (até 2048 caracteres). */
+function captchaToken(formData: FormData) {
+  const v = formData.get('cf-turnstile-response')
+  return typeof v === 'string' && v.length > 0 && v.length <= 2048 ? v : undefined
+}
+
+/** Cliente do Supabase para as telas de entrada, com o IP real de quem pediu. */
+async function authClient() {
+  const ip = await clientIp()
+  return { ip: ip ?? 'local', supabase: await createSupabaseServerClient({ clientIp: ip }) }
+}
+
+const isRateLimit = (code?: string) => code === 'over_email_send_rate_limit' || code === 'over_request_rate_limit'
+
 export async function signInAction(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const values = { email: text(formData.get('email')).slice(0, 254) }
   const parsed = loginSchema.safeParse({ email: formData.get('email'), password: formData.get('password') })
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values }
 
-  const supabase = await createSupabaseServerClient()
-  const { error } = await supabase.auth.signInWithPassword(parsed.data)
+  const { ip, supabase } = await authClient()
+  if (!allow('signin:' + ip, AUTH_LIMITS.signIn)) return { message: TOO_MANY, values }
+  const { error } = await supabase.auth.signInWithPassword({ ...parsed.data, options: { captchaToken: captchaToken(formData) } })
   if (error) return { message: friendly(error.code, error.status), values }
 
   redirect(safeNext(formData.get('next')))
@@ -92,8 +118,13 @@ export async function signUpAction(_prev: AuthFormState, formData: FormData): Pr
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values }
 
   const { name, email, password } = parsed.data
-  const supabase = await createSupabaseServerClient()
-  const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name } } })
+  const { ip, supabase } = await authClient()
+  if (!allow('signup:' + ip, AUTH_LIMITS.signUp)) return { message: TOO_MANY, values }
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { name }, captchaToken: captchaToken(formData) },
+  })
   if (error) return { message: friendly(error.code, error.status), values }
 
   // Se a confirmação por e-mail estiver desligada no Supabase, a pessoa já entra direto.
@@ -107,12 +138,22 @@ export async function resendConfirmationAction(_prev: AuthFormState, formData: F
   const parsed = emailOnlySchema.safeParse({ email: formData.get('email') })
   if (!parsed.success) return { errors: fieldErrors(parsed.error) }
 
-  const supabase = await createSupabaseServerClient()
-  const { error } = await supabase.auth.resend({ type: 'signup', email: parsed.data.email })
-  if (error?.code === 'over_email_send_rate_limit' || error?.code === 'over_request_rate_limit') {
-    return { sent: parsed.data, message: friendly(error.code) }
-  }
-  return { sent: parsed.data, message: 'Pronto! Se o e-mail ainda não foi confirmado, um novo link está a caminho.' }
+  const done = { sent: parsed.data, message: 'Pronto! Se o e-mail ainda não foi confirmado, um novo link está a caminho.' }
+  const { ip, supabase } = await authClient()
+  if (!allow('email:' + ip, AUTH_LIMITS.email)) return { sent: parsed.data, message: TOO_MANY }
+  const target = 'to:' + parsed.data.email.toLowerCase()
+  // Esse endereço já recebeu e-mails demais: responde igual, sem mandar outro.
+  if (limited(target, AUTH_LIMITS.emailTarget)) return done
+
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email: parsed.data.email,
+    options: { captchaToken: captchaToken(formData) },
+  })
+  if (isRateLimit(error?.code)) return { sent: parsed.data, message: TOO_MANY }
+  if (error?.code === 'captcha_failed') return { sent: parsed.data, message: CAPTCHA }
+  hit(target, AUTH_LIMITS.emailTarget)
+  return done
 }
 
 export async function requestPasswordResetAction(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
@@ -120,11 +161,18 @@ export async function requestPasswordResetAction(_prev: AuthFormState, formData:
   const parsed = emailOnlySchema.safeParse({ email: formData.get('email') })
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values }
 
-  const supabase = await createSupabaseServerClient()
-  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email)
-  if (error?.code === 'over_email_send_rate_limit' || error?.code === 'over_request_rate_limit') {
-    return { message: friendly(error.code), values }
-  }
+  const { ip, supabase } = await authClient()
+  if (!allow('email:' + ip, AUTH_LIMITS.email)) return { message: TOO_MANY, values }
+  const target = 'to:' + parsed.data.email.toLowerCase()
+  // Esse endereço já recebeu e-mails demais: responde igual, sem mandar outro.
+  if (limited(target, AUTH_LIMITS.emailTarget)) return { sent: parsed.data }
+
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+    captchaToken: captchaToken(formData),
+  })
+  if (isRateLimit(error?.code)) return { message: TOO_MANY, values }
+  if (error?.code === 'captcha_failed') return { message: CAPTCHA, values }
+  hit(target, AUTH_LIMITS.emailTarget)
   // Resposta igual exista ou não a conta.
   return { sent: parsed.data }
 }
@@ -149,6 +197,7 @@ export async function updatePasswordAction(_prev: AuthFormState, formData: FormD
 
   const parsed = resetPasswordSchema.safeParse({ password: formData.get('password'), confirm: formData.get('confirm') })
   if (!parsed.success) return { errors: fieldErrors(parsed.error) }
+  if (!allow('password:' + user.id, AUTH_LIMITS.updatePassword)) return { message: TOO_MANY }
 
   const supabase = await createSupabaseServerClient()
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password })

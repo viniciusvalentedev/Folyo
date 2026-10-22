@@ -1,17 +1,19 @@
 'use client'
 
 import Link from 'next/link'
-import { useActionState } from 'react'
+import { useActionState, useState } from 'react'
 import { Field } from '@/components/ui/controls'
 import { Icon } from '@/components/ui/Icon'
 import { requestPasswordResetAction, type AuthFormState } from '../actions'
 import { FormAlert, SubmitButton } from '../AuthShell'
+import { Captcha, captchaEnabled } from '../Captcha'
 
 const initial: AuthFormState = {}
 
 /** Pede o link para criar uma senha nova. A resposta é a mesma exista a conta ou não. */
 export function ForgotPasswordView() {
   const [state, action, pending] = useActionState(requestPasswordResetAction, initial)
+  const [human, setHuman] = useState(!captchaEnabled)
 
   if (state.sent) {
     return (
@@ -52,7 +54,8 @@ export function ForgotPasswordView() {
         />
       </Field>
       <FormAlert message={state.message} />
-      <SubmitButton pending={pending} pendingLabel="Enviando…">
+      <Captcha action="reset" resetSignal={state} onReady={setHuman} />
+      <SubmitButton pending={pending} disabled={!human} pendingLabel="Enviando…">
         Enviar link
       </SubmitButton>
       <p className="muted small">

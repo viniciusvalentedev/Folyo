@@ -132,6 +132,18 @@ supabase/
 - Testado com Postgres de verdade: regras do banco (105 casos) e ponta a ponta com o site rodando (75 casos,
   incluindo tentativas de mexer nos dados de outro aluno, sem login, de outro site e com dados inválidos).
 
+**Proteção contra robôs (etapa 3)**
+
+- **CAPTCHA da Cloudflare (Turnstile)** em entrar, criar conta, reenviar confirmação e "esqueci a senha". O
+  comprovante vale uma vez só e é conferido pelo **Supabase** (a chave secreta do Turnstile fica só no painel dele).
+- **Limite de alterações no banco** (120 por minuto e 3000 por hora por aluno), aplicado por um gatilho no banco:
+  vale também para quem tenta usar a API direto, pulando o site.
+- **Limite de tentativas nas telas de entrada** por IP, e no máximo 3 e-mails por 15 minutos para o mesmo endereço
+  (sem revelar nada: a resposta é sempre igual). O IP só é lido do cabeçalho da Vercel (não dá para forjar).
+- O IP real do aluno é repassado ao Supabase, para o CAPTCHA e os limites dele olharem para o aluno.
+- Testado: regras do limite no banco (27 casos) e ponta a ponta (43 casos: CSP, widget, comprovante
+  repetido/ausente/gigante, limites e mensagens), além dos testes das etapas anteriores.
+
 **Site**
 
 - **Cabeçalhos de segurança** em todas as páginas (`next.config.ts`): Content-Security-Policy, proteção contra
@@ -156,8 +168,8 @@ supabase/
 
 | Item | Situação hoje | Próxima etapa |
 | --- | --- | --- |
-| **Login / cadastro** | ✅ Supabase Auth, rotas protegidas, e-mail próprio (Zoho, usefolyo.com) | CAPTCHA no cadastro antes de divulgar |
-| **Banco de dados** | ✅ Perfil, progresso, anotações, projetos, competências e currículo, todos com RLS | Limite de pedidos por minuto (rate limit) antes de divulgar |
+| **Login / cadastro** | ✅ Supabase Auth, rotas protegidas, e-mail próprio (Zoho, usefolyo.com), CAPTCHA e limite de tentativas | Excluir/exportar conta (LGPD) |
+| **Banco de dados** | ✅ Perfil, progresso, anotações, projetos, competências e currículo, todos com RLS e limite de alterações por minuto | Certificado emitido pelo servidor |
 | **Painel admin** | Fora da v1 | Cursos, aulas, usuários, mídia, categorias, relatórios e permissões, com papéis (aluno / editor / admin / proprietário) |
 | **Player de aula** | Demonstrativo (sem vídeo) | Cloudflare Stream ou Bunny Stream |
 | **Currículo em PDF e certificados** | Só visual. Hoje "aula concluída" é marcada pelo próprio aluno | Certificado emitido pelo servidor (conferindo aulas e projeto) + código de verificação |

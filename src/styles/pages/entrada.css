@@ -31,3 +31,8 @@
 .login-form .login-alert, .auth-panel .login-alert { margin: 0; align-items: center; }
 .login-alert .ico, .login-alert svg { flex: none; }
 .auth-panel .btn-primary { justify-self: start; }
+
+/* CAPTCHA (Cloudflare Turnstile): a caixinha ocupa a largura do formulário. */
+.captcha { display: grid; gap: 6px; min-height: 65px; }
+.captcha > div:first-child { width: 100%; }
+.auth-actions form .captcha { margin-bottom: 10px; }

@@ -7,18 +7,21 @@ const isDev = process.env.NODE_ENV === 'development'
  * scripts, estilos, imagens etc. Isso bloqueia boa parte dos ataques de
  * injeção de código (XSS).
  *
- * Hoje tudo vem do próprio site ('self'). Quando ligarmos o Supabase e o
- * player de vídeo, os domínios deles entram em connect-src / frame-src / media-src.
+ * Quase tudo vem do próprio site ('self'). Exceção: o CAPTCHA da Cloudflare
+ * (Turnstile), que carrega um script e mostra uma caixinha (iframe) de
+ * challenges.cloudflare.com. O Supabase não entra aqui porque o navegador
+ * nunca fala com ele direto (só o servidor).
  */
+const TURNSTILE = 'https://challenges.cloudflare.com'
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
+  `script-src 'self' 'unsafe-inline' ${TURNSTILE}${isDev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' blob: data:",
   "font-src 'self'",
   `connect-src 'self'${isDev ? ' ws:' : ''}`,
   "media-src 'self'",
-  "frame-src 'none'",
+  `frame-src ${TURNSTILE}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

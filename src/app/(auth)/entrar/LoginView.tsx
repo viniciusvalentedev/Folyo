@@ -7,6 +7,7 @@ import { Field, Seg } from '@/components/ui/controls'
 import { Icon } from '@/components/ui/Icon'
 import { resendConfirmationAction, signInAction, signUpAction, type AuthFormState } from '../actions'
 import { FormAlert, SubmitButton } from '../AuthShell'
+import { Captcha, captchaEnabled } from '../Captcha'
 
 type Mode = 'entrar' | 'criar'
 const initial: AuthFormState = {}
@@ -14,6 +15,7 @@ const initial: AuthFormState = {}
 /** Depois de criar a conta: pede para a pessoa confirmar o e-mail. */
 function CheckEmail({ email, onBack }: { email: string; onBack: () => void }) {
   const [state, resend, pending] = useActionState(resendConfirmationAction, initial)
+  const [human, setHuman] = useState(!captchaEnabled)
   return (
     <div className="login-form auth-panel" role="status">
       <span className="auth-ico">
@@ -28,7 +30,8 @@ function CheckEmail({ email, onBack }: { email: string; onBack: () => void }) {
       <div className="auth-actions">
         <form action={resend}>
           <input type="hidden" name="email" value={email} />
-          <button type="submit" className="btn btn-quiet btn-md" disabled={pending}>
+          <Captcha action="resend" resetSignal={state} onReady={setHuman} />
+          <button type="submit" className="btn btn-quiet btn-md" disabled={pending || !human}>
             <Icon name="Send" size={17} />
             <span>{pending ? 'Reenviando…' : 'Reenviar e-mail'}</span>
           </button>
@@ -49,6 +52,7 @@ export function LoginView() {
   const [loginState, login, loginPending] = useActionState(signInAction, initial)
   const [signupState, signup, signupPending] = useActionState(signUpAction, initial)
   const [showSent, setShowSent] = useState(true)
+  const [human, setHuman] = useState(!captchaEnabled)
   const first = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -143,7 +147,10 @@ export function LoginView() {
 
       <FormAlert message={state.message} />
 
+      <Captcha action={creating ? 'signup' : 'login'} resetSignal={state} onReady={setHuman} />
+
       <SubmitButton
+        disabled={!human}
         pending={creating ? signupPending : loginPending}
         pendingLabel={creating ? 'Criando conta…' : 'Entrando…'}
       >

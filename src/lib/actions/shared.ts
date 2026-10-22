@@ -20,6 +20,10 @@ export const COURSE_PROJECT_EXISTS: ActionResult = {
   ok: false,
   error: 'Este curso já tem um projeto salvo (talvez aberto em outra aba). Recarregue a página para ver.',
 }
+export const RATE_LIMITED: ActionResult = {
+  ok: false,
+  error: 'Muitas alterações seguidas. Espere um minuto: o que você mudou agora pode não ter sido salvo.',
+}
 export const LIMIT: ActionResult = { ok: false, error: 'Você chegou ao limite de itens desta lista. Apague alguns para criar novos.' }
 
 type Supabase = Awaited<ReturnType<typeof createSupabaseServerClient>>
@@ -36,6 +40,8 @@ type DbError = { code?: string; message?: string } | null
 
 /** Registra só o código do erro (nunca o conteúdo do aluno) e devolve uma mensagem amigável. */
 export function dbFailure(where: string, error: DbError): ActionResult {
+  // FY429 = limite de alterações por minuto do banco (etapa 3). Não é falha do site.
+  if (error?.code === 'FY429') return RATE_LIMITED
   console.error('Falha ao salvar', { where, code: error?.code })
   if (error?.code === '23514' && error.message?.includes('Limite de')) return LIMIT
   if (error?.code === '23505' && error.message?.includes('projects_one_per_course')) return COURSE_PROJECT_EXISTS
