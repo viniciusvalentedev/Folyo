@@ -81,6 +81,7 @@ export type SkillRow = { id: string; name: string; type: string; in_cv: boolean;
 export type StudentRows = {
   profile: ProfileRow
   email: string
+  role: UserState['role']
   progress: CourseProgressRow[]
   completions: LessonCompletionRow[]
   notes: LessonNoteRow[]
@@ -204,6 +205,7 @@ export function stateFromRows(rows: StudentRows, catalog: Catalog): UserState {
   return {
     onboarded: profile.onboarded,
     accountEmail: email,
+    role: rows.role,
     user: {
       name,
       first: name.split(' ')[0] || name,

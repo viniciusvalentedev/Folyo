@@ -1,6 +1,8 @@
 import 'server-only'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
+import { z } from 'zod'
+import { ROLE_KEYS, type Role } from '@/lib/admin/roles'
 import { getCatalog } from '@/lib/data/catalog'
 import {
   stateFromRows,
@@ -43,6 +45,31 @@ export async function requireUser(): Promise<SessionUser> {
   return user
 }
 
+export type Account = { role: Role; suspended: boolean }
+
+const accountSchema = z.object({ role: z.enum(ROLE_KEYS as [Role, ...Role[]]), suspended: z.boolean() })
+
+/**
+ * Papel na equipe e se a conta está suspensa (função my_account do banco, que só
+ * responde sobre a PRÓPRIA conta). Na dúvida, trata como aluno: nunca dá acesso a mais.
+ */
+export const getAccount = cache(async (): Promise<Account> => {
+  await requireUser()
+  const supabase = await createSupabaseServerClient()
+  const { data, error } = await supabase.rpc('my_account')
+  if (error) {
+    // PGRST202 = a função ainda não existe (SQL da etapa 4 não rodado). O site segue como antes.
+    if (error.code === 'PGRST202') {
+      console.error('Função my_account não encontrada: rode o SQL da etapa 4 no Supabase.')
+      return { role: 'aluno', suspended: false }
+    }
+    console.error('Falha ao ler a conta', { code: error.code })
+    throw new Error('Não foi possível carregar sua conta agora.')
+  }
+  const parsed = accountSchema.safeParse(data)
+  return parsed.success ? parsed.data : { role: 'aluno', suspended: false }
+})
+
 /** Colunas lidas do perfil (nunca "select *": coluna nova não vaza sem querer para a tela). */
 const PROFILE_COLUMNS = [
   'name, stage, goal_primary, goals_secondary, weekly_goal, onboarded, created_at, updated_at',
@@ -54,21 +81,26 @@ const PROFILE_COLUMNS = [
 ].join(', ')
 
 /** Perfil do aluno logado (lido com as regras RLS: só a própria linha). */
-export const getProfile = cache(async (): Promise<{ user: SessionUser; profile: ProfileRow }> => {
+export const getProfile = cache(async (): Promise<{ user: SessionUser; profile: ProfileRow; account: Account }> => {
   const user = await requireUser()
   const supabase = await createSupabaseServerClient()
-  const { data, error } = await supabase.from('profiles').select(PROFILE_COLUMNS).eq('id', user.id).single()
+  const [account, { data, error }] = await Promise.all([
+    getAccount(),
+    supabase.from('profiles').select(PROFILE_COLUMNS).eq('id', user.id).single(),
+  ])
+  // Conta suspensa: o banco já não mostra nada; aqui só levamos para a página que explica.
+  if (account.suspended) redirect('/conta-suspensa')
   if (error || !data) {
     // Sem detalhes técnicos para quem está usando; o erro completo fica no log do servidor.
     console.error('Perfil não encontrado', { userId: user.id, code: error?.code })
     throw new Error('Não encontramos o seu perfil.')
   }
-  return { user, profile: data as unknown as ProfileRow }
+  return { user, profile: data as unknown as ProfileRow, account }
 })
 
 /** Estado inicial da área do aluno (vai para o navegador já filtrado e conferido). */
 export async function getCurrentUserState(): Promise<UserState> {
-  const [{ user, profile }, catalog] = await Promise.all([getProfile(), getCatalog()])
+  const [{ user, profile, account }, catalog] = await Promise.all([getProfile(), getCatalog()])
   const supabase = await createSupabaseServerClient()
 
   // Os limites (.limit) são um pouco maiores que os do banco: só uma proteção extra.
@@ -108,6 +140,7 @@ export async function getCurrentUserState(): Promise<UserState> {
     {
       profile,
       email: user.email,
+      role: account.role,
       progress: (progress.data ?? []) as CourseProgressRow[],
       completions: (completions.data ?? []) as LessonCompletionRow[],
       notes: (notes.data ?? []) as LessonNoteRow[],

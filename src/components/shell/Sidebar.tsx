@@ -65,6 +65,18 @@ function SettingsLink({ compact }: { compact?: boolean }) {
   )
 }
 
+/** Link do painel: só aparece para quem é da equipe (o painel e o banco conferem de novo). */
+function AdminLink({ compact }: { compact?: boolean }) {
+  const { s } = useApp()
+  if (s.role === 'aluno') return null
+  return (
+    <Link href="/admin" className="nav-item nav-admin" title={compact ? 'Painel administrativo' : undefined}>
+      <Icon name="ShieldCheck" size={19} />
+      <span className="nav-text">Painel administrativo</span>
+    </Link>
+  )
+}
+
 function UserMenu() {
   const { s } = useApp()
   const router = useRouter()
@@ -146,6 +158,7 @@ export function Sidebar({ compact }: { compact?: boolean }) {
         <Suspense fallback={null}>
           <SettingsLink compact={compact} />
         </Suspense>
+        <AdminLink compact={compact} />
         <UserMenu />
       </div>
     </aside>

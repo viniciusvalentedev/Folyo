@@ -194,6 +194,8 @@ export type UserState = {
   onboarded: boolean
   /** E-mail usado para entrar (vem da sessão; o do currículo é user.email e pode ser outro). */
   accountEmail: string
+  /** Papel na equipe (aluno = sem acesso ao painel). Só decide o que a tela mostra; quem protege é o banco. */
+  role: 'aluno' | 'editor' | 'admin' | 'proprietario'
   user: UserProfile
   /** id da aula -> data em que foi concluída (AAAA-MM-DD). */
   completed: Record<string, string>

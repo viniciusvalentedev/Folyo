@@ -19,6 +19,7 @@ import '@/styles/pages/objetivos.css'
 import '@/styles/pages/configuracoes.css'
 import '@/styles/pages/entrada.css'
 import '@/styles/pages/primeiro-acesso.css'
+import '@/styles/pages/admin.css'
 import '@/styles/responsive.css'
 import '@/styles/motion.css'
 
