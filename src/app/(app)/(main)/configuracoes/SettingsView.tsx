@@ -44,7 +44,7 @@ export function SettingsView() {
     <div className="page surface-paper settings-page">
       <PageHead
         title="Configurações"
-        lead="Seu nome e sua meta semanal ficam salvos na sua conta. As outras preferências passam a ser salvas em breve."
+        lead="Tudo o que você muda aqui fica salvo na sua conta."
       />
       <div className="settings-grid">
         <nav className="settings-nav" aria-label="Seções de configuração">
@@ -77,7 +77,7 @@ export function SettingsView() {
                   />
                 </Field>
                 <Field label="E-mail" id="st-email" hint="É o e-mail que você usa para entrar.">
-                  <input id="st-email" type="email" className="inp" value={s.user.email} readOnly />
+                  <input id="st-email" type="email" className="inp" value={s.accountEmail} readOnly />
                 </Field>
               </div>
               <div className="row gap-s">

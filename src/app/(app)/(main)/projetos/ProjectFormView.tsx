@@ -9,7 +9,7 @@ import { ChipInput, Field, Seg } from '@/components/ui/controls'
 import { Icon } from '@/components/ui/Icon'
 import { EmptyState } from '@/components/ui/indicators'
 import { PageHead, useBack } from '@/components/ui/PageHead'
-import { newId, todayISO } from '@/lib/format'
+import { newId, newUuid, todayISO } from '@/lib/format'
 import type { Project, Tone } from '@/lib/types'
 import { useNow } from '@/lib/use-now'
 import { fieldErrors, LIMITS, projectFormSchema } from '@/lib/validation'
@@ -82,7 +82,7 @@ export function ProjectFormView({ id, initial }: { id?: string; initial?: Projec
     setErrors({})
     const p: Project = {
       ...draft,
-      id: draft.id || newId('p'),
+      id: draft.id || newUuid(),
       title: draft.title.trim(),
       steps: draft.steps.filter((x) => x.title.trim()),
       links: draft.links.filter((l) => l.label.trim() || l.url.trim()),

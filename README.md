@@ -6,8 +6,10 @@ Onde estamos:
 
 - **Front-end v1** ✅ todas as telas da área do aluno, fiéis ao protótipo da Gigi.
 - **Etapa 1 — login + perfil** ✅ contas de verdade com Supabase (criar conta, confirmar e-mail, entrar, sair,
-  esqueci a senha). O nome, o objetivo e a meta semanal ficam salvos no banco. Contas novas começam vazias.
-- **Próximas etapas** (uma de cada vez): salvar aulas, projetos e currículo no banco; painel admin; vídeo; pagamentos.
+  esqueci a senha). Contas novas começam vazias.
+- **Etapa 2 — dados do aluno** ✅ aulas concluídas, anotações, favoritos, projetos, competências, currículo e
+  configurações ficam salvos no banco (salvam sozinhos enquanto o aluno usa o site).
+- **Próximas etapas** (uma de cada vez): painel admin; vídeo; certificados e PDF de verdade; pagamentos.
 
 **Configurar o Supabase pela primeira vez:** siga o passo a passo em [`supabase/README.md`](supabase/README.md).
 
@@ -36,8 +38,8 @@ Outros comandos úteis:
 | `npm run start`     | Roda a versão de produção depois do build               |
 | `npm run check`     | Procura erros de código (lint) e de tipos (TypeScript)  |
 
-> Nesta etapa o banco guarda só o perfil (nome, objetivo, momento e meta semanal). Aulas concluídas, projetos e
-> currículo ainda ficam só na memória da aba e voltam ao zero ao recarregar. O Início avisa isso ao aluno.
+> Tudo o que o aluno faz fica salvo na conta dele. Os vídeos das aulas e os certificados ainda são demonstrações
+> (o Início avisa isso ao aluno).
 
 ---
 
@@ -79,8 +81,8 @@ src/
 ├─ lib/
 │  ├─ supabase/              → cliente do Supabase (só servidor) e opções do cookie de sessão
 │  ├─ auth/redirects.ts      → páginas públicas e proteção do ?next= do login
-│  ├─ data/                  → ★ ÚNICO lugar que "busca dados" (catálogo fixo + perfil do aluno no Supabase)
-│  ├─ actions/profile.ts     → ações que salvam o perfil no banco (nome, objetivo, meta)
+│  ├─ data/                  → ★ ÚNICO lugar que "busca dados" (catálogo fixo + dados do aluno no Supabase)
+│  ├─ actions/               → ações que salvam no banco: student.ts (aulas, projetos, currículo…), profile.ts (objetivos)
 │  ├─ mock/                  → catálogo de cursos (ainda fixo no código)
 │  ├─ domain/                → regras/cálculos (progresso, certificados, diagnóstico do currículo)
 │  ├─ validation.ts          → regras de validação dos formulários (zod)
@@ -113,6 +115,23 @@ supabase/
 - O `?next=` do login só aceita endereços do próprio site (sem *open redirect*).
 - O link do e-mail só é usado quando a pessoa clica no botão (antivírus que "abrem" links não gastam o código).
 
+**Dados do aluno (etapa 2)**
+
+- **O banco é a última barreira.** Qualquer aluno logado consegue falar direto com a API do Supabase (com a
+  publishable key e o próprio login), então o banco confere tudo sozinho: RLS em todas as tabelas, permissão
+  por coluna (o aluno não escolhe o dono da linha nem as datas), limites de tamanho e de quantidade de itens.
+- **Datas são do servidor:** "aula concluída em", "começou em" e "projeto concluído em" são marcadas pelo banco.
+- **Cada Server Action** confere o login, valida tudo de novo (zod) e confere no catálogo se o curso/aula existe.
+  Nada é exportado de arquivo `'use server'` sem ser uma ação de verdade (cada exportação vira um endereço público).
+- **Leitura desconfiada:** o que vem do banco é conferido de novo antes de ir para a tela (itens estranhos são
+  descartados), então um dado "envenenado" gravado direto na API não quebra a página nem vira link perigoso.
+- **Apagar a conta apaga tudo** (todas as tabelas dependem do perfil, que depende da conta).
+- **Só o que mudou é enviado** (perfil, currículo e configurações): uma aba antiga aberta não desfaz o que você
+  mudou em outra aba ou no celular.
+- **Projeto "concluído" exige o resultado descrito** (30+ letras). O banco aplica essa regra sozinho.
+- Testado com Postgres de verdade: regras do banco (105 casos) e ponta a ponta com o site rodando (75 casos,
+  incluindo tentativas de mexer nos dados de outro aluno, sem login, de outro site e com dados inválidos).
+
 **Site**
 
 - **Cabeçalhos de segurança** em todas as páginas (`next.config.ts`): Content-Security-Policy, proteção contra
@@ -137,23 +156,23 @@ supabase/
 
 | Item | Situação hoje | Próxima etapa |
 | --- | --- | --- |
-| **Login / cadastro** | ✅ Supabase Auth, rotas protegidas | CAPTCHA no cadastro e e-mail próprio (SMTP) antes de divulgar |
-| **Banco de dados** | ✅ Perfil (`profiles`) com RLS. Aulas, projetos e currículo ainda só na memória | Etapa 2: tabelas de progresso, projetos, competências e currículo, todas com RLS |
+| **Login / cadastro** | ✅ Supabase Auth, rotas protegidas, e-mail próprio (Zoho, usefolyo.com) | CAPTCHA no cadastro antes de divulgar |
+| **Banco de dados** | ✅ Perfil, progresso, anotações, projetos, competências e currículo, todos com RLS | Limite de pedidos por minuto (rate limit) antes de divulgar |
 | **Painel admin** | Fora da v1 | Cursos, aulas, usuários, mídia, categorias, relatórios e permissões, com papéis (aluno / editor / admin / proprietário) |
 | **Player de aula** | Demonstrativo (sem vídeo) | Cloudflare Stream ou Bunny Stream |
-| **Currículo em PDF e certificados** | Só visual | Geração real de PDF + código de verificação |
+| **Currículo em PDF e certificados** | Só visual. Hoje "aula concluída" é marcada pelo próprio aluno | Certificado emitido pelo servidor (conferindo aulas e projeto) + código de verificação |
 | **Perfil público** | Ainda a decidir (`/u/nome` ou subdomínio) | Rota pública + controle de privacidade |
 | **Objetivos com recomendação** | Recomendação fixa | Lógica de recomendação com dados reais |
 | **Pagamentos (Plano Pro)** | Só o selo "Pro" | Mercado Pago / Stripe / Pagar.me |
 
-### Como o resto dos dados vai para o banco (etapa 2)
+### Como os dados vão para o banco
 
-O caminho já está pronto e é o mesmo usado no perfil:
-
-1. `src/lib/data/user.ts` lê do Supabase (as páginas não mudam).
-2. Cada ação em `src/components/providers/AppState.tsx` (ex.: `toggleLesson`) chama uma *server action*
-   (como as de `src/lib/actions/profile.ts`) que: confere quem é o usuário → valida com `validation.ts` → grava no banco.
-3. As regras do banco (RLS) garantem que cada aluno só lê e altera os próprios dados — mesmo que alguém tente burlar o site.
+1. `src/lib/data/user.ts` lê tudo do Supabase quando a página abre e `src/lib/domain/student-state.ts` confere.
+2. Cada ação em `src/components/providers/AppState.tsx` (ex.: `toggleLesson`) muda a tela na hora e coloca o
+   pedido numa **fila de gravação**: cada coisa (uma aula, um projeto...) tem no máximo um pedido por vez, sempre
+   com o estado mais recente, e textos esperam a pessoa parar de digitar.
+3. A fila chama as *server actions* de `src/lib/actions/student.ts`: confere quem é o usuário → valida com
+   `validation.ts` → grava no banco. O banco confere de novo (RLS, permissões e limites).
 
 ---
 
@@ -163,7 +182,7 @@ A pasta já está ligada ao repositório `viniciusvalentedev/Folyo`. Para enviar
 
 ```bash
 git add -A
-git commit -m "Etapa 1: login e perfil com Supabase"
+git commit -m "Etapa 2: dados do aluno no Supabase"
 git push
 ```
 

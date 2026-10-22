@@ -76,9 +76,18 @@ export function weekStart(iso: string) {
 }
 
 /**
- * Gera um id para itens criados no navegador (só na demonstração).
- * Com o banco, quem cria o id passa a ser o Supabase (uuid).
+ * Id curto para itens DENTRO de listas (passos, links, formação...) e avisos da tela.
+ * Formato: letras minúsculas, números e hífen (o servidor confere).
  */
 export function newId(prefix = 'id') {
   return prefix + '-' + crypto.randomUUID().slice(0, 8)
+}
+
+/**
+ * Id de projetos e competências (uuid). É criado no navegador para a tela poder
+ * abrir o projeto na hora; o banco só aceita se for um uuid válido e, se o id já
+ * existir (de outra pessoa), recusa — ninguém sobrescreve dados de outro aluno.
+ */
+export function newUuid() {
+  return crypto.randomUUID()
 }

@@ -1,7 +1,16 @@
 import 'server-only'
 import { redirect } from 'next/navigation'
 import { cache } from 'react'
-import { stateFromProfile, type ProfileRow } from '@/lib/domain/empty-state'
+import { getCatalog } from '@/lib/data/catalog'
+import {
+  stateFromRows,
+  type CourseProgressRow,
+  type LessonCompletionRow,
+  type LessonNoteRow,
+  type ProfileRow,
+  type ProjectRow,
+  type SkillRow,
+} from '@/lib/domain/student-state'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import type { UserState } from '@/lib/types'
 
@@ -10,7 +19,8 @@ import type { UserState } from '@/lib/types'
  *
  * Toda leitura de dados do aluno passa por aqui, e aqui a sessão é conferida
  * de verdade (assinatura do token), mesmo que o proxy já tenha olhado antes.
- * O banco ainda aplica o RLS: mesmo com um bug aqui, ninguém lê dados de outra pessoa.
+ * Toda consulta filtra por user_id E o banco ainda aplica o RLS: mesmo com um bug
+ * aqui, ninguém lê dados de outra pessoa.
  *
  * `cache` evita repetir a mesma consulta várias vezes na mesma página.
  */
@@ -33,7 +43,15 @@ export async function requireUser(): Promise<SessionUser> {
   return user
 }
 
-const PROFILE_COLUMNS = 'name, stage, goal_primary, goals_secondary, weekly_goal, onboarded, created_at'
+/** Colunas lidas do perfil (nunca "select *": coluna nova não vaza sem querer para a tela). */
+const PROFILE_COLUMNS = [
+  'name, stage, goal_primary, goals_secondary, weekly_goal, onboarded, created_at, updated_at',
+  'headline, city, contact_email, phone, link, bio, objective, interests',
+  'education, experiences, languages, achievements',
+  'resume_template, resume_order, resume_hidden, resume_projects, resume_certs',
+  'public_profile, public_portfolio, show_email, notify_lessons, notify_weekly, notify_news',
+  'study_time, captions, autoplay, reduce_motion, notifications_read_at',
+].join(', ')
 
 /** Perfil do aluno logado (lido com as regras RLS: só a própria linha). */
 export const getProfile = cache(async (): Promise<{ user: SessionUser; profile: ProfileRow }> => {
@@ -45,13 +63,59 @@ export const getProfile = cache(async (): Promise<{ user: SessionUser; profile: 
     console.error('Perfil não encontrado', { userId: user.id, code: error?.code })
     throw new Error('Não encontramos o seu perfil.')
   }
-  return { user, profile: data as ProfileRow }
+  return { user, profile: data as unknown as ProfileRow }
 })
 
-/** Estado inicial da área do aluno (vai para o navegador já filtrado). */
+/** Estado inicial da área do aluno (vai para o navegador já filtrado e conferido). */
 export async function getCurrentUserState(): Promise<UserState> {
-  const { user, profile } = await getProfile()
-  return stateFromProfile(profile, user.email)
+  const [{ user, profile }, catalog] = await Promise.all([getProfile(), getCatalog()])
+  const supabase = await createSupabaseServerClient()
+
+  // Os limites (.limit) são um pouco maiores que os do banco: só uma proteção extra.
+  const [progress, completions, notes, projects, skills] = await Promise.all([
+    supabase
+      .from('course_progress')
+      .select('course_id, started, started_at, last_lesson_id, favorite')
+      .eq('user_id', user.id)
+      .limit(200),
+    supabase
+      .from('lesson_completions')
+      .select('course_id, lesson_id, completed_at')
+      .eq('user_id', user.id)
+      .limit(1200),
+    supabase.from('lesson_notes').select('course_id, lesson_id, body').eq('user_id', user.id).limit(600),
+    supabase
+      .from('projects')
+      .select('id, course_id, origin, status, tone, title, description, problem, skills, tools, steps, result, links, started_at, completed_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(120),
+    supabase
+      .from('skills')
+      .select('id, name, type, in_cv, note, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true })
+      .limit(350),
+  ])
+
+  const failed = [progress, completions, notes, projects, skills].find((r) => r.error)
+  if (failed) {
+    console.error('Falha ao carregar dados do aluno', { userId: user.id, code: failed.error?.code })
+    throw new Error('Não foi possível carregar seus dados agora.')
+  }
+
+  return stateFromRows(
+    {
+      profile,
+      email: user.email,
+      progress: (progress.data ?? []) as CourseProgressRow[],
+      completions: (completions.data ?? []) as LessonCompletionRow[],
+      notes: (notes.data ?? []) as LessonNoteRow[],
+      projects: (projects.data ?? []) as ProjectRow[],
+      skills: (skills.data ?? []) as SkillRow[],
+    },
+    catalog,
+  )
 }
 
 /** Usado nas páginas do app: quem ainda não respondeu o primeiro acesso vai para lá. */

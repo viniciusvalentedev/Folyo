@@ -156,3 +156,166 @@ export const profileSchema = z.object({
   objective: z.string().max(500),
   interests: z.array(z.string().max(LIMITS.tag)).max(15),
 })
+
+// ---------------------------------------------------------------------------
+// Etapa 2: o que vai para o banco.
+//
+// Estas regras rodam no SERVIDOR (Server Actions) antes de gravar e também na
+// LEITURA (o que vem do banco é conferido de novo antes de ir para a tela, porque
+// um aluno pode gravar direto na API do Supabase com o próprio login).
+// Os limites aqui são iguais ou menores que os do banco (CHECK na migration).
+// ---------------------------------------------------------------------------
+
+/** Ids de cursos e aulas do catálogo (ex.: "mkt", "mkt-3"). */
+export const catalogIdSchema = idSchema
+
+/** Ids de projetos e competências: uuid gerado no navegador (crypto.randomUUID). */
+export const uuidSchema = z.uuid()
+
+/** Ids de itens dentro de listas (passos, links, formação...). */
+export const itemIdSchema = z.string().regex(/^[a-z0-9-]{1,40}$/)
+
+const text = (max: number) => z.string().max(max)
+const tagList = (maxItems: number) => z.array(z.string().trim().min(1).max(LIMITS.tag)).max(maxItems)
+
+/** Tamanho em bytes como o banco conta (com folga: o Postgres guarda o JSON com alguns espaços a mais). */
+function jsonBytes(value: unknown) {
+  return new TextEncoder().encode(JSON.stringify(value)).length
+}
+const fitsBytes = (max: number) => (value: unknown) => jsonBytes(value) <= max * 0.85
+
+/** Máximo de itens em cada lista do perfil (a tela também usa estes números). */
+export const LIST_MAX = {
+  education: 20,
+  experiences: 20,
+  languages: 15,
+  achievements: 30,
+  interests: 15,
+} as const
+
+export const lessonDoneSchema = z.object({ courseId: idSchema, lessonId: idSchema, done: z.boolean() })
+
+export const courseProgressSchema = z.object({
+  courseId: idSchema,
+  started: z.boolean(),
+  lastLessonId: idSchema.nullable(),
+  favorite: z.boolean(),
+})
+
+export const NOTE_MAX = 5000
+export const lessonNoteSchema = z.object({ courseId: idSchema, lessonId: idSchema, body: text(NOTE_MAX) })
+
+/** Link de projeto: vazio ou http(s). */
+const projectLinkUrl = z.string().trim().max(500).refine((v) => !v || urlSchema.safeParse(v).success)
+
+export const storedProjectSchema = z.object({
+  id: uuidSchema,
+  courseId: idSchema.nullable(),
+  origin: z.enum(['curso', 'externo']),
+  status: z.enum(['andamento', 'concluido', 'revisao']),
+  tone: z.enum(['blue', 'magenta', 'ink', 'lime', 'paper']),
+  title: z.string().trim().min(1).max(LIMITS.title),
+  desc: text(LIMITS.short),
+  problem: text(LIMITS.text),
+  skills: tagList(20),
+  tools: tagList(20),
+  steps: z
+    .array(z.object({ id: itemIdSchema, title: text(LIMITS.title), done: z.boolean(), note: text(LIMITS.text) }))
+    .max(30)
+    .refine(fitsBytes(65536), 'Os passos do projeto ficaram grandes demais.'),
+  result: text(LIMITS.long),
+  links: z
+    .array(z.object({ id: itemIdSchema, label: text(LIMITS.title), url: projectLinkUrl }))
+    .max(10)
+    .refine(fitsBytes(16384)),
+})
+
+export const storedSkillSchema = z.object({
+  id: uuidSchema,
+  name: z.string().trim().min(1).max(LIMITS.tag),
+  type: z.enum(['tecnica', 'ferramenta', 'idioma', 'comportamental']),
+  inCV: z.boolean(),
+  note: text(LIMITS.short * 2),
+})
+
+export const educationSchema = z.object({
+  id: itemIdSchema,
+  course: text(LIMITS.short),
+  inst: text(LIMITS.short),
+  period: text(LIMITS.short),
+})
+export const experienceSchema = z.object({
+  id: itemIdSchema,
+  kind: z.enum(['profissional', 'extracurricular']),
+  role: text(LIMITS.short),
+  org: text(LIMITS.short),
+  period: text(LIMITS.short),
+  desc: text(LIMITS.text),
+  skills: tagList(10).optional(),
+})
+export const languageSchema = z.object({ id: itemIdSchema, name: text(40), level: text(40) })
+export const achievementSchema = z.object({ id: itemIdSchema, text: text(LIMITS.short) })
+
+/**
+ * Perfil e dados do currículo (salvos automaticamente enquanto o aluno digita).
+ * Por isso aceitam campo vazio: a pessoa pode estar no meio da edição.
+ * E-mail de contato, telefone e link são só TEXTO no currículo; se um dia virarem
+ * link clicável, passe por safeUrl() antes.
+ */
+export const storedProfileSchema = z.object({
+  name: z.string().trim().max(80),
+  headline: text(LIMITS.title),
+  city: text(80),
+  email: text(254),
+  phone: text(30),
+  link: text(200),
+  bio: text(400),
+  objective: text(500),
+  interests: tagList(LIST_MAX.interests),
+  education: z.array(educationSchema).max(LIST_MAX.education).refine(fitsBytes(32768)),
+  experiences: z.array(experienceSchema).max(LIST_MAX.experiences).refine(fitsBytes(131072)),
+  languages: z.array(languageSchema).max(LIST_MAX.languages).refine(fitsBytes(8192)),
+  achievements: z.array(achievementSchema).max(LIST_MAX.achievements).refine(fitsBytes(32768)),
+})
+
+/**
+ * Para gravar, o site manda SÓ os campos que mudaram (assim uma aba antiga aberta
+ * não desfaz o que você mudou em outra aba ou no celular). Pelo menos um campo.
+ */
+const atLeastOne = (v: object) => Object.values(v).some((x) => x !== undefined)
+export const profilePatchSchema = storedProfileSchema.partial().refine(atLeastOne)
+
+const resumeSectionSchema = z.enum([
+  'objetivo',
+  'formacao',
+  'experiencia',
+  'projetos',
+  'cursos',
+  'competencias',
+  'idiomas',
+  'conquistas',
+])
+
+export const storedResumeSchema = z.object({
+  template: z.enum(['classico', 'moderno']),
+  order: z.array(resumeSectionSchema).max(8),
+  hidden: z.array(resumeSectionSchema).max(8),
+  projects: z.array(uuidSchema).max(100),
+  certs: z.array(idSchema).max(100),
+})
+export const resumePatchSchema = storedResumeSchema.partial().refine(atLeastOne)
+
+export const storedSettingsSchema = z.object({
+  publicProfile: z.boolean(),
+  showEmail: z.boolean(),
+  publicPortfolio: z.boolean(),
+  notifyLessons: z.boolean(),
+  notifyWeekly: z.boolean(),
+  notifyNews: z.boolean(),
+  weeklyGoal: weeklyGoalSchema,
+  studyTime: z.enum(['manha', 'tarde', 'noite']),
+  captions: z.boolean(),
+  autoplay: z.boolean(),
+  reduceMotion: z.boolean(),
+})
+export const settingsPatchSchema = storedSettingsSchema.partial().refine(atLeastOne)

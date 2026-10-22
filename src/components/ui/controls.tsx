@@ -179,6 +179,7 @@ export function ChipInput({
   placeholder,
   id,
   maxLength = 60,
+  max = 20,
 }: {
   values: string[]
   onChange: (v: string[]) => void
@@ -186,11 +187,13 @@ export function ChipInput({
   placeholder?: string
   id?: string
   maxLength?: number
+  /** Máximo de itens (igual ao limite do servidor). */
+  max?: number
 }) {
   const [text, setText] = useState('')
   const add = (raw: string) => {
     const v = raw.trim().slice(0, maxLength)
-    if (!v || values.some((x) => x.toLowerCase() === v.toLowerCase())) {
+    if (!v || values.length >= max || values.some((x) => x.toLowerCase() === v.toLowerCase())) {
       setText('')
       return
     }

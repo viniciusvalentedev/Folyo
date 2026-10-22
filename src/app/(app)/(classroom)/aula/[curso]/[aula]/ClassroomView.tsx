@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from 'react'
+import { useEffect, useMemo, useState, type MouseEvent } from 'react'
 import { MarkPath } from '@/components/brand/Logo'
 import { lessonNumber } from '@/components/course/CourseBits'
 import { useApp } from '@/components/providers/AppState'
@@ -124,21 +124,14 @@ function DemoPlayer({ lesson, n }: { lesson: LessonRef; n: number }) {
   )
 }
 
-/** Anotações da aula, salvas automaticamente meio segundo depois de parar de digitar. */
+/** Anotações da aula. Cada letra vai para a fila de gravação, que salva quando a pessoa para de digitar. */
 function Notes({ lid }: { lid: string }) {
-  const { s, a } = useApp()
+  const { s, a, isSaving } = useApp()
   const [text, setText] = useState(s.notes[lid] || '')
-  const [saved, setSaved] = useState(true)
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  useEffect(() => () => clearTimeout(timer.current), [])
+  const saved = !isSaving('note:' + lid)
   const change = (v: string) => {
     setText(v)
-    setSaved(false)
-    clearTimeout(timer.current)
-    timer.current = setTimeout(() => {
-      a.setNote(lid, v)
-      setSaved(true)
-    }, 500)
+    a.setNote(lid, v)
   }
   return (
     <div className="notes">

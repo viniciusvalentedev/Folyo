@@ -1,26 +1,19 @@
 'use server'
 
 import { getCatalog } from '@/lib/data/catalog'
-import { getSessionUser } from '@/lib/data/user'
 import { isKnownStage } from '@/lib/onboarding'
-import { createSupabaseServerClient } from '@/lib/supabase/server'
-import { goalsSchema, onboardingSchema, personNameSchema, weeklyGoalSchema } from '@/lib/validation'
+import { goalsSchema, onboardingSchema } from '@/lib/validation'
+import { actionContext, dbFailure, EXPIRED, INVALID, OK, type ActionResult } from './shared'
 
 /**
- * Ações que salvam o perfil do aluno no banco (rodam SÓ no servidor).
+ * Ações do primeiro acesso e dos objetivos de carreira (rodam SÓ no servidor).
  *
- * Em todas: 1) confere quem está logado; 2) valida os dados de novo;
+ * Em todas: 1) valida os dados de novo; 2) confere quem está logado;
  * 3) grava só a linha do próprio aluno (o banco confere de novo com RLS).
+ * Nome, currículo e configurações ficam em ./student.ts.
  */
 
-export type ActionResult = { ok: true } | { ok: false; error: string }
-
-const EXPIRED: ActionResult = { ok: false, error: 'Sua sessão expirou. Entre de novo para continuar.' }
-const INVALID: ActionResult = { ok: false, error: 'Não deu para salvar: dados inválidos.' }
-const FAILED: ActionResult = { ok: false, error: 'Não foi possível salvar agora. Tente de novo em instantes.' }
-
 type ProfilePatch = Partial<{
-  name: string
   stage: string
   goal_primary: string
   goals_secondary: string[]
@@ -29,15 +22,11 @@ type ProfilePatch = Partial<{
 }>
 
 async function updateOwnProfile(patch: ProfilePatch): Promise<ActionResult> {
-  const user = await getSessionUser()
-  if (!user) return EXPIRED
-  const supabase = await createSupabaseServerClient()
-  const { data, error } = await supabase.from('profiles').update(patch).eq('id', user.id).select('id')
-  if (error || !data || data.length !== 1) {
-    console.error('Falha ao salvar perfil', { code: error?.code })
-    return FAILED
-  }
-  return { ok: true }
+  const ctx = await actionContext()
+  if (!ctx) return EXPIRED
+  const { data, error } = await ctx.supabase.from('profiles').update(patch).eq('id', ctx.user.id).select('id')
+  if (error || !data || data.length !== 1) return dbFailure('profiles.goals', error)
+  return OK
 }
 
 async function knownGoalIds() {
@@ -45,7 +34,7 @@ async function knownGoalIds() {
   return new Set(goals.map((g) => g.id))
 }
 
-export async function completeOnboardingAction(input: { goal: string; stage: string; weekly: number }): Promise<ActionResult> {
+export async function completeOnboardingAction(input: unknown): Promise<ActionResult> {
   const parsed = onboardingSchema.safeParse(input)
   if (!parsed.success || !isKnownStage(parsed.data.stage) || !(await knownGoalIds()).has(parsed.data.goal)) return INVALID
   return updateOwnProfile({
@@ -56,23 +45,11 @@ export async function completeOnboardingAction(input: { goal: string; stage: str
   })
 }
 
-export async function saveNameAction(name: string): Promise<ActionResult> {
-  const parsed = personNameSchema.safeParse(name)
-  if (!parsed.success) return INVALID
-  return updateOwnProfile({ name: parsed.data })
-}
-
-export async function saveGoalsAction(input: { primary: string; secondary: string[] }): Promise<ActionResult> {
+export async function saveGoalsAction(input: unknown): Promise<ActionResult> {
   const parsed = goalsSchema.safeParse(input)
   if (!parsed.success) return INVALID
   const ids = await knownGoalIds()
   const { primary, secondary } = parsed.data
   if (!ids.has(primary) || secondary.some((g) => !ids.has(g) || g === primary)) return INVALID
   return updateOwnProfile({ goal_primary: primary, goals_secondary: [...new Set(secondary)] })
-}
-
-export async function saveWeeklyGoalAction(weekly: number): Promise<ActionResult> {
-  const parsed = weeklyGoalSchema.safeParse(weekly)
-  if (!parsed.success) return INVALID
-  return updateOwnProfile({ weekly_goal: parsed.data })
 }

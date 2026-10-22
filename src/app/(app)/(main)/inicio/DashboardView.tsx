@@ -222,9 +222,8 @@ export function DashboardView() {
         <p className="beta-note" role="note">
           <Icon name="FlaskConical" size={16} />
           <span>
-            <b>Fase de testes.</b> Por enquanto, a Folyo guarda seu nome, seu objetivo e sua meta semanal. Aulas
-            concluídas, projetos e currículo ainda voltam ao zero quando você recarrega a página. Isso muda nas próximas
-            etapas.
+            <b>Fase de testes.</b> Seu progresso, projetos, competências e currículo já ficam salvos na sua conta. Os
+            vídeos das aulas e os certificados ainda são demonstrações.
           </span>
         </p>
       </section>

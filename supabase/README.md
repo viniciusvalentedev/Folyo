@@ -1,6 +1,7 @@
-# Supabase — Etapa 1: login + perfil
+# Supabase — passo a passo
 
-Passo a passo para ligar a Folyo ao seu projeto Supabase. Faça na ordem. Leva uns 15 minutos.
+- **Etapa 2 (dados do aluno):** logo abaixo. Faça agora.
+- **Etapa 1 (login + perfil):** mais para baixo. Já está feita; fica como referência.
 
 > **Regra de ouro:** a Folyo usa só a **URL do projeto** e a **publishable key** (`sb_publishable_...`).
 > A **secret key** (`sb_secret_...`) **não é usada** nesta etapa: não cole ela no `.env.local`, na Vercel,
@@ -8,6 +9,63 @@ Passo a passo para ligar a Folyo ao seu projeto Supabase. Faça na ordem. Leva u
 > gerenciador de senhas.
 
 ---
+
+# Etapa 2 — dados do aluno
+
+Leva uns 5 minutos. Não precisa mexer na Vercel nem no `.env.local` (nenhuma chave nova).
+
+## 1. Rodar o SQL da etapa 2
+
+1. No Supabase, abra **SQL Editor → New query**.
+2. Copie **todo** o conteúdo de [`migrations/20261021000001_etapa2_dados_do_aluno.sql`](migrations/20261021000001_etapa2_dados_do_aluno.sql),
+   cole e clique em **Run**. Deve aparecer *Success. No rows returned*.
+   - Se aparecer o aviso de "operação destrutiva", pode confirmar: o SQL só **cria** coisas e acrescenta colunas
+     (o `revoke` do aviso é a retirada de permissões que o Supabase dá por padrão).
+   - Rode **uma vez só**. Se der erro no meio, nada fica pela metade (está tudo numa transação): me mande a mensagem.
+3. Abra **Advisors → Security Advisor → Refresh**. Não deve aparecer nada sobre `profiles`, `course_progress`,
+   `lesson_completions`, `lesson_notes`, `projects` ou `skills`.
+4. Confira em **Project Settings → Data API → Exposed schemas** que aparecem só `public` e `graphql_public`.
+   O schema `private` (criado por este SQL) **não** pode estar na lista: ele guarda as funções das regras.
+
+O que esse SQL faz:
+
+| Tabela | Guarda | Quem marca as datas |
+| --- | --- | --- |
+| `profiles` (colunas novas) | Contato e textos do currículo, formação, experiências, idiomas, conquistas, organização do currículo, configurações e "avisos lidos" | — |
+| `course_progress` | Começou o curso, última aula aberta, favorito | "começou em": o banco |
+| `lesson_completions` | Aulas concluídas | "concluída em": o banco |
+| `lesson_notes` | Anotações das aulas | o banco |
+| `projects` | Projetos do portfólio (passos e links juntos) | "começou" e "concluído em": o banco |
+| `skills` | Competências | o banco |
+
+Regras de segurança (iguais em todas as tabelas):
+
+- **RLS:** cada aluno só lê, cria, altera e apaga as **próprias** linhas. Visitante sem login não acessa nada.
+- **Permissão por coluna:** o aluno não consegue escolher o dono da linha (`user_id`), trocar ids nem mudar datas.
+- **Limites:** todo texto, lista e JSON tem tamanho máximo, e cada aluno tem um máximo de itens
+  (50 projetos, 200 competências, 200 anotações, 500 aulas concluídas, 50 cursos).
+- **Apagar a conta apaga tudo** do aluno, em todas as tabelas.
+- As funções das regras ficam no schema `private`, que não aparece na API.
+- Projeto só fica "concluído" com o resultado descrito (30+ letras); senão vira "precisa de revisão".
+- Também corrige um ponto da etapa 1: cada objetivo acompanhado (`goals_secondary`) agora tem tamanho máximo.
+
+## 2. Publicar e testar
+
+1. No terminal, na pasta do projeto: `git status` (o `.env.local` **não** pode aparecer na lista), depois
+   `git add -A`, `git commit -m "Etapa 2: dados do aluno no Supabase"` e `git push`.
+2. Depois que a Vercel publicar, entre no site e teste:
+   - conclua uma aula, escreva uma anotação, favorite um curso;
+   - crie um projeto, adicione uma competência, mude a cidade no currículo, mude uma configuração;
+   - **recarregue a página** (F5): tudo tem que continuar lá;
+   - no Supabase, em **Table Editor**, as linhas aparecem nas tabelas novas.
+3. Se quiser, faça o teste com uma segunda conta: ela não pode ver nada da primeira.
+
+> **Ordem importa:** rode o SQL **antes** de publicar o código novo. Se o site novo subir antes do SQL, a área do
+> aluno mostra erro até o SQL ser rodado (os dados não se perdem).
+
+---
+
+# Etapa 1 — login + perfil (já feita)
 
 ## 1. Criar a tabela de perfis (SQL Editor)
 
@@ -90,29 +148,14 @@ npm run dev
 > Para abrir no seu computador, troque `https://folyo-six.vercel.app` por `http://localhost:3000` no
 > endereço do link antes de abrir. O resto do link fica igual.
 
-### Aviso: limite de e-mails do Supabase
+### E-mails
 
-Enquanto não configurarmos um servidor de e-mail próprio, o Supabase:
-
-- só envia e-mails para quem é **membro do time da organização** no Supabase;
-- envia no máximo **2 e-mails por hora** (no projeto inteiro).
-
-Então: teste com o seu e-mail do Supabase. Para a Gigi testar, convide ela em
-**Organization → Team → Invite** (aí o e-mail dela também recebe). Se um e-mail não chegar, espere um pouco
-e olhe o spam. Antes de abrir para alunos de verdade, vamos configurar um envio próprio (Resend ou Zoho
-ZeptoMail) com o domínio usefolyo.com, tomando cuidado para **não mexer nos registros MX** do Zoho Mail.
+O envio de e-mails já usa o SMTP próprio (Zoho, `contato@usefolyo.com`), então não vale mais o limite de
+2 e-mails por hora do Supabase. Se um e-mail não chegar, olhe o spam e o painel do Zoho.
 
 ---
 
-## O que fica guardado no banco nesta etapa
-
-| Guardado | Ainda não (volta ao zero ao recarregar) |
-| --- | --- |
-| Nome, objetivo principal e secundários, momento atual, meta semanal, primeiro acesso | Aulas concluídas, projetos, competências, currículo, certificados, bio e cidade do perfil |
-
-Isso aparece para o aluno num aviso de "Fase de testes" no Início. As próximas tabelas entram na etapa 2.
-
-## Segurança desta etapa (resumo)
+## Segurança do login (resumo)
 
 - O navegador **nunca** fala direto com o Supabase: login, cadastro e perfil passam por *Server Actions* no servidor da Folyo.
 - O cookie de sessão é **httpOnly** (o JavaScript da página não consegue ler), `Secure` em produção e `SameSite=Lax`.
@@ -128,4 +171,7 @@ Isso aparece para o aluno num aviso de "Fase de testes" no Início. As próximas
 - **JWT Signing Keys** (Project Settings → JWT Keys): se aparecer *Legacy JWT secret*, migrar para as chaves novas
   (ECC). Deixa a checagem de login mais rápida.
 - **CAPTCHA no cadastro** (Cloudflare Turnstile) antes de divulgar o site.
-- **E-mail próprio** (SMTP) com o domínio usefolyo.com.
+- **Limite de pedidos por minuto** (rate limit) nas ações do site antes de divulgar.
+- **Certificados de verdade** (com código de verificação): hoje "aula concluída" é marcada pelo próprio aluno.
+  Antes de emitir certificado que vale como credencial, ele precisa ser gerado pelo servidor, conferindo as aulas
+  (de preferência com registro de que o vídeo foi assistido) e o projeto.

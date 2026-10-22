@@ -11,7 +11,7 @@ import { Icon } from '@/components/ui/Icon'
 import { Avatar, DemoTag, EvidenceMeter } from '@/components/ui/indicators'
 import { Modal } from '@/components/ui/Modal'
 import { formatDate } from '@/lib/format'
-import { fieldErrors, LIMITS, profileSchema } from '@/lib/validation'
+import { fieldErrors, LIMITS, LIST_MAX, profileSchema } from '@/lib/validation'
 
 const INTEREST_SUGGESTIONS = [
   'Marketing',
@@ -112,6 +112,7 @@ function EditProfileModal({ open, onClose }: { open: boolean; onClose: () => voi
           <ChipInput
             id="ep-int"
             values={draft.interests}
+            max={LIST_MAX.interests}
             onChange={(v) => setDraft({ ...draft, interests: v })}
             suggestions={INTEREST_SUGGESTIONS}
           />

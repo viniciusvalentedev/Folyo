@@ -192,6 +192,8 @@ export type AppNotification = {
 /** Tudo o que pertence a um usuário. No banco, isso vira várias tabelas. */
 export type UserState = {
   onboarded: boolean
+  /** E-mail usado para entrar (vem da sessão; o do currículo é user.email e pode ser outro). */
+  accountEmail: string
   user: UserProfile
   /** id da aula -> data em que foi concluída (AAAA-MM-DD). */
   completed: Record<string, string>
