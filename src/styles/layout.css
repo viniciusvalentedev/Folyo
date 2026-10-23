@@ -6,7 +6,7 @@
 .app.in-class { grid-template-columns: 76px minmax(0, 1fr); }
 .app-main { min-width: 0; display: flex; flex-direction: column; }
 main { flex: 1; outline: none; min-width: 0; }
-.route { animation: routeIn .38s var(--ease) both; min-height: 100%; }
+.route { animation: routeIn .38s var(--ease) backwards; min-height: 100%; }
 
 .sidebar { position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: var(--ink); color: var(--fg); padding: calc(20px + env(safe-area-inset-top, 0px)) 14px 16px max(14px, env(safe-area-inset-left, 0px)); border-right: 1px solid rgba(255,255,255,.06); }
 .brand { display: flex; align-items: center; gap: 10px; color: #fff; padding: 4px 10px 14px; }
