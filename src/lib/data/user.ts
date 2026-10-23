@@ -9,9 +9,11 @@ import {
   type CourseProgressRow,
   type LessonCompletionRow,
   type LessonNoteRow,
+  type LessonWatchRow,
   type ProfileRow,
-  type ProjectRow,
   type SkillRow,
+  type WorkRow,
+  WORK_COLUMNS,
 } from '@/lib/domain/student-state'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import type { UserState } from '@/lib/types'
@@ -77,10 +79,10 @@ export const getAccount = cache(async (): Promise<Account> => {
 
 /** Colunas lidas do perfil (nunca "select *": coluna nova não vaza sem querer para a tela). */
 const PROFILE_COLUMNS = [
-  'name, stage, goal_primary, goals_secondary, weekly_goal, onboarded, created_at, updated_at',
+  'name, stage, exploring, goal_primary, goals_secondary, goals_text, goals_skills, goals_wants, onboarded, created_at, updated_at',
   'headline, city, contact_email, phone, link, bio, objective, interests',
   'education, experiences, languages, achievements',
-  'resume_template, resume_order, resume_hidden, resume_projects, resume_certs',
+  'resume_template, resume_order, resume_hidden, resume_certs',
   'public_profile, public_portfolio, show_email, notify_lessons, notify_weekly, notify_news',
   'study_time, captions, autoplay, reduce_motion, notifications_read_at',
 ].join(', ')
@@ -109,7 +111,7 @@ export async function getCurrentUserState(): Promise<UserState> {
   const supabase = await createSupabaseServerClient()
 
   // Os limites (.limit) são um pouco maiores que os do banco: só uma proteção extra.
-  const [progress, completions, notes, projects, skills] = await Promise.all([
+  const [progress, completions, notes, watch, works, skills] = await Promise.all([
     supabase
       .from('course_progress')
       .select('course_id, started, started_at, last_lesson_id, favorite')
@@ -121,12 +123,8 @@ export async function getCurrentUserState(): Promise<UserState> {
       .eq('user_id', user.id)
       .limit(1200),
     supabase.from('lesson_notes').select('course_id, lesson_id, body').eq('user_id', user.id).limit(600),
-    supabase
-      .from('projects')
-      .select('id, course_id, origin, status, tone, title, description, problem, skills, tools, steps, result, links, started_at, completed_at')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(120),
+    supabase.from('lesson_watch').select('course_id, lesson_id, seconds').eq('user_id', user.id).limit(1600),
+    supabase.from('works').select(WORK_COLUMNS).eq('user_id', user.id).order('created_at', { ascending: false }).limit(120),
     supabase
       .from('skills')
       .select('id, name, type, in_cv, note, created_at')
@@ -135,7 +133,7 @@ export async function getCurrentUserState(): Promise<UserState> {
       .limit(350),
   ])
 
-  const failed = [progress, completions, notes, projects, skills].find((r) => r.error)
+  const failed = [progress, completions, notes, watch, works, skills].find((r) => r.error)
   if (failed) {
     console.error('Falha ao carregar dados do aluno', { userId: user.id, code: failed.error?.code })
     throw new Error('Não foi possível carregar seus dados agora.')
@@ -149,7 +147,8 @@ export async function getCurrentUserState(): Promise<UserState> {
       progress: (progress.data ?? []) as CourseProgressRow[],
       completions: (completions.data ?? []) as LessonCompletionRow[],
       notes: (notes.data ?? []) as LessonNoteRow[],
-      projects: (projects.data ?? []) as ProjectRow[],
+      watch: (watch.data ?? []) as LessonWatchRow[],
+      works: (works.data ?? []) as unknown as WorkRow[],
       skills: (skills.data ?? []) as SkillRow[],
     },
     catalog,

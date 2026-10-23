@@ -1,8 +1,6 @@
-import type { Metadata } from 'next'
-import { SkillsView } from './SkillsView'
+import { redirect } from 'next/navigation'
 
-export const metadata: Metadata = { title: 'Competências' }
-
+/** A página de competências deixou de existir: as skills agora ficam em Objetivos e no Currículo. */
 export default function CompetenciasPage() {
-  return <SkillsView />
+  redirect('/objetivos')
 }

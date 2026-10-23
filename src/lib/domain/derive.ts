@@ -1,16 +1,20 @@
+import { GENERIC_SKILLS, TRAILS, findTrail, type Trail } from '@/lib/trails'
 import type {
   Catalog,
   Certificate,
   Course,
   CourseStats,
   Derived,
+  DoneEntry,
   Evidence,
-  ResumeCheck,
-  ResumeGap,
+  Metrics,
+  SkillMix,
   SkillWithEvidence,
   UserState,
+  WorkEntry,
 } from '@/lib/types'
-import { findGoal, lessonsOf, normalize, sameText } from './catalog'
+import { brDate } from '@/lib/format'
+import { categoryOf, lessonsOf, normalize, sameText } from './catalog'
 
 /** Data (ms) da última aula concluída de um curso — usada para ordenar "em andamento". */
 function lastActivity(state: UserState, course: Course) {
@@ -21,12 +25,85 @@ function lastActivity(state: UserState, course: Course) {
   return dates.length ? new Date(dates[dates.length - 1]).getTime() : 0
 }
 
+/** O curso pede um projeto (PDF ou link) para dar o certificado? */
+export const offersProject = (course: Course) => !!course.project?.title?.trim()
+
+/** O curso emite certificado? (por padrão sim; o painel pode desligar.) */
+export const issuesCertificate = (course: Course) => course.certificate?.enabled !== false
+
+/** Código do certificado: curso + data + um trecho que vem do e-mail da conta. */
+export function certificateCode(courseId: string, date: string, accountEmail: string) {
+  let hash = 2166136261
+  for (const ch of (accountEmail || '').trim().toLowerCase()) {
+    hash ^= ch.charCodeAt(0)
+    hash = Math.imul(hash, 16777619)
+  }
+  const tail = ('u' + (hash >>> 0).toString(36)).slice(1, 6).toUpperCase()
+  const stamp = date.replace(/-/g, '').slice(2)
+  return 'FLY-' + courseId.replace(/[^a-z0-9]/gi, '').toUpperCase().slice(0, 4) + '-' + stamp + '-' + tail
+}
+
+/** Lista sem repetidos (ignora acento e maiúsculas) e sem vazios. */
+export function uniqueNames(list: string[] | undefined) {
+  const seen = new Set<string>()
+  return (list ?? []).filter((item) => {
+    const key = normalize(item)
+    if (!key || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+/** Divide 100% entre as partes sem estourar (as casas que sobram vão para as maiores sobras). */
+function roundTo100(values: number[]) {
+  if (!values.length) return []
+  if (!values.reduce((a, b) => a + b, 0)) return values.map(() => 0)
+  const floors = values.map(Math.floor)
+  let rest = 100 - floors.reduce((a, b) => a + b, 0)
+  const order = values.map((v, i) => [v - Math.floor(v), i] as const).sort((a, b) => b[0] - a[0])
+  for (let i = 0; i < order.length && rest > 0; i++, rest--) floors[order[i][1]]++
+  return floors
+}
+
+/** O que o aluno estudou, por skill: cada aula concluída vale 1, dividida entre as skills do curso. */
+function computeSkillMix(state: UserState, courses: Course[]): SkillMix {
+  const map = new Map<string, SkillMix['items'][number]>()
+  let counted = 0
+  let uncounted = 0
+  for (const course of courses) {
+    const done = lessonsOf(course).filter((l) => state.completed[l.id]).length
+    if (!done) continue
+    const names = uniqueNames(course.skills)
+    if (!names.length) {
+      uncounted += done
+      continue
+    }
+    counted += done
+    for (const name of names) {
+      const key = normalize(name)
+      const item = map.get(key) ?? { name, value: 0, pct: 0, share: 0, courses: [] }
+      item.value += done / names.length
+      item.courses.push({ id: course.id, title: course.title, lessons: done, share: 1 / names.length })
+      map.set(key, item)
+    }
+  }
+  const items = [...map.values()].sort((a, b) => b.value - a.value || a.name.localeCompare(b.name))
+  const pcts = roundTo100(items.map((i) => (counted ? (i.value / counted) * 100 : 0)))
+  items.forEach((item, i) => {
+    item.pct = pcts[i]
+    item.share = counted ? item.value / counted : 0
+  })
+  return { items, counted, uncounted }
+}
+
 /**
  * Calcula tudo o que é derivado dos dados do usuário: progresso por curso,
  * certificados, competências com evidências, diagnóstico do currículo etc.
  *
- * É uma função pura (só lê os dados e devolve o resultado), então continua
- * servindo quando os dados passarem a vir do banco.
+ * É uma função pura (só lê os dados e devolve o resultado).
+ *
+ * Regra do certificado: todas as aulas concluídas E, se o curso pede projeto, pelo
+ * menos um trabalho (PDF ou link) enviado nele.
  */
 export function deriveUserData(state: UserState, catalog: Catalog): Derived {
   const courses = catalog.courses
@@ -35,15 +112,18 @@ export function deriveUserData(state: UserState, catalog: Catalog): Derived {
   for (const course of courses) {
     const lessons = lessonsOf(course)
     const doneLessons = lessons.filter((l) => state.completed[l.id])
-    const project = state.projects.find((p) => p.courseId === course.id) ?? null
+    const works = state.works.filter((w) => w.courseId === course.id)
+    const offers = offersProject(course)
+    const delivered = works.length > 0
+    const deliveredAt = delivered ? (works.map((w) => brDate(w.createdAt)).sort()[0] ?? null) : null
     const complete = doneLessons.length === lessons.length
     const started = !!state.started[course.id] || doneLessons.length > 0
     const doneDates = doneLessons.map((l) => state.completed[l.id]).sort()
     const nextLesson = lessons.find((l) => !state.completed[l.id]) ?? null
     const last = state.lastLesson[course.id] ? lessons.find((l) => l.id === state.lastLesson[course.id]) : undefined
     const resume = (last && !state.completed[last.id] ? last : nextLesson) || last || lessons[0]
-    const certified = complete && !!project && project.status === 'concluido'
-    const certDate = certified ? [doneDates[doneDates.length - 1], project!.completedAt ?? ''].sort().pop()! : null
+    const certified = complete && issuesCertificate(course) && (!offers || delivered)
+    const certDate = certified ? ([doneDates[doneDates.length - 1], deliveredAt].filter(Boolean) as string[]).sort().pop()! : null
 
     courseStats[course.id] = {
       total: lessons.length,
@@ -56,7 +136,10 @@ export function deriveUserData(state: UserState, catalog: Catalog): Derived {
       completedAt: complete ? doneDates[doneDates.length - 1] : null,
       nextLesson,
       resume,
-      project,
+      works,
+      delivered,
+      deliveredAt,
+      offersProject: offers,
       certified,
       certDate,
       minutesLeft: lessons.filter((l) => !state.completed[l.id]).reduce((sum, l) => sum + l.min, 0),
@@ -71,7 +154,7 @@ export function deriveUserData(state: UserState, catalog: Catalog): Derived {
         id: c.id,
         course: c,
         date,
-        code: 'FLY-DEMO-' + c.id.toUpperCase().slice(0, 3) + '-' + date.replace(/-/g, '').slice(2),
+        code: certificateCode(c.id, date, state.accountEmail),
         inCV: state.resume.certs.includes(c.id),
       }
     })
@@ -81,7 +164,11 @@ export function deriveUserData(state: UserState, catalog: Catalog): Derived {
     .filter((c) => courseStats[c.id].status === 'iniciado')
     .sort((a, b) => lastActivity(state, b) - lastActivity(state, a))
   const completedCourses = courses.filter((c) => courseStats[c.id].complete)
-  const projectsDone = state.projects.filter((p) => p.status === 'concluido')
+
+  // Todos os trabalhos, do mais novo para o mais antigo.
+  const works: WorkEntry[] = state.works
+    .map((w) => ({ ...w, course: courses.find((c) => c.id === w.courseId) ?? null }))
+    .sort((a, b) => (b.createdAt > a.createdAt ? 1 : b.createdAt < a.createdAt ? -1 : 0))
 
   // Competências e suas evidências
   const skills: SkillWithEvidence[] = state.skills.map((skill) => {
@@ -98,20 +185,9 @@ export function deriveUserData(state: UserState, catalog: Catalog): Derived {
         })
       }
     }
-    for (const p of state.projects) {
-      if (p.skills.some((s) => sameText(s, skill.name))) {
-        ev.push({
-          kind: 'projeto',
-          label: p.title,
-          detail:
-            p.status === 'concluido'
-              ? 'Projeto concluído'
-              : p.status === 'revisao'
-                ? 'Projeto em revisão'
-                : 'Projeto em andamento',
-          to: '/projetos/' + p.id,
-          strong: p.status === 'concluido',
-        })
+    for (const w of works) {
+      if (w.course && w.course.skills.some((s) => sameText(s, skill.name))) {
+        ev.push({ kind: 'projeto', label: w.title, detail: 'Projeto enviado · ' + w.course.title, to: '/projetos', strong: true })
       }
     }
     for (const x of state.user.experiences) {
@@ -130,7 +206,7 @@ export function deriveUserData(state: UserState, catalog: Catalog): Derived {
         ev.push({
           kind: 'certificado',
           label: 'Certificado · ' + cert.course.title,
-          detail: 'Demonstração',
+          detail: 'Certificado Folyo',
           to: '/certificados',
           strong: true,
         })
@@ -151,182 +227,187 @@ export function deriveUserData(state: UserState, catalog: Catalog): Derived {
     }
   })
 
-  // Diagnóstico do currículo
-  const goal = findGoal(catalog, state.goals.primary)
-  const hasSkill = (name: string) => state.skills.some((s) => sameText(s.name, name))
-  const unregisteredCourseSkills = [...new Set(completedCourses.flatMap((c) => c.skills).filter((s) => !hasSkill(s)))]
-  const projectsOutOfCV = projectsDone.filter((p) => !state.resume.projects.includes(p.id))
-  const certsOutOfCV = certificates.filter((c) => !c.inCV)
+  // Preenchimento do currículo
+  const goal = findTrail(state.goals.primary)
   const hasEnglish = state.user.languages.some((l) => sameText(l.name, 'Inglês'))
   const cvSkills = skills.filter((s) => s.inCV && s.type !== 'idioma')
-  const cvSkillsNoEvidence = cvSkills.filter(
-    (s) => s.level === 0 || (!s.practiced && !s.demonstrated && s.type !== 'ferramenta'),
-  )
   const objective = (state.user.objective || '').trim()
-  const keywords = catalog.goals
-    .flatMap((g) => g.keywords)
-    .concat(['administração', 'vendas', 'design', 'dados', 'atendimento', 'finanças', 'arquitetura', 'programação'])
+  const keywords = TRAILS.flatMap((t) => t.keywords).concat([
+    'administração',
+    'vendas',
+    'design',
+    'dados',
+    'atendimento',
+    'finanças',
+    'arquitetura',
+    'programação',
+  ])
   const specificObjective = objective.length >= 60 && keywords.some((k) => normalize(objective).includes(normalize(k)))
+  /** `generico`: tem texto, mas sem a área (a tela oferece uma sugestão). */
+  const objectiveStatus: Derived['objectiveStatus'] = !objective ? 'vazio' : specificObjective ? 'ok' : 'generico'
 
-  const gaps: ResumeGap[] = []
-  if (!objective) {
-    gaps.push({
-      id: 'obj-empty',
-      sev: 'alta',
-      title: 'Seu currículo ainda não tem objetivo profissional.',
-      body: 'Uma frase com a área e o tipo de oportunidade ajuda quem lê a entender o que você procura.',
-      action: 'focus-objetivo',
-      cta: 'Escrever objetivo',
-    })
-  } else if (!specificObjective) {
-    gaps.push({
-      id: 'obj-generic',
-      sev: 'alta',
-      title: 'Seu objetivo profissional está genérico.',
-      body: goal
-        ? `Você escolheu "${goal.title}" como objetivo principal, mas o texto do currículo não cita a área. Experimente especificar a área e o tipo de vaga.`
-        : 'Experimente especificar a área desejada e o tipo de oportunidade.',
-      action: 'suggest-objetivo',
-      cta: 'Ver sugestão',
-    })
-  }
-  if (projectsOutOfCV.length) {
-    gaps.push({
-      id: 'proj-out',
-      sev: 'alta',
-      title: `${projectsOutOfCV.length === 1 ? 'Você tem 1 projeto concluído' : `Você tem ${projectsOutOfCV.length} projetos concluídos`} fora do currículo.`,
-      body: projectsOutOfCV.map((p) => p.title).join(' · '),
-      action: 'add-projects',
-      cta: projectsOutOfCV.length === 1 ? 'Incluir no currículo' : 'Incluir todos',
-      ids: projectsOutOfCV.map((p) => p.id),
-    })
-  }
-  if (!hasEnglish) {
-    gaps.push({
-      id: 'lang',
-      sev: 'media',
-      title: 'Seu currículo ainda não informa o nível de inglês.',
-      body: 'Muitas vagas pedem essa informação. Informe o nível atual, mesmo que seja básico.',
-      action: 'focus-idiomas',
-      cta: 'Informar nível',
-    })
-  }
-  if (unregisteredCourseSkills.length) {
-    gaps.push({
-      id: 'skills-course',
-      sev: 'media',
-      title: 'Você concluiu cursos com competências ainda não registradas.',
-      body: unregisteredCourseSkills.join(' · '),
-      action: 'register-skills',
-      cta: 'Registrar competências',
-      names: unregisteredCourseSkills,
-    })
-  }
-  if (certsOutOfCV.length) {
-    gaps.push({
-      id: 'cert-out',
-      sev: 'baixa',
-      title: `${certsOutOfCV.length === 1 ? 'Um certificado não aparece' : `${certsOutOfCV.length} certificados não aparecem`} no currículo.`,
-      body: certsOutOfCV.map((c) => c.course.title).join(' · '),
-      action: 'add-certs',
-      cta: 'Incluir',
-      ids: certsOutOfCV.map((c) => c.id),
-    })
-  }
-  if (cvSkillsNoEvidence.length) {
-    gaps.push({
-      id: 'skills-noev',
-      sev: 'baixa',
-      title: 'Algumas competências do currículo ainda não têm projetos que as demonstrem.',
-      body: cvSkillsNoEvidence.map((s) => s.name).join(' · '),
-      action: 'go-skills',
-      cta: 'Ver competências',
-    })
-  }
-  if (!state.user.link) {
-    gaps.push({
-      id: 'link',
-      sev: 'baixa',
-      title: 'Falta um link para seu portfólio ou perfil profissional.',
-      body: 'Com o link, quem lê o currículo pode ver os projetos completos.',
-      action: 'add-link',
-      cta: 'Usar link do portfólio',
-    })
-  }
-
-  const strengths: string[] = []
-  const pro = state.user.experiences.filter((x) => x.kind === 'profissional')
-  if (pro.length) strengths.push(`Experiência prática registrada: ${pro.map((x) => x.org).join(', ')}`)
-  const cvProjects = state.projects.filter((p) => state.resume.projects.includes(p.id))
-  const withResult = cvProjects.filter((p) => /\d/.test(p.result || ''))
-  if (withResult.length) {
-    strengths.push(
-      `${withResult.length} ${withResult.length === 1 ? 'projeto com resultado descrito' : 'projetos com resultados descritos'} no currículo`,
-    )
-  }
+  const cvProjects = works.filter((w) => w.inCV)
   const certsInCV = certificates.filter((c) => c.inCV)
-  if (certsInCV.length) {
-    strengths.push(
-      `${certsInCV.length} ${certsInCV.length === 1 ? 'certificado incluído' : 'certificados incluídos'}`,
-    )
-  }
-  const demonstratedInCV = skills.filter((s) => s.inCV && s.demonstrated)
-  if (demonstratedInCV.length) {
-    strengths.push(
-      `${demonstratedInCV.length} ${demonstratedInCV.length === 1 ? 'competência demonstrada' : 'competências demonstradas'} por projetos ou certificados`,
-    )
-  }
-  if (specificObjective) strengths.push('Objetivo profissional específico')
-  if (hasEnglish) strengths.push('Nível de inglês informado')
-
   const u = state.user
-  const checks: ResumeCheck[] = [
-    { label: 'Contato completo', w: 10, ok: !!(u.email && u.phone && u.city) },
-    { label: 'Link de portfólio', w: 5, ok: !!u.link },
-    { label: 'Objetivo específico', w: 15, ok: specificObjective },
-    { label: 'Formação', w: 10, ok: u.education.length > 0 },
-    { label: 'Experiências', w: 10, ok: u.experiences.length > 0 },
-    { label: 'Projetos (2 ou mais)', w: 20, ok: cvProjects.length >= 2, partial: cvProjects.length === 1 },
-    { label: 'Competências (5 ou mais)', w: 10, ok: cvSkills.length >= 5 },
-    { label: 'Idiomas com inglês', w: 10, ok: hasEnglish },
-    { label: 'Cursos ou certificados', w: 10, ok: certsInCV.length > 0 || completedCourses.length > 0 },
+  const checks: { w: number; ok: boolean; partial?: boolean }[] = [
+    { w: 10, ok: !!(u.email && u.phone && u.city) }, // contato completo
+    { w: 5, ok: !!u.link }, // link de portfólio
+    { w: 15, ok: specificObjective }, // objetivo específico
+    { w: 10, ok: u.education.length > 0 }, // formação
+    { w: 10, ok: u.experiences.length > 0 }, // experiências
+    { w: 20, ok: cvProjects.length >= 2, partial: cvProjects.length === 1 }, // projetos
+    { w: 10, ok: cvSkills.length >= 5 }, // competências
+    { w: 10, ok: hasEnglish }, // idiomas com inglês
+    { w: 10, ok: certsInCV.length > 0 || completedCourses.length > 0 }, // cursos ou certificados
   ]
   const completeness = checks.reduce((sum, c) => sum + (c.ok ? c.w : c.partial ? c.w / 2 : 0), 0)
+
+  // Histórico de estudo: uma linha por aula concluída (para o gráfico do início).
+  const doneLog: DoneEntry[] = []
+  for (const course of courses) {
+    for (const lesson of lessonsOf(course)) {
+      const date = state.completed[lesson.id]
+      if (date) doneLog.push({ lid: lesson.id, cid: course.id, date: date.slice(0, 10) })
+    }
+  }
+  doneLog.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+
+  const watchSec = Object.values(state.watch).reduce((sum, s) => sum + (Number(s) || 0), 0)
+  const metrics: Metrics = {
+    lessonsDone: doneLog.length,
+    watchSec,
+    coursesCompleted: completedCourses.length,
+    coursesStarted: inProgress.length,
+    certificates: certificates.length,
+    projectsAdded: works.length,
+    coursesWithProject: courses.filter((c) => courseStats[c.id].delivered).length,
+    attachments: works.length,
+    certPending: [...inProgress, ...completedCourses.filter((c) => !courseStats[c.id].certified)].filter(
+      (c) => courseStats[c.id].offersProject,
+    ).length,
+  }
 
   return {
     courseStats,
     certificates,
     inProgress,
     completedCourses,
-    projectsDone,
+    works,
     skills,
     goal,
-    gaps,
-    strengths,
-    checks,
+    objectiveStatus,
     completeness,
     cvProjects,
-    unregisteredCourseSkills,
-    lessonsDone: Object.keys(state.completed).length,
+    lessonsDone: doneLog.length,
+    skillMix: computeSkillMix(state, courses),
+    metrics,
+    doneLog,
   }
 }
 
-/** Sugestão de objetivo profissional a partir do objetivo de carreira escolhido. */
-export function suggestedObjective(state: UserState, catalog: Catalog) {
-  const goal = findGoal(catalog, state.goals.primary)
-  const byGoal: Record<string, string> = {
-    marketing:
-      'Estágio em marketing, com foco em pesquisa de público e posicionamento de marca para pequenos negócios.',
+// ---------- Skills do catálogo e recomendações ----------
+
+export type CatalogSkill = { name: string; courses: string[]; cats: string[] }
+
+/** Skills ensinadas pelos cursos do catálogo, das mais comuns para as menos. */
+export function catalogSkills(catalog: Catalog): CatalogSkill[] {
+  const map = new Map<string, CatalogSkill>()
+  for (const course of catalog.courses) {
+    for (const name of uniqueNames(course.skills)) {
+      const key = normalize(name)
+      const item = map.get(key) ?? { name, courses: [], cats: [] }
+      item.courses.push(course.id)
+      if (!item.cats.includes(course.cat)) item.cats.push(course.cat)
+      map.set(key, item)
+    }
+  }
+  return [...map.values()].sort((a, b) => b.courses.length - a.courses.length || a.name.localeCompare(b.name, 'pt-BR'))
+}
+
+/** Algum curso do catálogo ensina esta skill? */
+export const skillInCatalog = (catalog: CatalogSkill[], name: string) => catalog.some((s) => sameText(s.name, name))
+
+/** A trilha com as skills que o catálogo ensina hoje e os cursos que combinam com ela. */
+export function trailWithCourses(trail: Trail | null, catalog: Catalog, skills: CatalogSkill[] = catalogSkills(catalog)) {
+  if (!trail) return null
+  const courses = catalog.courses
+    .map((course) => ({ course, n: uniqueNames(course.skills).filter((s) => trail.skills.some((t) => sameText(t, s))).length }))
+    .filter((x) => x.n > 0)
+    .sort((a, b) => b.n - a.n)
+    .map((x) => x.course)
+  return { ...trail, liveSkills: trail.skills.filter((s) => skillInCatalog(skills, s)), liveCourses: courses }
+}
+
+const STOP_WORDS = new Set([
+  'construir', 'carreira', 'tornar', 'tornar-me', 'profissional', 'desenvolver', 'habilidades', 'aprender',
+  'minha', 'quero', 'trabalhar', 'sobre', 'para', 'como', 'começar', 'criar', 'administrar', 'uma', 'meus',
+  'minhas', 'ser',
+])
+
+function significantWords(text: string) {
+  return [
+    ...new Set(
+      normalize(text)
+        .split(/[^a-z0-9]+/)
+        .filter((w) => w.length >= 4 && !STOP_WORDS.has(w)),
+    ),
+  ]
+}
+
+export type Recommendation = { course: Course; matched: string[]; textHit: boolean; started: boolean; score: number }
+
+/** Cursos ainda não concluídos que ensinam as skills que o aluno quer desenvolver. */
+export function recommendCourses(state: UserState, derived: Derived, catalog: Catalog): Recommendation[] {
+  const wanted = state.goals.skills
+  if (!wanted.length) return []
+  const words = significantWords(state.goals.text)
+  const out: Recommendation[] = []
+  for (const course of catalog.courses) {
+    const stats = derived.courseStats[course.id]
+    if (!stats || stats.complete) continue
+    const matched = uniqueNames(course.skills).filter((s) => wanted.some((w) => sameText(w, s)))
+    if (!matched.length) continue
+    const haystack = normalize(
+      [course.title, course.summary, categoryOf(catalog, course.cat).name, course.skills.join(' ')].join(' '),
+    )
+    const textHit = words.some((w) => haystack.includes(w))
+    out.push({
+      course,
+      matched,
+      textHit,
+      started: stats.started,
+      score: matched.length * 10 + (textHit ? 3 : 0) + (stats.started ? 2 : 0),
+    })
+  }
+  return out.sort((a, b) => b.score - a.score)
+}
+
+/** Sugestão de objetivo profissional a partir da trilha escolhida. */
+export function suggestedObjective(state: UserState) {
+  const trail = findTrail(state.goals.primary)
+  const byTrail: Record<string, string> = {
+    marketing: 'Estágio em marketing, com foco em pesquisa de público e posicionamento de marca para pequenos negócios.',
     estagio: 'Primeiro estágio em administração, com foco em atendimento, vendas e organização de processos.',
     programacao: 'Estágio em desenvolvimento de software, começando por projetos web em JavaScript.',
     vendas: 'Estágio em vendas consultivas, com foco em atendimento e relacionamento com clientes.',
-    processo: 'Programa de estágio ou trainee em administração, com interesse em marketing e vendas.',
     ingles: 'Estágio em empresa com atuação internacional, usando inglês no dia a dia.',
     familia: 'Atuar na gestão da empresa da família, com foco em fluxo de caixa, atendimento e vendas.',
     criativo: 'Estágio em design ou arquitetura, desenvolvendo projetos visuais e de espaço.',
   }
-  return (
-    (goal && byGoal[goal.id]) ||
-    'Estágio em administração, com foco em atendimento e vendas para pequenos negócios.'
-  )
+  return (trail && byTrail[trail.id]) || 'Estágio em administração, com foco em atendimento e vendas para pequenos negócios.'
+}
+
+/** Skills sugeridas na escolha de skills em Objetivos (as do aluno, as da trilha e as do catálogo). */
+export function suggestedGoalSkills(state: UserState, catalog: Catalog, limit = 18) {
+  const catalogList = catalogSkills(catalog)
+  const trail = trailWithCourses(findTrail(state.goals.primary), catalog, catalogList)
+  const out: string[] = []
+  const add = (name: string) => {
+    if (!out.some((n) => sameText(n, name))) out.push(name)
+  }
+  state.goals.skills.forEach(add)
+  ;(trail?.liveSkills ?? []).forEach(add)
+  catalogList.forEach((s) => out.length < limit && add(s.name))
+  GENERIC_SKILLS.forEach((s) => out.length < limit && add(s))
+  return { skills: out, catalogList }
 }

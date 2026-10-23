@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { signOutAction } from '@/app/(auth)/actions'
 import { useApp } from '@/components/providers/AppState'
 import { Button, ButtonLink } from '@/components/ui/Button'
-import { Field, Seg, Select, Toggle } from '@/components/ui/controls'
+import { Field, Select, Toggle } from '@/components/ui/controls'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { PageHead } from '@/components/ui/PageHead'
 import { siteConfig } from '@/lib/config'
@@ -26,18 +26,21 @@ export function SettingsView() {
   const { s, a, toast } = useApp()
   const [section, setSection] = useState<Section>('dados')
   const [name, setName] = useState(s.user.name)
+  const [phone, setPhone] = useState(s.user.phone)
+  const [city, setCity] = useState(s.user.city)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => a.setSetting(k, v)
 
   const saveData = () => {
-    const parsed = personalDataSchema.safeParse({ name })
+    const parsed = personalDataSchema.safeParse({ name, phone, city })
     if (!parsed.success) {
       setErrors(fieldErrors(parsed.error))
       return
     }
     setErrors({})
-    a.saveName(parsed.data.name)
-    toast('Nome salvo.', 'ok')
+    if (parsed.data.name !== s.user.name) a.saveName(parsed.data.name)
+    a.setUser({ phone: parsed.data.phone, city: parsed.data.city })
+    toast('Dados pessoais salvos.', 'ok')
   }
 
   return (
@@ -79,6 +82,20 @@ export function SettingsView() {
                 <Field label="E-mail" id="st-email" hint="É o e-mail que você usa para entrar.">
                   <input id="st-email" type="email" className="inp" value={s.accountEmail} readOnly />
                 </Field>
+                <Field label="Telefone" id="st-phone">
+                  <input
+                    id="st-phone"
+                    type="tel"
+                    className="inp"
+                    maxLength={30}
+                    autoComplete="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </Field>
+                <Field label="Cidade" id="st-city">
+                  <input id="st-city" className="inp" maxLength={80} autoComplete="address-level2" value={city} onChange={(e) => setCity(e.target.value)} />
+                </Field>
               </div>
               <div className="row gap-s">
                 <Button icon="Check" onClick={saveData}>
@@ -94,7 +111,7 @@ export function SettingsView() {
               <Toggle
                 id="st-pub"
                 label="Perfil público"
-                hint="Qualquer pessoa com o link vê seu perfil e projetos concluídos (o perfil público chega numa próxima etapa)."
+                hint="Qualquer pessoa com o link vê seu perfil e projetos concluídos."
                 checked={s.settings.publicProfile}
                 onChange={(v) => {
                   set('publicProfile', v)
@@ -142,17 +159,6 @@ export function SettingsView() {
           {section === 'aprendizagem' && (
             <section className="set-sec">
               <h2>Preferências de aprendizagem</h2>
-              <Field label="Meta semanal de aulas" id="st-goal" hint="Usada no início e na página de progresso.">
-                <Seg
-                  label="Meta semanal"
-                  value={String(s.settings.weeklyGoal)}
-                  onChange={(v) => {
-                    set('weeklyGoal', Number(v))
-                    toast(`Meta ajustada para ${v} aulas por semana.`, 'ok')
-                  }}
-                  options={['2', '4', '6', '8', '10']}
-                />
-              </Field>
               <Field label="Horário preferido para estudar" id="st-time">
                 <Select
                   id="st-time"

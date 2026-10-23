@@ -1,6 +1,5 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, type ReactNode } from 'react'
 import { useApp } from '@/components/providers/AppState'
@@ -11,8 +10,8 @@ import { Ring } from '@/components/ui/indicators'
 import { Modal } from '@/components/ui/Modal'
 import { sameText } from '@/lib/domain/catalog'
 import { suggestedObjective } from '@/lib/domain/derive'
-import { formatDate, plural } from '@/lib/format'
-import type { ProfileListKey, ResumeGap, ResumeSection, SkillType, UserProfile } from '@/lib/types'
+import { formatDate } from '@/lib/format'
+import type { ProfileListKey, ResumeSection, SkillType, UserProfile } from '@/lib/types'
 import { LIMITS } from '@/lib/validation'
 import { EXPERIENCE_KINDS, ResumeSheet, SECTION_NAMES, SKILL_GROUPS, Scaled, resumeText } from './ResumeSheet'
 
@@ -198,122 +197,16 @@ function Organize() {
   )
 }
 
-/** Diagnóstico do currículo: pontos fortes, lacunas e como a nota é calculada. */
-function Diagnosis({ runGap }: { runGap: (g: ResumeGap) => void }) {
-  const { d } = useApp()
-  return (
-    <div className="diag">
-      <div className="diag-score">
-        <Ring value={d.completeness} size={88} stroke={8} tone="var(--blue)" track="var(--line)">
-          <b className="ring-big-sm">{Math.round(d.completeness)}%</b>
-        </Ring>
-        <div>
-          <h2>Diagnóstico do currículo</h2>
-          <p className="diag-note">
-            <Icon name="Info" size={14} />
-            Este número mede quanto do currículo está preenchido. Ele não indica chance de contratação.
-          </p>
-        </div>
-      </div>
-      {d.strengths.length > 0 && (
-        <section>
-          <p className="eyebrow">Pontos fortes</p>
-          <ul className="diag-strong">
-            {d.strengths.map((st) => (
-              <li key={st}>
-                <Icon name="CircleCheck" size={16} />
-                {st}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-      <section>
-        <p className="eyebrow">Oportunidades de melhoria · {d.gaps.length}</p>
-        {d.gaps.length === 0 && (
-          <p className="diag-clear">
-            <Icon name="BadgeCheck" size={18} />
-            Nenhuma lacuna encontrada nas informações cadastradas.
-          </p>
-        )}
-        <ul className="diag-gaps">
-          {d.gaps.map((g) => (
-            <li key={g.id} className={'sev-' + g.sev}>
-              <span className="sev-bar" aria-hidden="true" />
-              <div className="gap-text">
-                <span className="sev-label">
-                  {g.sev === 'alta' ? 'Prioridade alta' : g.sev === 'media' ? 'Prioridade média' : 'Ajuste fino'}
-                </span>
-                <b>{g.title}</b>
-                <small>{g.body}</small>
-              </div>
-              <Button size="sm" variant="quiet" onClick={() => runGap(g)}>
-                {g.cta}
-              </Button>
-            </li>
-          ))}
-        </ul>
-      </section>
-      <section>
-        <p className="eyebrow">Como o preenchimento é calculado</p>
-        <ul className="diag-checks">
-          {d.checks.map((c) => (
-            <li key={c.label} className={c.ok ? 'ok' : c.partial ? 'part' : ''}>
-              <Icon name={c.ok ? 'CircleCheck' : c.partial ? 'CircleDot' : 'Circle'} size={15} />
-              <span>{c.label}</span>
-              <em>{c.w} pts</em>
-            </li>
-          ))}
-        </ul>
-      </section>
-    </div>
-  )
-}
-
 export function ResumeView() {
   const { s, d, a, toast, catalog } = useApp()
   const router = useRouter()
-  const [panel, setPanel] = useState<'conteudo' | 'organizar' | 'diagnostico'>('conteudo')
+  const [panel, setPanel] = useState<'conteudo' | 'organizar'>('conteudo')
   const [open, setOpen] = useState<AccKey | null>('contato')
-  const [showSuggestion, setShowSuggestion] = useState(false)
+  const [dismissed, setDismissed] = useState(false)
   const [langDraft, setLangDraft] = useState<{ name: string; level: string } | null>(null)
   const [modal, setModal] = useState<false | 'text' | 'pdf'>(false)
   const [view, setView] = useState<'editar' | 'ver'>('editar')
-  const suggestion = suggestedObjective(s, catalog)
-
-  const focusSection = (k: AccKey) => {
-    setPanel('conteudo')
-    setOpen(k)
-    setView('editar')
-    setTimeout(() => document.getElementById('sec-' + k)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
-  }
-
-  const runGap = (g: ResumeGap) => {
-    if (g.action === 'focus-objetivo') focusSection('objetivo')
-    if (g.action === 'suggest-objetivo') {
-      setShowSuggestion(true)
-      focusSection('objetivo')
-    }
-    if (g.action === 'add-projects' && g.ids) {
-      g.ids.forEach((id) => a.toggleProjectCV(id, true))
-      toast(`${plural(g.ids.length, 'projeto incluído', 'projetos incluídos')} no currículo.`, 'ok')
-    }
-    if (g.action === 'focus-idiomas') {
-      setLangDraft({ name: 'Inglês', level: '' })
-      focusSection('idiomas')
-    }
-    if (g.action === 'register-skills' && g.names) {
-      a.registerSkills(g.names)
-      toast(`${plural(g.names.length, 'competência registrada', 'competências registradas')} e incluídas no currículo.`, 'ok')
-    }
-    if (g.action === 'add-certs' && g.ids) {
-      g.ids.forEach((id) => a.toggleCertCV(id, true))
-      toast('Certificado incluído no currículo.', 'ok')
-    }
-    if (g.action === 'go-skills') router.push('/competencias')
-    // O portfólio público ainda não existe: por enquanto levamos ao campo de link do contato.
-    if (g.action === 'add-link') focusSection('contato')
-  }
+  const suggestion = suggestedObjective(s)
 
   const copyText = async (closeModal?: boolean) => {
     try {
@@ -336,7 +229,7 @@ export function ResumeView() {
     <div className="page surface-paper resume-page">
       <header className="resume-head rise">
         <div>
-          <p className="eyebrow">Demonstre</p>
+          <p className="eyebrow">Conquiste</p>
           <h1>Meu currículo</h1>
           <p className={'save-state' + (s.resume.dirty ? ' dirty' : '')}>
             <Icon name={s.resume.dirty ? 'CircleDot' : 'Check'} size={14} />
@@ -394,10 +287,8 @@ export function ResumeView() {
             options={[
               { value: 'conteudo', label: 'Conteúdo', icon: 'Pencil' },
               { value: 'organizar', label: 'Organizar', icon: 'ListOrdered' },
-              { value: 'diagnostico', label: 'Diagnóstico', icon: 'Stethoscope', count: d.gaps.length },
             ]}
           />
-          {panel === 'diagnostico' && <Diagnosis runGap={runGap} />}
           {panel === 'organizar' && <Organize />}
           {panel === 'conteudo' && (
             <div className="acc">
@@ -429,7 +320,7 @@ export function ResumeView() {
                       onChange={(e) => a.setUser({ phone: e.target.value })}
                     />
                   </Field>
-                  <Field label="Portfólio ou LinkedIn" id="cv-link" className="span-2" hint="Ex.: linkedin.com/in/seu-nome">
+                  <Field label="Portfólio ou LinkedIn" id="cv-link" className="span-2" hint="Endereço do seu portfólio ou perfil profissional (LinkedIn, Behance, GitHub…).">
                     <input
                       id="cv-link"
                       className="inp"
@@ -447,7 +338,7 @@ export function ResumeView() {
                 title="Objetivo profissional"
                 open={open}
                 setOpen={setOpen}
-                done={!d.gaps.some((g) => g.id.startsWith('obj'))}
+                done={d.objectiveStatus === 'ok'}
               >
                 <Field id="cv-obj" hint="Diga a área e o tipo de oportunidade. Uma ou duas frases bastam.">
                   <textarea
@@ -460,7 +351,7 @@ export function ResumeView() {
                     aria-label="Objetivo profissional"
                   />
                 </Field>
-                {(showSuggestion || d.gaps.some((g) => g.id === 'obj-generic')) && (
+                {d.objectiveStatus === 'generico' && !dismissed && (
                   <div className="suggest-box">
                     <p className="eyebrow">Sugestão a partir do seu objetivo principal</p>
                     <p>{suggestion}</p>
@@ -470,13 +361,13 @@ export function ResumeView() {
                         size="sm"
                         onClick={() => {
                           a.setUser({ objective: suggestion })
-                          setShowSuggestion(false)
+                          setDismissed(true)
                           toast('Objetivo atualizado.', 'ok')
                         }}
                       >
                         Usar sugestão
                       </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setShowSuggestion(false)}>
+                      <Button size="sm" variant="ghost" onClick={() => setDismissed(true)}>
                         Dispensar
                       </Button>
                     </div>
@@ -543,42 +434,30 @@ export function ResumeView() {
                 done={d.cvProjects.length >= 2}
                 count={d.cvProjects.length}
               >
-                <ul className="pick-list">
-                  {s.projects.map((p) => {
-                    const done = p.status === 'concluido'
-                    const on = s.resume.projects.includes(p.id)
-                    return (
-                      <li key={p.id} className={done ? '' : 'disabled'}>
+                {d.works.length ? (
+                  <ul className="pick-list">
+                    {d.works.map((w) => (
+                      <li key={w.id}>
                         <div>
-                          <b>{p.title}</b>
+                          <b>{w.title}</b>
                           <small>
-                            {done
-                              ? p.result
-                                ? p.result.slice(0, 90) + (p.result.length > 90 ? '…' : '')
-                                : 'Sem resultado descrito'
-                              : p.status === 'revisao'
-                                ? 'Precisa de revisão para entrar no currículo'
-                                : 'Finalize o projeto para incluir'}
+                            {w.course ? w.course.title : 'Fora da Folyo'} · {w.kind === 'pdf' ? 'PDF' : 'Link'}
                           </small>
                         </div>
-                        {done ? (
-                          <Toggle
-                            label={on ? 'Incluído' : 'Incluir'}
-                            checked={on}
-                            onChange={(v) => a.toggleProjectCV(p.id, v)}
-                            id={'cvp-' + p.id}
-                          />
-                        ) : (
-                          <Link href={'/projetos/' + p.id} className="link-sm">
-                            Abrir
-                          </Link>
-                        )}
+                        <Toggle
+                          label={w.inCV ? 'Incluído' : 'Incluir'}
+                          checked={w.inCV}
+                          onChange={(v) => a.toggleWorkCV(w.id, v)}
+                          id={'cvp-' + w.id}
+                        />
                       </li>
-                    )
-                  })}
-                </ul>
-                <Button size="sm" variant="quiet" icon="Plus" onClick={() => router.push('/projetos/novo')}>
-                  Cadastrar projeto externo
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="muted small">Os projetos que você anexar (PDF ou link) aparecem aqui para entrar no currículo.</p>
+                )}
+                <Button size="sm" variant="quiet" icon="FileUp" onClick={() => router.push('/projetos')}>
+                  Anexar projeto
                 </Button>
               </AccItem>
 
@@ -600,7 +479,7 @@ export function ResumeView() {
                           <b>{c.title}</b>
                           <small>
                             {st.certified
-                              ? `Certificado demonstrativo · ${formatDate(st.certDate)}`
+                              ? `Certificado · ${formatDate(st.certDate)}`
                               : st.complete
                                 ? 'Aulas concluídas · falta o projeto'
                                 : `Em andamento · ${st.pct}%`}
@@ -757,7 +636,7 @@ export function ResumeView() {
             <div className="alert alert-info">
               <Icon name="Info" size={18} />
               <div>
-                A geração de PDF chega numa próxima etapa. Na versão final, o arquivo sai em A4 com o modelo{' '}
+                A exportação em PDF ainda não está disponível. Ela vai gerar um arquivo A4 com o modelo{' '}
                 <b>{s.resume.template === 'classico' ? 'Clássico' : 'Moderno'}</b>, exatamente como na pré-visualização.
               </div>
             </div>

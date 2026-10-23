@@ -6,8 +6,9 @@ import { FavButton, lessonNumber } from '@/components/course/CourseBits'
 import { useApp } from '@/components/providers/AppState'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
-import { EmptyState, Ring, StatusPill } from '@/components/ui/indicators'
+import { EmptyState, Ring } from '@/components/ui/indicators'
 import { useBack } from '@/components/ui/PageHead'
+import { WorksPanel } from '@/components/works/WorksPanel'
 import { categoryOf, findCourse, lessonsOf } from '@/lib/domain/catalog'
 import { formatDate, formatMinutes, plural } from '@/lib/format'
 
@@ -29,26 +30,17 @@ export function CourseView({ id }: { id: string }) {
   }
 
   const st = d.courseStats[course.id]
-  const project = st.project
+  const archived = course.status === 'arquivado'
+  // Curso arquivado: quem já começou continua; ninguém novo entra.
+  const locked = archived && !st.started
   const minutes = lessonsOf(course).reduce((sum, l) => sum + l.min, 0)
 
   const start = () => {
+    if (locked) return
     const lesson = st.resume
     a.openLesson(course.id, lesson.id)
     if (!st.started) toast(`Curso iniciado: ${course.title}.`, 'ok')
     router.push(`/aula/${course.id}/${lesson.id}`)
-  }
-
-  const openProject = () => {
-    if (project) {
-      router.push('/projetos/' + project.id)
-      return
-    }
-    const pid = a.ensureCourseProject(course.id)
-    if (pid) {
-      toast('Projeto criado. As etapas já estão na sua central de projetos.', 'ok')
-      router.push('/projetos/' + pid)
-    }
   }
 
   const toggleModule = (i: number) =>
@@ -58,8 +50,6 @@ export function CourseView({ id }: { id: string }) {
       else next.add(i)
       return next
     })
-
-  const steps = project ? project.steps : course.project.steps.map((title, i) => ({ id: String(i), title, done: false }))
 
   return (
     <div className="page course-page">
@@ -76,7 +66,16 @@ export function CourseView({ id }: { id: string }) {
                 {course.plan === 'free' ? ' · Gratuito' : ' · Plano Pro'}
               </p>
               <h1 className="display">{course.title}</h1>
+              {course.subtitle && <p className="course-sub">{course.subtitle}</p>}
               <p className="lead">{course.summary}</p>
+              {archived && (
+                <p className="course-flag">
+                  <Icon name="Archive" size={15} />
+                  {st.started
+                    ? 'Curso arquivado: não recebe novas matrículas, mas você mantém o acesso ao que já começou.'
+                    : 'Curso arquivado: não recebe novas matrículas.'}
+                </p>
+              )}
               <ul className="course-facts">
                 <li>
                   <Icon name="Gauge" size={16} />
@@ -96,16 +95,22 @@ export function CourseView({ id }: { id: string }) {
                 </li>
               </ul>
               <div className="row gap-s wrap">
-                <Button variant="go" icon={st.complete ? 'RotateCcw' : 'Play'} onClick={start}>
+                <Button variant="go" icon={st.complete ? 'RotateCcw' : 'Play'} onClick={start} disabled={locked}>
                   {st.complete
                     ? 'Revisar aulas'
                     : st.started
                       ? `Continuar · Aula ${lessonNumber(course, st.resume.id)}`
                       : 'Começar curso'}
                 </Button>
-                <Button variant="ghost-on-dark" icon="FolderKanban" onClick={openProject}>
-                  {project ? 'Abrir projeto' : 'Ver projeto prático'}
-                </Button>
+                {st.offersProject && (
+                  <Button
+                    variant="ghost-on-dark"
+                    icon="FolderKanban"
+                    onClick={() => document.querySelector('.project-brief')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                  >
+                    {st.delivered ? 'Ver projeto enviado' : 'Ver projeto do curso'}
+                  </Button>
+                )}
                 <FavButton cid={course.id} light />
               </div>
             </div>
@@ -138,6 +143,45 @@ export function CourseView({ id }: { id: string }) {
       <div className="surface-paper course-body">
         <div className="course-cols">
           <div className="course-main">
+            {(course.description && course.description !== course.summary) || course.audience || course.instructor || course.prerequisites?.length ? (
+              <section className="rise course-about">
+                <h2 className="h-sec">Sobre o curso</h2>
+                {course.description &&
+                  course.description !== course.summary &&
+                  course.description.split(/\n+/).map((paragraph, i) => <p key={i}>{paragraph}</p>)}
+                <dl className="course-about-dl">
+                  {course.instructor && (
+                    <div>
+                      <dt>Instrutor</dt>
+                      <dd>{course.instructor}</dd>
+                    </div>
+                  )}
+                  {course.language && (
+                    <div>
+                      <dt>Idioma</dt>
+                      <dd>{course.language}</dd>
+                    </div>
+                  )}
+                  {course.audience && (
+                    <div>
+                      <dt>Para quem é</dt>
+                      <dd>{course.audience}</dd>
+                    </div>
+                  )}
+                  {course.prerequisites && course.prerequisites.length > 0 && (
+                    <div>
+                      <dt>Antes, faça</dt>
+                      <dd>
+                        {course.prerequisites
+                          .map((pid) => findCourse(catalog, pid)?.title)
+                          .filter(Boolean)
+                          .join(', ') || 'Nenhum pré-requisito publicado'}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+              </section>
+            ) : null}
             <section className="rise">
               <h2 className="h-sec">Ao final, você vai conseguir</h2>
               <ol className="outcomes">
@@ -185,6 +229,7 @@ export function CourseView({ id }: { id: string }) {
                               <li key={l.id}>
                                 <button
                                   type="button"
+                                  disabled={locked}
                                   className={'lesson-line' + (isDone ? ' done' : '') + (isNext ? ' next' : '')}
                                   onClick={() => {
                                     a.openLesson(course.id, l.id)
@@ -218,38 +263,28 @@ export function CourseView({ id }: { id: string }) {
           </div>
 
           <aside className="course-side">
-            <section className="project-brief rise" style={{ '--i': 2 } as CSSProperties}>
-              <p className="eyebrow">Projeto prático final</p>
-              <h3>{course.project.title}</h3>
-              <p>{course.project.brief}</p>
-              {course.project.expected && (
-                <div className="pb-expected">
-                  <small>Resultado esperado</small>
-                  <p>{course.project.expected}</p>
-                </div>
-              )}
-              <ol className="pb-steps">
-                {steps.map((step, i) => (
-                  <li key={step.id} className={step.done ? 'done' : ''}>
-                    <span>{step.done ? <Icon name="Check" size={13} /> : i + 1}</span>
-                    {step.title}
-                  </li>
-                ))}
-              </ol>
-              {project && (
-                <div className="pb-status">
-                  <StatusPill status={project.status} />
-                  {project.status !== 'concluido' && (
-                    <small>
-                      {project.steps.filter((x) => x.done).length} de {project.steps.length} etapas
-                    </small>
-                  )}
-                </div>
-              )}
-              <Button variant="primary" iconRight="ArrowRight" onClick={openProject} className="w-full">
-                {project ? (project.status === 'concluido' ? 'Ver projeto' : 'Continuar projeto') : 'Começar projeto'}
-              </Button>
-            </section>
+            {course.project.title && (
+              <section className="project-brief rise" style={{ '--i': 2 } as CSSProperties}>
+                <p className="eyebrow">Projeto do curso</p>
+                <h3>{course.project.title}</h3>
+                {course.project.brief && <p>{course.project.brief}</p>}
+                {course.project.expected && (
+                  <div className="pb-expected">
+                    <small>O que entregar</small>
+                    <p>{course.project.expected}</p>
+                  </div>
+                )}
+                <p className="pb-how">
+                  <Icon name="Paperclip" size={14} />
+                  Você envia o projeto em PDF ou link, quando quiser.
+                </p>
+                {st.started ? (
+                  <WorksPanel course={course} bare />
+                ) : (
+                  <p className="muted small">{locked ? 'Este curso não está aberto para novos envios.' : 'Comece o curso para enviar o seu projeto.'}</p>
+                )}
+              </section>
+            )}
 
             <section className="cert-req rise" style={{ '--i': 3 } as CSSProperties}>
               <p className="eyebrow">Certificado</p>
@@ -272,10 +307,12 @@ export function CourseView({ id }: { id: string }) {
                       {st.done}/{st.total}
                     </small>
                   </li>
-                  <li className={project?.status === 'concluido' ? 'ok' : ''}>
-                    <Icon name={project?.status === 'concluido' ? 'CircleCheck' : 'Circle'} size={16} />
-                    Finalizar o projeto prático
-                  </li>
+                  {st.offersProject && (
+                    <li className={st.delivered ? 'ok' : ''}>
+                      <Icon name={st.delivered ? 'CircleCheck' : 'Circle'} size={16} />
+                      Enviar o projeto (PDF ou link)
+                    </li>
+                  )}
                 </ul>
               )}
             </section>

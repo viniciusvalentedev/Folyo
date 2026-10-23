@@ -3,7 +3,7 @@
 
 /* ---------- Certificados ---------- */
 .certs-page > * + * { margin-top: 24px; }
-.demo-note { display: inline-flex; gap: 8px; align-items: center; font-size: 13.5px; color: var(--warn); margin-top: 12px; padding: 8px 12px; border-radius: 10px; background: rgba(242,169,59,.1); }
+
 .cert-grid { display: grid; gap: 22px; }
 .cert-card { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 32px; align-items: center; padding: 24px; border-radius: 24px; background: var(--ink-2); border: 1px solid var(--line); }
 .cert-thumb { border: 0; padding: 0; background: none; border-radius: 14px; overflow: hidden; transition: transform .4s var(--ease); text-align: left; }
@@ -14,7 +14,7 @@
 .cert-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .cert-actions .toggle { margin-left: 6px; }
 .certsheet { position: relative; background: #FDFDFE; color: var(--ink); aspect-ratio: 1.414; padding: 6% 7%; display: flex; flex-direction: column; gap: 4px; overflow: hidden; border-radius: 12px; container-type: inline-size; font-size: clamp(9px, 2.2cqi, 15px); max-width: 100%; }
-.cs-watermark { position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%) rotate(-18deg); font: 700 13cqi/1 var(--f-display); color: rgba(45,36,200,.06); letter-spacing: .05em; pointer-events: none; white-space: nowrap; }
+
 .cs-top { display: flex; align-items: center; gap: 8px; margin-bottom: auto; }
 .cs-top .wordmark { height: 2.3em; width: auto; }
 .cs-top em { margin-left: auto; font: 500 .85em var(--f-mono); font-style: normal; text-transform: uppercase; letter-spacing: .08em; color: #6A6A74; }
@@ -27,11 +27,42 @@
 .cs-foot small { font-size: .78em; color: #6A6A74; text-transform: uppercase; letter-spacing: .06em; font-family: var(--f-mono); }
 .cs-foot b { font-size: .95em; font-weight: 600; }
 .cs-art { position: absolute; right: 0; top: 0; width: 26%; height: auto; }
-.cert-pending { padding: 24px; border-radius: 20px; border: 1px dashed var(--line-2); }
-.cert-pending ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; }
-.cert-pending li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 20px; align-items: center; }
-.cert-pending li a { color: var(--fg); }
-.cert-pending li .progress { grid-column: 1 / -1; }
-.cp-req { display: flex; gap: 14px; font-size: 13px; color: var(--mute); flex-wrap: wrap; }
-.cp-req span { display: inline-flex; gap: 5px; align-items: center; }
-.cp-req .ok { color: var(--lime); }
+
+/* ---------- Folyo 2.0 ---------- */
+.otw { padding: 26px; border-radius: 24px; background: var(--ink-2); border: 1px solid var(--line); display: grid; gap: 18px; }
+.otw-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-end; flex-wrap: wrap; }
+.otw-head .h-sec { margin-bottom: 4px; }
+.otw-head p { font-size: 14px; max-width: 60ch; }
+.otw-legend { list-style: none; margin: 0; padding: 0; display: flex; gap: 8px; flex-wrap: wrap; }
+.otw-st { display: inline-flex; align-items: center; gap: 5px; font: 500 11.5px var(--f-mono); text-transform: uppercase; letter-spacing: .05em; padding: 4px 9px; border-radius: 99px; width: max-content; }
+.otw-st b { font: 600 12px var(--f-ui); margin-left: 2px; }
+.otw-st.st-lime { background: rgba(201,226,63,.14); color: var(--lime); }
+.otw-st.st-magenta { background: rgba(221,51,207,.14); color: #F07FE6; }
+.otw-st.st-blue { background: rgba(171,166,255,.14); color: var(--blue-on-dark); }
+.otw-st.st-muted { background: rgba(255,255,255,.07); color: #B9B7CB; }
+.otw-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.otw-card { border-radius: 18px; border: 1px solid var(--line); background: var(--ink-3); padding: 18px; display: grid; gap: 14px; align-content: start; animation: rise .5s var(--ease) both; animation-delay: calc(var(--i, 0) * 60ms); position: relative; overflow: hidden; }
+.otw-card::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; }
+.otw-card.st-lime::before { background: var(--lime); }
+.otw-card.st-magenta::before { background: var(--magenta); }
+.otw-card.st-blue::before { background: var(--blue-on-dark); }
+.otw-card.st-muted { background: transparent; border-style: dashed; }
+.otw-top { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.otw-art { width: 48px; border-radius: 11px; overflow: hidden; }
+.otw-art .art-glyph { font-size: 15px; }
+.otw-title { display: grid; gap: 6px; min-width: 0; }
+.otw-title h3 { font-size: 15.5px; line-height: 1.3; }
+.otw-req { list-style: none; margin: 0; padding: 12px 0 0; border-top: 1px solid var(--line); display: grid; gap: 10px; }
+.otw-req li { display: grid; grid-template-columns: 16px 58px minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 13.5px; color: #D7D5E6; }
+.otw-req li .ico { color: var(--mute); }
+.otw-req li.ok .ico { color: var(--lime); }
+.otw-req small { font-size: 12.5px; color: var(--mute); white-space: nowrap; }
+.otw-req .otw-proj { grid-column: 3 / -1; white-space: normal; }
+.otw-go { display: flex; align-items: center; gap: 8px; border: 0; background: rgba(255,255,255,.06); color: #fff; border-radius: 10px; padding: 9px 12px; font-size: 13.5px; font-weight: 500; text-align: left; transition: background var(--t); }
+.otw-go span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.otw-go:hover { background: var(--lime); color: var(--ink); }
+.otw-sub { margin: 6px 0 -4px; }
+@media (max-width: 640px) {
+  .otw { padding: 18px; }
+  .otw-grid { grid-template-columns: minmax(0, 1fr); }
+}

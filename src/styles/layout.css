@@ -11,7 +11,7 @@ main { flex: 1; outline: none; min-width: 0; }
 .sidebar { position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: var(--ink); color: var(--fg); padding: calc(20px + env(safe-area-inset-top, 0px)) 14px 16px max(14px, env(safe-area-inset-left, 0px)); border-right: 1px solid rgba(255,255,255,.06); }
 .brand { display: flex; align-items: center; gap: 10px; color: #fff; padding: 4px 10px 14px; }
 .brand:hover { text-decoration: none; }
-.brand-word { font: 600 21px/1 var(--f-display); letter-spacing: -0.02em; color: #fff; }
+
 .mark, .wordmark { display: block; flex: none; overflow: visible; }
 .brand .brand-compact { display: none; }
 .sidebar.compact .brand-full { display: none; }
@@ -40,7 +40,7 @@ main { flex: 1; outline: none; min-width: 0; }
 .menu form { display: grid; }
 .user-meta small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sidebar.compact { padding-left: 12px; padding-right: 12px; align-items: center; }
-.sidebar.compact .nav-text, .sidebar.compact .nav-label, .sidebar.compact .nav-badge, .sidebar.compact .brand-word { display: none; }
+.sidebar.compact .nav-text, .sidebar.compact .nav-label, .sidebar.compact .nav-badge { display: none; }
 .sidebar.compact .nav-item { width: 44px; justify-content: center; padding: 0; }
 .sidebar.compact .nav-item.on::before { left: -12px; }
 .sidebar.compact .brand { padding: 4px 0 14px; justify-content: center; }

@@ -21,6 +21,8 @@ export function CourseArt({
   children,
 }: {
   course: Course
+  /** Reservado para as imagens de capa (miniatura, banner), que chegam com o painel de mídia. */
+  variant?: 'cover' | 'thumb' | 'banner'
   ratio?: string
   className?: string
   big?: boolean
@@ -146,5 +148,57 @@ export function CourseRow({ course }: { course: Course }) {
       </span>
       <span className="crow-pct">{st.pct}%</span>
     </button>
+  )
+}
+
+/** Card "continue de onde parou" de um curso em andamento. */
+export function CourseProgressCard({ course, i = 0 }: { course: Course; i?: number }) {
+  const { d, catalog } = useApp()
+  const router = useRouter()
+  const st = d.courseStats[course.id]
+  const resume = st.resume
+  const open = () => router.push(`/aula/${course.id}/${resume.id}`)
+  return (
+    <article className="pcard cprog rise" style={{ '--i': i } as CSSProperties} onClick={open}>
+      <div className="cprog-art">
+        <CourseArt course={course} ratio="16 / 9" />
+        <span className="cprog-pct" aria-hidden="true">
+          {st.pct}%
+        </span>
+      </div>
+      <div className="pcard-body">
+        <p className="ccard-cat">{categoryOf(catalog, course.cat).name}</p>
+        <h3>
+          <Link href={`/aula/${course.id}/${resume.id}`} onClick={(e) => e.stopPropagation()}>
+            {course.title}
+          </Link>
+        </h3>
+        <div className="cprog-bar">
+          <Progress value={st.pct} size="sm" label={`Progresso em ${course.title}`} />
+          <small>
+            {st.done} de {plural(st.total, 'aula', 'aulas')}
+          </small>
+        </div>
+        <button
+          type="button"
+          className="cprog-go"
+          onClick={(e) => {
+            e.stopPropagation()
+            open()
+          }}
+        >
+          <span className="cprog-play">
+            <Icon name="Play" size={13} />
+          </span>
+          <span>
+            <small>Continuar de onde parou</small>
+            <b>
+              Aula {lessonNumber(course, resume.id)} · {resume.title}
+            </b>
+          </span>
+          <Icon name="ArrowRight" size={16} />
+        </button>
+      </div>
+    </article>
   )
 }

@@ -1,67 +1,30 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useState, type MouseEvent } from 'react'
+import { useEffect, useState } from 'react'
 import { MarkPath } from '@/components/brand/Logo'
 import { lessonNumber } from '@/components/course/CourseBits'
 import { useApp } from '@/components/providers/AppState'
 import { Button, IconButton } from '@/components/ui/Button'
 import { Tabs } from '@/components/ui/controls'
 import { Icon } from '@/components/ui/Icon'
-import { EmptyState, Progress, Ring, StatusPill } from '@/components/ui/indicators'
+import { EmptyState, Progress, Ring } from '@/components/ui/indicators'
 import { Modal } from '@/components/ui/Modal'
+import { WorksPanel } from '@/components/works/WorksPanel'
 import { findCourse, lessonsOf } from '@/lib/domain/catalog'
+import { issuesCertificate } from '@/lib/domain/derive'
 import { plural } from '@/lib/format'
+import { NOTE_MAX } from '@/lib/validation'
 import type { Course, LessonRef } from '@/lib/types'
 
-const NOTE_MAX = 5000
-const clock = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`
-
 /**
- * Player DEMONSTRATIVO: simula o vídeo com um slide e uma barra de progresso.
- * Na etapa do vídeo, entra aqui o player do Cloudflare Stream ou do Bunny Stream.
+ * Espaço do vídeo. O vídeo de cada aula (e o tempo assistido) entra com o painel da equipe,
+ * na etapa de mídia; até lá o aluno vê o resumo da aula e os materiais.
  */
-function DemoPlayer({ lesson, n }: { lesson: LessonRef; n: number }) {
-  const { s, a } = useApp()
-  const total = lesson.min * 60
-  const [pos, setPos] = useState(0)
-  const [playing, setPlaying] = useState(false)
-  const [speed, setSpeed] = useState(1)
-  const [muted, setMuted] = useState(false)
-  const captions = s.settings.captions
-
-  const lines = useMemo(() => {
-    const parts = (lesson.desc || `Nesta aula você estuda ${lesson.title.toLowerCase()} com exemplos aplicados.`).split(
-      /(?<=\.)\s+/,
-    )
-    return parts.length ? parts : [lesson.title]
-  }, [lesson])
-
-  useEffect(() => {
-    if (!playing) return
-    const t = setInterval(() => {
-      setPos((p) => {
-        const next = p + 0.5 * speed
-        if (next >= total) {
-          setPlaying(false)
-          return total
-        }
-        return next
-      })
-    }, 500)
-    return () => clearInterval(t)
-  }, [playing, speed, total])
-
-  const seek = (e: MouseEvent<HTMLDivElement>) => {
-    const r = e.currentTarget.getBoundingClientRect()
-    setPos(Math.max(0, Math.min(total, ((e.clientX - r.left) / r.width) * total)))
-  }
-  const caption = lines[Math.min(lines.length - 1, Math.floor((pos / total) * lines.length))]
-  const speeds = [1, 1.25, 1.5, 2]
-
+function LessonPlayer({ lesson, n }: { lesson: LessonRef; n: number }) {
   return (
-    <div className={'player' + (playing ? ' playing' : '')}>
-      <div className="player-stage" onClick={() => setPlaying(!playing)}>
+    <div className="player">
+      <div className="player-stage">
         <div className="slide">
           <p className="slide-k">
             Módulo {lesson.mi + 1} · Aula {n}
@@ -72,53 +35,10 @@ function DemoPlayer({ lesson, n }: { lesson: LessonRef; n: number }) {
             <MarkPath x={182} y={170} r={14} fill="var(--lime)" />
           </svg>
         </div>
-        <span className="player-demo">Player demonstrativo · sem vídeo real</span>
-        {!playing && (
-          <span className="player-big">
-            <Icon name="Play" size={30} />
-          </span>
-        )}
-        {captions && pos > 0 && <p className="player-cc">{caption}</p>}
-      </div>
-      <div className="player-bar">
-        <IconButton icon={playing ? 'Pause' : 'Play'} label={playing ? 'Pausar' : 'Reproduzir'} onClick={() => setPlaying(!playing)} />
-        <IconButton icon="RotateCcw" label="Voltar 10 segundos" onClick={() => setPos((p) => Math.max(0, p - 10))} />
-        <span className="player-time">
-          {clock(pos)} / {clock(total)}
-        </span>
-        <div
-          className="scrub"
-          role="slider"
-          tabIndex={0}
-          aria-label="Posição do vídeo"
-          aria-valuemin={0}
-          aria-valuemax={total}
-          aria-valuenow={Math.round(pos)}
-          aria-valuetext={clock(pos)}
-          onClick={seek}
-          onKeyDown={(e) => {
-            if (e.key === 'ArrowRight') setPos((p) => Math.min(total, p + 10))
-            if (e.key === 'ArrowLeft') setPos((p) => Math.max(0, p - 10))
-          }}
-        >
-          <span className="scrub-fill" style={{ width: `${(pos / total) * 100}%` }} />
-          <span className="scrub-knob" style={{ left: `${(pos / total) * 100}%` }} />
-        </div>
-        <button
-          type="button"
-          className="player-speed"
-          onClick={() => setSpeed(speeds[(speeds.indexOf(speed) + 1) % speeds.length])}
-          aria-label={`Velocidade ${speed}x`}
-        >
-          {speed}×
-        </button>
-        <IconButton
-          icon="Captions"
-          label={captions ? 'Desativar legendas' : 'Ativar legendas'}
-          className={captions ? 'on' : ''}
-          onClick={() => a.setSetting('captions', !captions)}
-        />
-        <IconButton icon={muted ? 'VolumeX' : 'Volume2'} label={muted ? 'Ativar som' : 'Silenciar'} onClick={() => setMuted(!muted)} />
+        <p className="player-none" role="status">
+          <Icon name="VideoOff" size={18} />O vídeo desta aula ainda não está disponível. Você pode ler a descrição e os
+          materiais abaixo.
+        </p>
       </div>
     </div>
   )
@@ -164,6 +84,7 @@ function Notes({ lid }: { lid: string }) {
 }
 
 type Tab = 'sobre' | 'material' | 'notas' | 'projeto'
+type Celebration = null | 'cert' | 'lessons' | 'done'
 
 export function ClassroomView({ courseId, lessonId }: { courseId: string; lessonId: string }) {
   const { s, d, a, toast, catalog } = useApp()
@@ -174,8 +95,9 @@ export function ClassroomView({ courseId, lessonId }: { courseId: string; lesson
   const lesson = lessons[index]
   const [tab, setTab] = useState<Tab>('sobre')
   const [focus, setFocus] = useState(false)
-  const [celebrate, setCelebrate] = useState<null | 'cert' | 'lessons'>(null)
-  const [justDone, setJustDone] = useState(false)
+  const [celebrate, setCelebrate] = useState<Celebration>(null)
+  // Guarda QUAL aula acabou de ser concluída (a animação não repete ao trocar de aula).
+  const [justDone, setJustDone] = useState<string | null>(null)
 
   // Ao abrir a aula, registra como "última aula vista" do curso.
   useEffect(() => {
@@ -195,8 +117,9 @@ export function ClassroomView({ courseId, lessonId }: { courseId: string; lesson
   const prev = lessons[index - 1]
   const next = lessons[index + 1]
   const done = !!s.completed[lesson.id]
-  const project = st.project
   const n = lessonNumber(course, lesson.id)
+  const hasProject = !!course.project?.title
+  const pendingProject = st.offersProject && !st.delivered
   const go = (l?: LessonRef) => l && router.push(`/aula/${course.id}/${l.id}`)
 
   const toggleDone = () => {
@@ -206,10 +129,10 @@ export function ClassroomView({ courseId, lessonId }: { courseId: string; lesson
       return
     }
     a.toggleLesson(lesson.id)
-    setJustDone(true)
+    setJustDone(lesson.id)
     const count = st.done + 1
     const pct = Math.round((count / st.total) * 100)
-    if (count === st.total) setCelebrate(project?.status === 'concluido' ? 'cert' : 'lessons')
+    if (count === st.total) setCelebrate(pendingProject ? 'lessons' : issuesCertificate(course) ? 'cert' : 'done')
     else
       toast(`${course.title} agora está em ${pct}%.`, 'ok', {
         title: 'Aula concluída',
@@ -218,12 +141,9 @@ export function ClassroomView({ courseId, lessonId }: { courseId: string; lesson
       })
   }
 
-  const openProject = () => {
-    if (project) router.push('/projetos/' + project.id)
-    else {
-      const pid = a.ensureCourseProject(course.id)
-      if (pid) router.push('/projetos/' + pid)
-    }
+  const goToProject = () => {
+    setTab('projeto')
+    setTimeout(() => document.querySelector('.class-tab')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60)
   }
 
   return (
@@ -250,7 +170,7 @@ export function ClassroomView({ courseId, lessonId }: { courseId: string; lesson
 
       <div className="class-grid">
         <div className="class-main">
-          <DemoPlayer key={lesson.id} lesson={lesson} n={n} />
+          <LessonPlayer key={lesson.id} lesson={lesson} n={n} />
           <div className="class-titlebar">
             <div>
               <p className="eyebrow">
@@ -264,7 +184,7 @@ export function ClassroomView({ courseId, lessonId }: { courseId: string; lesson
                 variant={done ? 'done' : 'go'}
                 icon={done ? 'CircleCheck' : 'Check'}
                 onClick={toggleDone}
-                className={justDone && done ? 'pop' : ''}
+                className={justDone === lesson.id && done ? 'pop' : ''}
               >
                 {done ? 'Concluída' : 'Marcar como concluída'}
               </Button>
@@ -305,23 +225,22 @@ export function ClassroomView({ courseId, lessonId }: { courseId: string; lesson
             )}
             {tab === 'notas' && <Notes key={lesson.id} lid={lesson.id} />}
             {tab === 'projeto' && (
-              <div className="class-project">
-                <div>
-                  <p className="eyebrow">Aplique esta aula</p>
-                  <h3>{project ? project.title : course.project.title}</h3>
-                  <p className="muted">{course.project.brief}</p>
-                  {project && (
-                    <div className="row gap-s">
-                      <StatusPill status={project.status} />
-                      <small className="muted">
-                        {project.steps.filter((x) => x.done).length} de {project.steps.length} etapas
-                      </small>
-                    </div>
-                  )}
-                </div>
-                <Button variant="primary" iconRight="ArrowRight" onClick={openProject}>
-                  {project ? 'Abrir projeto' : 'Começar projeto'}
-                </Button>
+              <div className="class-project2">
+                {hasProject ? (
+                  <div className="cp2-head">
+                    <p className="eyebrow">Projeto do curso</p>
+                    <h3>{course.project.title}</h3>
+                    {course.project.brief && <p className="muted">{course.project.brief}</p>}
+                    {course.project.expected && (
+                      <p className="cp2-exp">
+                        <b>O que entregar:</b> {course.project.expected}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="muted">Este curso não pede um projeto específico, mas você pode anexar o que produziu.</p>
+                )}
+                <WorksPanel course={course} bare />
               </div>
             )}
           </div>
@@ -371,11 +290,11 @@ export function ClassroomView({ courseId, lessonId }: { courseId: string; lesson
               </ul>
             </div>
           ))}
-          <button type="button" className="side-project" onClick={openProject}>
+          <button type="button" className="side-project" onClick={goToProject}>
             <Icon name="FolderKanban" size={18} />
             <span>
-              <small>Projeto final</small>
-              <b>{project ? project.title : course.project.title}</b>
+              <small>{st.delivered ? 'Projeto enviado' : 'Projeto do curso'}</small>
+              <b>{hasProject ? course.project.title : 'Anexar trabalho'}</b>
             </span>
             <Icon name="ArrowRight" size={16} />
           </button>
@@ -387,24 +306,9 @@ export function ClassroomView({ courseId, lessonId }: { courseId: string; lesson
         onClose={() => setCelebrate(null)}
         tone="ink"
         size="sm"
-        title={celebrate === 'cert' ? 'Curso concluído' : 'Todas as aulas concluídas'}
+        title={celebrate === 'lessons' ? 'Todas as aulas concluídas' : 'Curso concluído'}
         footer={
-          celebrate === 'cert' ? (
-            <>
-              <Button variant="quiet-dark" onClick={() => setCelebrate(null)}>
-                Fechar
-              </Button>
-              <Button
-                variant="go"
-                onClick={() => {
-                  setCelebrate(null)
-                  router.push('/certificados')
-                }}
-              >
-                Ver certificado
-              </Button>
-            </>
-          ) : (
+          celebrate === 'lessons' ? (
             <>
               <Button variant="quiet-dark" onClick={() => setCelebrate(null)}>
                 Depois
@@ -413,11 +317,28 @@ export function ClassroomView({ courseId, lessonId }: { courseId: string; lesson
                 variant="go"
                 onClick={() => {
                   setCelebrate(null)
-                  openProject()
+                  goToProject()
                 }}
               >
-                Ir para o projeto
+                Enviar o projeto
               </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="quiet-dark" onClick={() => setCelebrate(null)}>
+                Fechar
+              </Button>
+              {celebrate === 'cert' && (
+                <Button
+                  variant="go"
+                  onClick={() => {
+                    setCelebrate(null)
+                    router.push('/certificados')
+                  }}
+                >
+                  Ver certificado
+                </Button>
+              )}
             </>
           )
         }
@@ -427,15 +348,20 @@ export function ClassroomView({ courseId, lessonId }: { courseId: string; lesson
             <circle cx="60" cy="60" r="50" fill="none" stroke="var(--lime)" strokeWidth="6" strokeLinecap="round" className="draw" />
             <MarkPath x={60} y={60} r={22} fill="var(--lime)" />
           </svg>
-          {celebrate === 'cert' ? (
+          {celebrate === 'lessons' ? (
             <p>
-              Você concluiu as {st.total} aulas e o projeto de <b>{course.title}</b>. O certificado demonstrativo já está na
-              sua área de certificados.
+              Você concluiu as {st.total} aulas de <b>{course.title}</b>. Para receber o certificado, envie o projeto do curso em
+              PDF ou link.
+            </p>
+          ) : celebrate === 'cert' ? (
+            <p>
+              Você concluiu as {st.total} aulas{st.offersProject ? ' e enviou o projeto' : ''} de <b>{course.title}</b>. O
+              certificado já está na sua área de certificados.
             </p>
           ) : (
             <p>
-              Você concluiu as {st.total} aulas de <b>{course.title}</b>. Para receber o certificado, finalize o projeto
-              prático.
+              Você concluiu as {st.total} aulas de <b>{course.title}</b>. Este curso não emite certificado, mas o que você
+              aprendeu fica registrado na sua trajetória.
             </p>
           )}
         </div>

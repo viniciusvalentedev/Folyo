@@ -75,6 +75,18 @@ export function weekStart(iso: string) {
   return d.toISOString().slice(0, 10)
 }
 
+/** Soma (ou subtrai) dias de uma data AAAA-MM-DD, sem se perder com fuso horário. */
+export function addDays(iso: string, days: number) {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
+  return localISODate(new Date(y, m - 1, d + days))
+}
+
+/** Dia da semana de uma data AAAA-MM-DD (0 = domingo). */
+export function weekdayOf(iso: string) {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
+  return new Date(y, m - 1, d).getDay()
+}
+
 /**
  * Id curto para itens DENTRO de listas (passos, links, formação...) e avisos da tela.
  * Formato: letras minúsculas, números e hífen (o servidor confere).
@@ -90,4 +102,11 @@ export function newId(prefix = 'id') {
  */
 export function newUuid() {
   return crypto.randomUUID()
+}
+
+/** O público da Folyo é do Brasil: um instante vira AAAA-MM-DD no horário de Brasília. */
+const BR_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' })
+export function brDate(timestamp: string) {
+  const d = new Date(timestamp)
+  return Number.isNaN(d.getTime()) ? '' : BR_DATE.format(d)
 }

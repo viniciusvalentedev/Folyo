@@ -1,10 +1,10 @@
 import 'server-only'
 import { cacheLife } from 'next/cache'
-import { careerGoals, categories, courses } from '@/lib/mock/catalog'
+import { categories, courses } from '@/lib/mock/catalog'
 import type { Catalog } from '@/lib/types'
 
 /**
- * Camada de acesso a dados do CATÁLOGO (cursos, categorias e objetivos de carreira).
+ * Camada de acesso a dados do CATÁLOGO (cursos e categorias).
  *
  * `server-only` garante que este arquivo nunca vai parar no navegador: se algum
  * componente do lado do cliente tentar importar, o build quebra. É aqui que, na
@@ -17,7 +17,7 @@ export async function getCatalog(): Promise<Catalog> {
   cacheLife('hours')
   // Próxima etapa: buscar no Supabase só cursos publicados, por exemplo:
   // const { data } = await supabase.from('courses').select('*, modules(*, lessons(*))').eq('status', 'publicado')
-  return { courses, categories, goals: careerGoals }
+  return { courses, categories }
 }
 
 /** Ids usados para gerar as páginas de curso e aula no build. */

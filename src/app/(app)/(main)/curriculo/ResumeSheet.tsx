@@ -29,10 +29,30 @@ export const SKILL_GROUPS: Record<SkillType, string> = {
   idioma: 'Idiomas',
 }
 
+function hostOf(url: string | null) {
+  try {
+    return url ? new URL(url).hostname.replace(/^www\./, '') : ''
+  } catch {
+    return ''
+  }
+}
+
 /** Junta os dados que entram no currículo (só o que está marcado como "incluído"). */
 export function resumeData(s: UserState, d: Derived, catalog: Catalog) {
   const u = s.user
-  const projects = s.projects.filter((p) => s.resume.projects.includes(p.id))
+  // Trabalhos enviados (PDF ou link) marcados para o currículo.
+  const projects = d.works
+    .filter((w) => w.inCV)
+    .map((w) => ({
+      id: w.id,
+      title: w.title,
+      problem: w.desc,
+      completedAt: w.createdAt.slice(0, 10),
+      skills: [
+        w.course ? 'Projeto do curso ' + w.course.title : 'Projeto fora da Folyo',
+        w.kind === 'pdf' ? 'PDF' : hostOf(w.url),
+      ].filter(Boolean),
+    }))
   const courses = s.resume.certs
     .map((id) => findCourse(catalog, id))
     .filter((c): c is NonNullable<typeof c> => !!c)
@@ -41,7 +61,7 @@ export function resumeData(s: UserState, d: Derived, catalog: Catalog) {
       return {
         title: c.title,
         detail: st.certified
-          ? `Folyo · certificado demonstrativo, ${formatDate(st.certDate)}`
+          ? `Folyo · certificado de conclusão, ${formatDate(st.certDate)}`
           : st.complete
             ? 'Folyo · aulas concluídas'
             : `Folyo · em andamento (${st.pct}%)`,
@@ -62,7 +82,7 @@ export function resumeText(s: UserState, d: Derived, catalog: Catalog) {
     if (sec === 'formacao') r.u.education.forEach((e) => items.push(`${e.course} · ${e.inst} · ${e.period}`))
     if (sec === 'experiencia')
       r.u.experiences.forEach((x) => items.push(`${x.role} · ${x.org} (${x.period})${x.desc ? `\n  ${x.desc}` : ''}`))
-    if (sec === 'projetos') r.projects.forEach((p) => items.push(`${p.title}\n  ${p.problem}\n  Resultado: ${p.result}`))
+    if (sec === 'projetos') r.projects.forEach((p) => items.push(`${p.title}${p.problem ? `\n  ${p.problem}` : ''}\n  ${p.skills.join(' · ')}`))
     if (sec === 'cursos') r.courses.forEach((c) => items.push(`${c.title} · ${c.detail}`))
     if (sec === 'competencias' && r.skills.length) items.push(r.skills.map((k) => k.name).join(', '))
     if (sec === 'idiomas') r.u.languages.forEach((l) => items.push(`${l.name}: ${l.level}`))
@@ -143,11 +163,6 @@ export function ResumeSheet({ s, d, catalog }: { s: UserState; d: Derived; catal
             <span>{p.completedAt ? formatDate(p.completedAt).replace(/^\d+ /, '') : ''}</span>
           </div>
           <p>{p.problem}</p>
-          {p.result && (
-            <p>
-              <i>Resultado:</i> {p.result}
-            </p>
-          )}
           <p className="cv-tags">{p.skills.join(' · ')}</p>
         </div>
       )),

@@ -7,13 +7,18 @@ Onde estamos:
 - **Front-end v1** ✅ todas as telas da área do aluno, fiéis ao protótipo da Gigi.
 - **Etapa 1 — login + perfil** ✅ contas de verdade com Supabase (criar conta, confirmar e-mail, entrar, sair,
   esqueci a senha). Contas novas começam vazias.
-- **Etapa 2 — dados do aluno** ✅ aulas concluídas, anotações, favoritos, projetos, competências, currículo e
+- **Etapa 2 — dados do aluno** ✅ aulas concluídas, anotações, favoritos, competências, currículo e
   configurações ficam salvos no banco (salvam sozinhos enquanto o aluno usa o site).
 - **Etapa 3 — proteção contra robôs** ✅ CAPTCHA (Cloudflare Turnstile) e limites de tentativas e de alterações.
 - **Etapa 4 — painel admin (fundação)** ✅ papéis (aluno / editor / administrador / proprietário), visão geral com
   números reais, lista e ficha dos usuários, suspender e reativar contas, permissões e histórico de auditoria.
   As demais áreas (cursos, categorias, aulas, mídia...) aparecem como "em breve".
-- **Próximas etapas** (uma de cada vez): cadastro de cursos e aulas no painel; vídeo; certificados e PDF de verdade; pagamentos.
+- **Folyo 2.0 — Fase 1 (área do aluno)** ✅ novo primeiro acesso (3 passos), Objetivos, Início, Cursos, sala de aula,
+  Progresso, **Projetos e portfólio** (trabalhos em PDF ou link), Currículo, Certificados, Perfil, Configurações e
+  **perfil público** (`/publico`), seguindo o protótipo Folyo 2.0. Exige rodar um SQL novo (veja
+  [`supabase/README.md`](supabase/README.md)).
+- **Próximas fases do 2.0:** Fase 2 — painel com banco (cursos, categorias, aulas, vídeo e materiais);
+  Fase 3 — mídia, audiência, relatórios e configurações do painel. Depois: certificados e PDF de verdade; pagamentos.
 
 **Configurar o Supabase pela primeira vez:** siga o passo a passo em [`supabase/README.md`](supabase/README.md).
 
@@ -60,25 +65,29 @@ src/
 │  │  └─ redefinir-senha/    → /redefinir-senha  (escolher senha nova)
 │  ├─ (app)/                 ← área do aluno (tudo "depois do login")
 │  │  ├─ layout.tsx          → carrega o catálogo e os dados do aluno
-│  │  ├─ primeiro-acesso/    → /primeiro-acesso (escolher objetivo, 3 passos)
+│  │  ├─ primeiro-acesso/    → /primeiro-acesso (primeiro acesso em 3 passos)
+│  │  ├─ publico/            → /publico  (pré-visualização do perfil público)
 │  │  ├─ (main)/             ← páginas com menu lateral + barra do topo
 │  │  │  ├─ inicio/          → /inicio
 │  │  │  ├─ objetivos/       → /objetivos
 │  │  │  ├─ cursos/          → /cursos  e  /cursos/[curso]
 │  │  │  ├─ progresso/       → /progresso
-│  │  │  ├─ projetos/        → /projetos, /projetos/novo, /projetos/[id], /projetos/[id]/editar
-│  │  │  ├─ competencias/    → /competencias
+│  │  │  ├─ projetos/        → /projetos  (Projetos e portfólio: trabalhos em PDF ou link, em modal)
+│  │  │  ├─ competencias/    → /competencias  (só redireciona para /objetivos)
 │  │  │  ├─ curriculo/       → /curriculo
 │  │  │  ├─ certificados/    → /certificados
 │  │  │  ├─ perfil/          → /perfil
 │  │  │  └─ configuracoes/   → /configuracoes
 │  │  └─ (classroom)/aula/   → /aula/[curso]/[aula]  (sala de aula, menu compacto)
+│  ├─ api/trabalhos/[id]/arquivo/ → ★ entrega o PDF de um trabalho (só para o dono, conferindo o login)
 │  ├─ layout.tsx             → HTML base, fontes e estilos
 │  └─ not-found.tsx          → página "não encontrada"
 ├─ components/               ← PEÇAS reutilizadas pelas páginas
 │  ├─ ui/                    → botões, ícones, modais, abas, barras de progresso…
 │  ├─ shell/                 → menu lateral, barra do topo, menu do celular
-│  ├─ course/ project/       → cards de curso e de projeto
+│  ├─ course/                → cards de curso
+│  ├─ dashboard/             → blocos do Início e do Progresso (números, bolhas de skills, gráficos)
+│  ├─ works/                 → trabalhos: cartões, formulário (PDF/link) e visualizador de PDF
 │  ├─ brand/                 → logotipo da Folyo
 │  └─ providers/AppState.tsx → estado do aluno + todas as AÇÕES (concluir aula, salvar projeto…)
 ├─ proxy.ts                 → roda antes de cada página: renova a sessão e manda quem não entrou para /entrar
@@ -86,9 +95,12 @@ src/
 │  ├─ supabase/              → cliente do Supabase (só servidor) e opções do cookie de sessão
 │  ├─ auth/redirects.ts      → páginas públicas e proteção do ?next= do login
 │  ├─ data/                  → ★ ÚNICO lugar que "busca dados" (catálogo fixo + dados do aluno no Supabase)
-│  ├─ actions/               → ações que salvam no banco: student.ts (aulas, projetos, currículo…), profile.ts (objetivos)
+│  ├─ actions/               → ações que salvam no banco: student.ts (aulas, currículo…), profile.ts (primeiro acesso e
+│  │                           objetivos), works.ts (trabalhos e PDFs), shared.ts (peças comuns das ações)
+│  ├─ trails.ts              → trilhas, etapas de vida e metas do primeiro acesso (uma lista só, usada por tela e servidor)
+│  ├─ pdf-file.ts            → limites e conferência de PDF (tamanho e assinatura %PDF-)
 │  ├─ mock/                  → catálogo de cursos (ainda fixo no código)
-│  ├─ domain/                → regras/cálculos (progresso, certificados, diagnóstico do currículo)
+│  ├─ domain/                → regras/cálculos (progresso, tempo estudado, certificados, objetivos)
 │  ├─ validation.ts          → regras de validação dos formulários (zod)
 │  ├─ types.ts               → formato dos dados (guia para criar as tabelas no banco)
 │  └─ format.ts              → datas, plural, minutos…
@@ -124,7 +136,7 @@ supabase/
 - **O banco é a última barreira.** Qualquer aluno logado consegue falar direto com a API do Supabase (com a
   publishable key e o próprio login), então o banco confere tudo sozinho: RLS em todas as tabelas, permissão
   por coluna (o aluno não escolhe o dono da linha nem as datas), limites de tamanho e de quantidade de itens.
-- **Datas são do servidor:** "aula concluída em", "começou em" e "projeto concluído em" são marcadas pelo banco.
+- **Datas são do servidor:** "aula concluída em", "começou em" e "trabalho enviado em" são marcadas pelo banco.
 - **Cada Server Action** confere o login, valida tudo de novo (zod) e confere no catálogo se o curso/aula existe.
   Nada é exportado de arquivo `'use server'` sem ser uma ação de verdade (cada exportação vira um endereço público).
 - **Leitura desconfiada:** o que vem do banco é conferido de novo antes de ir para a tela (itens estranhos são
@@ -132,9 +144,26 @@ supabase/
 - **Apagar a conta apaga tudo** (todas as tabelas dependem do perfil, que depende da conta).
 - **Só o que mudou é enviado** (perfil, currículo e configurações): uma aba antiga aberta não desfaz o que você
   mudou em outra aba ou no celular.
-- **Projeto "concluído" exige o resultado descrito** (30+ letras). O banco aplica essa regra sozinho.
 - Testado com Postgres de verdade: regras do banco (105 casos) e ponta a ponta com o site rodando (75 casos,
   incluindo tentativas de mexer nos dados de outro aluno, sem login, de outro site e com dados inválidos).
+
+**Trabalhos em PDF e tempo assistido (Folyo 2.0)**
+
+- **PDF num bucket privado** do Supabase Storage (`student-works`, até 20 MB, só `application/pdf`). O caminho é
+  sempre `<id do aluno>/<arquivo>.pdf`: as regras do Storage só deixam cada aluno ler, enviar e apagar dentro da
+  própria pasta, e conta suspensa não acessa nada.
+- **Quem lê o PDF é só o dono:** o arquivo é aberto por `/api/trabalhos/<id>/arquivo`, que confere o login e a
+  linha do trabalho (RLS) antes de entregar. Não existe link público do arquivo. A resposta leva
+  `Content-Disposition`, `nosniff`, `no-store` e só pode ser exibida dentro do próprio site (`frame-ancestors 'self'`).
+- **Exceção documentada à regra "o navegador não fala com o Supabase":** o envio do PDF. O servidor valida o
+  pedido e gera um endereço de envio de uso único (*signed upload URL*); o navegador faz o `PUT` direto no
+  Storage (para não passar 20 MB pela Vercel). Por isso a CSP (`connect-src`) inclui a origem do Supabase.
+  Depois do envio, o servidor **confere o arquivo de verdade** (começa com `%PDF-`, tamanho real) antes de
+  confirmar; se não passar, o arquivo é apagado.
+- **Limites no banco:** quantidade de trabalhos e espaço total por aluno, link só `http(s)`, título e descrição
+  com tamanho máximo, e o gatilho de alterações por minuto da etapa 3.
+- **Tempo assistido** (`lesson_watch`) só cresce e, no máximo, na velocidade do relógio: o banco recusa tempo
+  "inventado".
 
 **Proteção contra robôs (etapa 3)**
 
@@ -175,8 +204,8 @@ supabase/
 - **Quem decide é o banco:** as funções `admin_*` conferem o papel e a hierarquia (ninguém muda o próprio papel;
   administrador só mexe em quem está abaixo dele; só o proprietário cria administradores). As Server Actions só
   validam os dados e repassam. A tela (`src/lib/admin/roles.ts`) apenas esconde botões.
-- **Privacidade do aluno:** a equipe vê só um resumo (cadastro, atividade, progresso). Anotações, conteúdo dos
-  projetos e currículo nunca saem para o painel.
+- **Privacidade do aluno:** a equipe vê só um resumo (cadastro, atividade, progresso e quantidade de trabalhos).
+  Anotações, conteúdo e arquivos dos trabalhos e currículo nunca saem para o painel.
 - **Conta suspensa:** não lê nem grava nada (regras restritivas no banco) e cai em `/conta-suspensa`. Os dados
   continuam guardados.
 - **Proprietário só pelo SQL Editor:** o painel não cria, não rebaixa e não suspende proprietários, e o banco
@@ -195,19 +224,19 @@ supabase/
 | Item | Situação hoje | Próxima etapa |
 | --- | --- | --- |
 | **Login / cadastro** | ✅ Supabase Auth, rotas protegidas, e-mail próprio (Zoho, usefolyo.com), CAPTCHA e limite de tentativas | Excluir/exportar conta (LGPD) |
-| **Banco de dados** | ✅ Perfil, progresso, anotações, projetos, competências e currículo, todos com RLS e limite de alterações por minuto | Certificado emitido pelo servidor |
+| **Banco de dados** | ✅ Perfil, progresso, anotações, tempo assistido, trabalhos (PDF/link), competências e currículo, todos com RLS e limite de alterações por minuto | Certificado emitido pelo servidor |
 | **Painel admin** | ✅ Fundação: papéis, visão geral, usuários (suspender/reativar), permissões e auditoria. Papel e regras ficam no banco; a tela só esconde o que não se pode usar | Cursos, categorias, módulos e aulas, audiência, relatórios, mídia e configurações (hoje "em breve") |
-| **Player de aula** | Demonstrativo (sem vídeo) | Cloudflare Stream ou Bunny Stream |
-| **Currículo em PDF e certificados** | Só visual. Hoje "aula concluída" é marcada pelo próprio aluno | Certificado emitido pelo servidor (conferindo aulas e projeto) + código de verificação |
-| **Perfil público** | Ainda a decidir (`/u/nome` ou subdomínio) | Rota pública + controle de privacidade |
-| **Objetivos com recomendação** | Recomendação fixa | Lógica de recomendação com dados reais |
+| **Player de aula** | Sem vídeo ainda: mostra um aviso. O tempo assistido já tem tabela pronta | Fase 2: vídeo (Cloudflare Stream ou Bunny Stream) e materiais da aula |
+| **Currículo em PDF e certificados** | Só visual ("Certificados a caminho"). Hoje "aula concluída" é marcada pelo próprio aluno | Certificado emitido pelo servidor (conferindo aulas e trabalho) + código de verificação |
+| **Perfil público** | `/publico` é só a pré-visualização para o próprio aluno (o que ele marcou como público) | Rota pública de verdade (`/u/nome` ou subdomínio) com controle de privacidade |
+| **Objetivos com recomendação** | Trilhas e recomendações calculadas no código (`src/lib/trails.ts`) com o catálogo fixo | Recomendação com o catálogo do banco (Fase 2) |
 | **Pagamentos (Plano Pro)** | Só o selo "Pro" | Mercado Pago / Stripe / Pagar.me |
 
 ### Como os dados vão para o banco
 
 1. `src/lib/data/user.ts` lê tudo do Supabase quando a página abre e `src/lib/domain/student-state.ts` confere.
 2. Cada ação em `src/components/providers/AppState.tsx` (ex.: `toggleLesson`) muda a tela na hora e coloca o
-   pedido numa **fila de gravação**: cada coisa (uma aula, um projeto...) tem no máximo um pedido por vez, sempre
+   pedido numa **fila de gravação**: cada coisa (uma aula, um trabalho...) tem no máximo um pedido por vez, sempre
    com o estado mais recente, e textos esperam a pessoa parar de digitar.
 3. A fila chama as *server actions* de `src/lib/actions/student.ts`: confere quem é o usuário → valida com
    `validation.ts` → grava no banco. O banco confere de novo (RLS, permissões e limites).
@@ -220,7 +249,7 @@ A pasta já está ligada ao repositório `viniciusvalentedev/Folyo`. Para enviar
 
 ```bash
 git add -A
-git commit -m "Etapa 2: dados do aluno no Supabase"
+git commit -m "Folyo 2.0 · Fase 1: área do aluno"
 git push
 ```
 

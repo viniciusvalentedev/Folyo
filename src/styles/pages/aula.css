@@ -19,20 +19,7 @@
 .slide-k { font: 500 clamp(11px, 1.1vw, 14px) var(--f-mono); color: var(--lime); text-transform: uppercase; letter-spacing: .08em; }
 .slide-t { font-size: clamp(24px, 3.6vw, 52px); line-height: 1.04; letter-spacing: -0.035em; max-width: 14ch; color: #fff; }
 .slide-art { position: absolute; right: 0; top: 0; height: 100%; width: auto; opacity: .9; }
-.player.playing .slide-art { animation: drift 18s linear infinite alternate; }
-.player-demo { position: absolute; top: 14px; right: 14px; font: 500 11px var(--f-mono); letter-spacing: .04em; text-transform: uppercase; color: #8D8BA3; background: rgba(0,0,0,.4); padding: 6px 8px; border-radius: 6px; }
-.player-big { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 76px; height: 76px; border-radius: 50%; background: var(--lime); color: var(--ink); display: grid; place-items: center; transition: transform .3s var(--ease); box-shadow: 0 10px 40px -10px rgba(201,226,63,.5); }
-.player-big .ico { margin-left: 4px; }
-.player-stage:hover .player-big { transform: translate(-50%, -50%) scale(1.06); }
-.player-cc { position: absolute; left: 50%; bottom: 6%; transform: translateX(-50%); max-width: 80%; text-align: center; background: rgba(0,0,0,.72); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: clamp(13px, 1.3vw, 16px); }
-.player-bar { display: flex; align-items: center; gap: 4px; padding: 8px 10px; background: #0E0E16; color: #E7E6F0; }
-.player-bar .icon-btn { width: 36px; height: 36px; }
-.player-time { font: 500 12.5px var(--f-mono); color: #A6A4BA; padding: 0 8px; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.scrub { flex: 1; height: 24px; position: relative; cursor: pointer; display: flex; align-items: center; }
-.scrub::before { content: ""; position: absolute; left: 0; right: 0; height: 4px; border-radius: 4px; background: rgba(255,255,255,.14); }
-.scrub-fill { position: absolute; left: 0; height: 4px; border-radius: 4px; background: var(--lime); transition: width .5s linear; }
-.scrub-knob { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #fff; transform: translateX(-50%); transition: left .5s linear; }
-.player-speed { background: none; border: 1px solid rgba(255,255,255,.14); border-radius: 7px; height: 28px; padding: 0 8px; font: 500 12px var(--f-mono); color: #E7E6F0; margin: 0 4px; }
+
 .class-titlebar { display: flex; justify-content: space-between; gap: 20px; align-items: flex-end; flex-wrap: wrap; }
 .class-titlebar h1 { font-size: clamp(22px, 2.4vw, 30px); letter-spacing: -0.025em; }
 .class-titlebar .eyebrow { margin-bottom: 6px; }
@@ -42,9 +29,7 @@
 .class-tab .tabs { margin-bottom: 0; }
 .classroom .tabs { margin-bottom: 0; }
 .prose { display: grid; gap: 10px; max-width: 70ch; font-size: 16px; color: #D7D5E6; }
-.class-project { display: flex; justify-content: space-between; gap: 20px; align-items: center; padding: 20px; border-radius: 16px; border: 1px solid var(--line); flex-wrap: wrap; }
-.class-project h3 { font-size: 18px; margin-bottom: 6px; }
-.class-project > div { display: grid; gap: 6px; max-width: 60ch; }
+
 .class-side { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; background: var(--ink-2); border: 1px solid var(--line); border-radius: 18px; padding: 16px; transition: opacity var(--t), transform var(--t) var(--ease); }
 .class-side-head { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
 .class-side-head div { display: grid; gap: 2px; }
@@ -74,7 +59,7 @@
 .materials button:hover { background: var(--hover); }
 .materials button > span:nth-child(2) { flex: 1; display: grid; }
 .materials small { color: var(--mute); font-size: 13px; }
-.mat-ico { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: rgba(171,166,255,.12); color: var(--blue-on-dark); }
+
 .notes { max-width: 760px; display: grid; gap: 8px; }
 .notes textarea { width: 100%; background: var(--ink-2); border: 1px solid var(--line-2); color: #fff; border-radius: 12px; padding: 14px; font-size: 15px; line-height: 1.6; resize: vertical; outline: 0; }
 .notes textarea:focus { border-color: var(--blue-on-dark); }
@@ -85,5 +70,13 @@
 .celebrate.light p { color: var(--mute); }
 .celebrate.light b, .celebrate b { color: var(--fg); }
 .draw { stroke-dasharray: 320; stroke-dashoffset: 320; animation: draw 1s .1s var(--ease) forwards; }
-.draw-slow { stroke-dasharray: 900; stroke-dashoffset: 900; animation: draw 1.8s .3s var(--ease) forwards; }
+
 .celebrate-mark path { transform-origin: 60px 60px; animation: starIn .6s .5s var(--ease) both; }
+
+/* ---------- Folyo 2.0 ---------- */
+.player-none { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; gap: 10px; align-items: center; margin: 0; padding: 12px 14px; border-radius: 12px; background: rgba(0,0,0,.55); color: #F1F0F7; font-size: 14px; line-height: 1.4; }
+.player-none .ico { flex: none; color: var(--lime); }
+.class-project2 { display: grid; gap: 14px; }
+.cp2-head { display: grid; gap: 6px; }
+.cp2-head h3 { font-size: 18px; }
+.cp2-exp { font-size: 14px; color: #D7D5E6; }

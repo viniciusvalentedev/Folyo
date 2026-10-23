@@ -3,139 +3,16 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Suspense, type CSSProperties } from 'react'
-import { CourseCard } from '@/components/course/CourseBits'
-import { ProjectCard } from '@/components/project/ProjectCard'
+import { CourseCard, CourseProgressCard } from '@/components/course/CourseBits'
+import { SkillBubbles } from '@/components/dashboard/SkillBubbles'
+import { StatTiles } from '@/components/dashboard/StatTiles'
 import { useApp } from '@/components/providers/AppState'
 import { Button } from '@/components/ui/Button'
-import { CountUp } from '@/components/ui/controls'
-import { Icon, type IconName } from '@/components/ui/Icon'
-import { EmptyState } from '@/components/ui/indicators'
-import { findCourse } from '@/lib/domain/catalog'
+import { Icon } from '@/components/ui/Icon'
+import { SoonBlock } from '@/components/ui/SoonBlock'
+import { recommendCourses } from '@/lib/domain/derive'
 import { formatWeekdayLong, plural } from '@/lib/format'
-import type { Catalog, Derived, UserState } from '@/lib/types'
 import { useNow } from '@/lib/use-now'
-
-type Stage = 'Aprenda' | 'Pratique' | 'Demonstre'
-/** Na tela inicial os estágios aparecem como Aprenda / Crie / Conquiste. */
-const STAGE_LABEL: Record<Stage, string> = { Aprenda: 'Aprenda', Pratique: 'Crie', Demonstre: 'Conquiste' }
-
-type NextStep = {
-  stage: Stage
-  icon: IconName
-  title: string
-  meta: string
-  cta: string
-  to?: string
-  action?: 'cv' | 'skills'
-  id?: string
-}
-
-/** Sugestões de "próximos passos" a partir do que o aluno já fez. */
-function nextSteps(s: UserState, d: Derived, catalog: Catalog): NextStep[] {
-  const out: NextStep[] = []
-  const current = d.inProgress[0]
-  if (current) {
-    const st = d.courseStats[current.id]
-    const lesson = st.nextLesson || st.resume
-    out.push({
-      stage: 'Aprenda',
-      icon: 'Play',
-      title: `Concluir a aula "${lesson.title}"`,
-      meta: `${current.title} · ${lesson.min} min`,
-      to: `/aula/${current.id}/${lesson.id}`,
-      cta: 'Abrir aula',
-    })
-  }
-  s.projects
-    .filter((p) => p.status === 'andamento')
-    .slice(0, 1)
-    .forEach((p) => {
-      const done = p.steps.filter((x) => x.done).length
-      out.push({
-        stage: 'Pratique',
-        icon: 'FolderKanban',
-        title: `Finalizar ${p.title}`,
-        meta: `${done} de ${p.steps.length} etapas concluídas`,
-        to: '/projetos/' + p.id,
-        cta: 'Continuar projeto',
-      })
-    })
-  d.projectsDone
-    .filter((p) => !s.resume.projects.includes(p.id))
-    .slice(0, 1)
-    .forEach((p) => {
-      out.push({
-        stage: 'Demonstre',
-        icon: 'FileText',
-        title: `Adicionar "${p.title}" ao currículo`,
-        meta: 'Projeto concluído que ainda não aparece no currículo',
-        action: 'cv',
-        id: p.id,
-        cta: 'Adicionar',
-      })
-    })
-  if (d.unregisteredCourseSkills.length) {
-    out.push({
-      stage: 'Demonstre',
-      icon: 'Puzzle',
-      title: `Registrar ${plural(d.unregisteredCourseSkills.length, 'competência', 'competências')} dos cursos concluídos`,
-      meta: d.unregisteredCourseSkills.join(', '),
-      action: 'skills',
-      cta: 'Registrar',
-    })
-  }
-  s.projects
-    .filter((p) => p.status === 'revisao')
-    .slice(0, 1)
-    .forEach((p) => {
-      out.push({
-        stage: 'Pratique',
-        icon: 'CircleAlert',
-        title: `Revisar ${p.title}`,
-        meta: 'Falta descrever o resultado do projeto',
-        to: '/projetos/' + p.id,
-        cta: 'Revisar',
-      })
-    })
-  if (d.goal) {
-    const next = d.goal.courses
-      .map((id) => findCourse(catalog, id))
-      .find((c) => c && !d.courseStats[c.id].started)
-    if (next) {
-      out.push({
-        stage: 'Aprenda',
-        icon: 'Compass',
-        title: `Começar ${next.title}`,
-        meta: `Recomendado para "${d.goal.title}"`,
-        to: '/cursos/' + next.id,
-        cta: 'Ver curso',
-      })
-    }
-  }
-  if (!s.user.education.length) {
-    out.push({
-      stage: 'Demonstre',
-      icon: 'GraduationCap',
-      title: 'Adicionar sua formação ao currículo',
-      meta: 'Escola, faculdade ou curso técnico, mesmo em andamento',
-      to: '/curriculo',
-      cta: 'Adicionar',
-    })
-  }
-  if (!s.user.languages.some((l) => /ingl/i.test(l.name))) {
-    out.push({
-      stage: 'Demonstre',
-      icon: 'Languages',
-      title: 'Informar seu nível de inglês no currículo',
-      meta: d.courseStats.ingles?.started
-        ? 'O curso de inglês está em andamento'
-        : 'Muitas vagas pedem essa informação, mesmo que o nível seja básico',
-      to: '/curriculo',
-      cta: 'Informar',
-    })
-  }
-  return out
-}
 
 /** "Boa noite, Ana." + data de hoje. Depende do relógio do aluno. */
 function Greeting({ first }: { first: string }) {
@@ -162,41 +39,14 @@ function GreetingFallback({ first }: { first: string }) {
 }
 
 export function DashboardView() {
-  const { s, d, a, toast, catalog } = useApp()
+  const { s, d, catalog } = useApp()
   const router = useRouter()
   const current = d.inProgress[0]
-  const cs = current ? d.courseStats[current.id] : null
-  const left = cs ? cs.total - cs.done : 0
-  const steps = nextSteps(s, d, catalog).slice(0, 5)
-  const order = { andamento: 0, revisao: 1, concluido: 2 }
-  const projects = [...s.projects].sort((x, y) => order[x.status] - order[y.status]).slice(0, 3)
-  const certsInCV = d.certificates.filter((c) => c.inCV).length
-  const startHere =
-    d.lessonsDone === 0 && d.goal
-      ? d.goal.courses
-          .map((id) => findCourse(catalog, id))
-          .filter((c): c is NonNullable<typeof c> => !!c && !d.courseStats[c.id].started)
-          .slice(0, 3)
-      : []
-
-  const run = (step: NextStep) => {
-    if (step.action === 'cv' && step.id) {
-      a.toggleProjectCV(step.id, true)
-      toast('Projeto adicionado ao currículo.', 'ok', {
-        actionLabel: 'Ver currículo',
-        onAction: () => router.push('/curriculo'),
-      })
-    } else if (step.action === 'skills') {
-      a.registerSkills(d.unregisteredCourseSkills)
-      toast(
-        `${plural(d.unregisteredCourseSkills.length, 'competência registrada', 'competências registradas')}.`,
-        'ok',
-        { actionLabel: 'Ver', onAction: () => router.push('/competencias') },
-      )
-    } else if (step.to) {
-      router.push(step.to)
-    }
-  }
+  const stats = current ? d.courseStats[current.id] : null
+  const left = stats ? stats.total - stats.done : 0
+  const goalText = (s.goals.text || '').trim()
+  const hasCatalog = catalog.courses.length > 0
+  const recommended = d.inProgress.length ? [] : recommendCourses(s, d, catalog).slice(0, 3)
 
   return (
     <div className="page surface-ink dash">
@@ -210,140 +60,102 @@ export function DashboardView() {
               <>
                 Faltam <b className="hl">{plural(left, 'aula', 'aulas')}</b> para você concluir {current.title}.
               </>
-            ) : d.goal ? (
+            ) : goalText ? (
               <>
-                Seu objetivo: <b className="hl">{d.goal.title.toLowerCase()}</b>. Comece pelo curso recomendado abaixo.
+                Seu objetivo: <b className="hl">{goalText}</b>.
               </>
+            ) : hasCatalog ? (
+              'Escolha um curso e comece a construir a sua trajetória.'
             ) : (
-              'Escolha um curso e comece a construir seu primeiro projeto.'
+              'Sua trajetória na Folyo começa aqui.'
             )}
           </p>
         </div>
-        <p className="beta-note" role="note">
-          <Icon name="FlaskConical" size={16} />
-          <span>
-            <b>Fase de testes.</b> Seu progresso, projetos, competências e currículo já ficam salvos na sua conta. Os
-            vídeos das aulas e os certificados ainda são demonstrações.
-          </span>
-        </p>
       </section>
 
-      {startHere.length > 0 && (
-        <section className="dash-start rise" style={{ '--i': 1 } as CSSProperties}>
-          <header className="section-head">
-            <h2>Comece por aqui</h2>
-            <Link href="/objetivos" className="link-sm">
-              Ver seu objetivo <Icon name="ArrowRight" size={14} />
-            </Link>
-          </header>
-          <div className="grid-3">
-            {startHere.map((c, i) => (
-              <CourseCard key={c.id} course={c} i={i} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section className="dash-projects rise" style={{ '--i': 1 } as CSSProperties}>
+      <section className="dash-courses rise" style={{ '--i': 1 } as CSSProperties} aria-labelledby="h-andamento">
         <header className="section-head">
-          <h2>Projetos</h2>
-          {projects.length > 0 && (
-            <Link href="/projetos" className="link-sm">
-              Ver todos <Icon name="ArrowRight" size={14} />
+          <h2 id="h-andamento">Cursos em andamento</h2>
+          {d.inProgress.length > 3 ? (
+            <Link href="/progresso" className="link-sm">
+              Ver todos ({d.inProgress.length}) <Icon name="ArrowRight" size={14} />
             </Link>
+          ) : (
+            d.inProgress.length > 0 &&
+            hasCatalog && (
+              <Link href="/cursos" className="link-sm">
+                Explorar cursos <Icon name="ArrowRight" size={14} />
+              </Link>
+            )
           )}
         </header>
-        {projects.length ? (
+        {!hasCatalog && !d.inProgress.length ? (
+          <SoonBlock compact>
+            <Button variant="quiet" icon="Target" onClick={() => router.push('/objetivos')}>
+              Definir meus objetivos
+            </Button>
+          </SoonBlock>
+        ) : d.inProgress.length > 0 ? (
           <div className="grid-3">
-            {projects.map((p, i) => (
-              <ProjectCard key={p.id} p={p} i={i} />
+            {d.inProgress.slice(0, 3).map((course, i) => (
+              <CourseProgressCard key={course.id} course={course} i={i} />
             ))}
           </div>
         ) : (
-          <div className="panel dash-empty">
-            <EmptyState
-              icon="FolderKanban"
-              title="Seus projetos vão aparecer aqui"
-              action={
-                <Button variant="quiet" icon="Plus" onClick={() => router.push('/projetos/novo')}>
-                  Registrar um projeto
-                </Button>
-              }
-            >
-              Cada curso termina com um projeto prático. Você também pode registrar algo que já fez fora da Folyo.
-            </EmptyState>
+          <div className="panel dash-empty-courses">
+            <div className="dec-text">
+              <span className="dec-ico">
+                <Icon name="Compass" size={22} />
+              </span>
+              <div>
+                <h3>Nenhum curso em andamento</h3>
+                <p className="muted">
+                  {d.completedCourses.length
+                    ? 'Você concluiu os cursos que começou. Escolha o próximo para continuar evoluindo.'
+                    : 'Escolha um curso e conclua a primeira aula. Ele aparece aqui, com o ponto exato onde você parou.'}
+                </p>
+              </div>
+              <Button variant="go" iconRight="ArrowRight" onClick={() => router.push('/cursos')}>
+                Explorar cursos
+              </Button>
+            </div>
+            {recommended.length > 0 && (
+              <div className="dec-recs">
+                <p className="eyebrow">Combinam com as skills que você escolheu</p>
+                <div className="grid-3">
+                  {recommended.map((rec, i) => (
+                    <CourseCard key={rec.course.id} course={rec.course} i={i} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>
 
-      <section className="panel career rise" style={{ '--i': 2 } as CSSProperties} aria-label="Sua trajetória">
+      <section className="dash-skills rise" style={{ '--i': 2 } as CSSProperties} aria-labelledby="h-skills">
         <header className="panel-head">
-          <h2>Sua trajetória</h2>
-          <p className="muted">O que você aprendeu, criou e já conquistou.</p>
+          <div>
+            <h2 id="h-skills">Suas skills</h2>
+            <p className="muted">
+              Como as aulas que você concluiu se distribuem entre as skills dos cursos. É a sua trajetória de aprendizado até aqui.
+            </p>
+          </div>
+          <Link href="/objetivos" className="link-sm">
+            Skills que você quer desenvolver <Icon name="ArrowRight" size={14} />
+          </Link>
         </header>
-        <div className="apd">
-          <Link href="/progresso" className="apd-col">
-            <span className="apd-k">Aprenda</span>
-            <b>
-              <CountUp value={d.lessonsDone} />
-            </b>
-            <small>
-              {d.inProgress.length + d.completedCourses.length ? (
-                <>aulas concluídas em {plural(d.inProgress.length + d.completedCourses.length, 'curso', 'cursos')}</>
-              ) : (
-                'aulas concluídas'
-              )}
-            </small>
-            <span className="apd-sub">
-              <b>
-                <CountUp value={d.inProgress.length} />
-              </b>
-              {d.inProgress.length === 1 ? 'curso em andamento' : 'cursos em andamento'}
-            </span>
-          </Link>
-          <Link href="/projetos" className="apd-col">
-            <span className="apd-k">Crie</span>
-            <b>
-              <CountUp value={d.projectsDone.length} />
-            </b>
-            <small>{d.projectsDone.length === 1 ? 'projeto concluído' : 'projetos concluídos'}</small>
-          </Link>
-          <Link href="/curriculo" className="apd-col">
-            <span className="apd-k">Conquiste</span>
-            <b>
-              <CountUp value={d.cvProjects.length} />
-            </b>
-            <small>{d.cvProjects.length === 1 ? 'projeto no currículo' : 'projetos no currículo'}</small>
-            <span className="apd-sub">
-              <b>
-                <CountUp value={certsInCV} />
-              </b>
-              {certsInCV === 1 ? 'certificado no currículo' : 'certificados no currículo'}
-            </span>
-          </Link>
-        </div>
+        <SkillBubbles />
       </section>
 
-      <section className="panel nextsteps rise" style={{ '--i': 3 } as CSSProperties}>
+      <section className="panel career rise" style={{ '--i': 3 } as CSSProperties} aria-labelledby="h-trajetoria">
         <header className="panel-head">
-          <h2>Próximos passos</h2>
-          <p className="muted">Sugestões a partir do que você já fez.</p>
+          <div>
+            <h2 id="h-trajetoria">Sua trajetória e conquistas</h2>
+            <p className="muted">Aprenda. Crie. Conquiste. O que você já construiu na Folyo.</p>
+          </div>
         </header>
-        <ol className="steps-list">
-          {steps.map((step, i) => (
-            <li key={step.title} className="step-row">
-              <span className={'stage stage-' + step.stage.toLowerCase()}>{STAGE_LABEL[step.stage]}</span>
-              <div className="step-text">
-                <b>{step.title}</b>
-                <small>{step.meta}</small>
-              </div>
-              <Button size="sm" variant={i === 0 ? 'go' : 'quiet'} onClick={() => run(step)}>
-                {step.cta}
-              </Button>
-            </li>
-          ))}
-          {!steps.length && <li className="muted">Você está em dia. Que tal explorar um curso novo?</li>}
-        </ol>
+        <StatTiles keys={['aulas', 'horas', 'projetos', 'certificados']} />
       </section>
     </div>
   )

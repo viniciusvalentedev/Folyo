@@ -1,32 +1,32 @@
 'use client'
 
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState, type CSSProperties } from 'react'
 import { MarkPath, Wordmark } from '@/components/brand/Logo'
 import { useApp } from '@/components/providers/AppState'
 import { Button } from '@/components/ui/Button'
 import { Toggle } from '@/components/ui/controls'
 import { Icon } from '@/components/ui/Icon'
-import { EmptyState, Progress } from '@/components/ui/indicators'
+import { EmptyState } from '@/components/ui/indicators'
 import { Modal } from '@/components/ui/Modal'
+import { offersProject } from '@/lib/domain/derive'
 import { formatDate } from '@/lib/format'
 import type { Certificate } from '@/lib/types'
+import { OnTheWay } from './OnTheWay'
 
 /** Desenho do certificado (com marca d'água "DEMONSTRAÇÃO"). */
 function CertSheet({ cert, name }: { cert: Certificate; name: string }) {
   return (
-    <div className="certsheet" role="img" aria-label={`Certificado demonstrativo de ${cert.course.title}`}>
-      <div className="cs-watermark" aria-hidden="true">
-        DEMONSTRAÇÃO
-      </div>
+    <div className="certsheet" role="img" aria-label={`Certificado de conclusão de ${cert.course.title}`}>
       <div className="cs-top">
         <Wordmark height={34} tone="indigo" text="var(--ink)" />
         <em>Certificado de conclusão</em>
       </div>
       <p className="cs-k">Certificamos que</p>
       <p className="cs-name">{name}</p>
-      <p className="cs-k">concluiu as aulas e o projeto prático do curso</p>
+      <p className="cs-k">{offersProject(cert.course) ? 'concluiu as aulas e o projeto prático do curso' : 'concluiu as aulas do curso'}</p>
       <p className="cs-course">{cert.course.title}</p>
+      {cert.course.certificate?.note ? <p className="cs-skills">{cert.course.certificate.note}</p> : null}
       <p className="cs-skills">{cert.course.skills.join(' · ')}</p>
       <div className="cs-foot">
         <div>
@@ -35,7 +35,7 @@ function CertSheet({ cert, name }: { cert: Certificate; name: string }) {
         </div>
         <div>
           <small>Carga horária</small>
-          <b>{cert.course.hours} h</b>
+          <b>{cert.course.certificate?.hours || cert.course.hours} h</b>
         </div>
         <div>
           <small>Código</small>
@@ -56,28 +56,39 @@ function CertSheet({ cert, name }: { cert: Certificate; name: string }) {
 }
 
 export function CertificatesView() {
-  const { s, d, a, toast } = useApp()
+  const { s, d, a, toast, catalog } = useApp()
+  const router = useRouter()
   const [viewing, setViewing] = useState<Certificate | null>(null)
   const [downloadInfo, setDownloadInfo] = useState(false)
-  const pending = [...d.inProgress, ...d.completedCourses.filter((c) => !d.courseStats[c.id].certified)]
 
   return (
     <div className="page surface-ink certs-page">
       <header className="pagehead rise">
-        <p className="eyebrow">Demonstre</p>
+        <p className="eyebrow">Conquiste</p>
         <h1>Certificados</h1>
-        <p className="lead">Emitidos quando você conclui as aulas e o projeto prático de um curso.</p>
-        <p className="demo-note">
-          <Icon name="FlaskConical" size={15} />
-          Os certificados desta versão são demonstrações e não valem como credencial.
+        <p className="lead">
+          Emitidos quando você conclui as aulas de um curso e, quando o curso pede, envia o projeto em PDF ou link.
         </p>
       </header>
 
-      {d.certificates.length === 0 && (
-        <EmptyState icon="Award" title="Nenhum certificado ainda">
-          Conclua as aulas e o projeto de um curso para receber o primeiro.
-        </EmptyState>
-      )}
+      {d.certificates.length === 0 &&
+        (catalog.courses.length ? (
+          <EmptyState
+            icon="Award"
+            title="Nenhum certificado ainda"
+            action={
+              <Button variant="go" iconRight="ArrowRight" onClick={() => router.push('/cursos')}>
+                Explorar cursos
+              </Button>
+            }
+          >
+            Conclua as aulas e o projeto de um curso para receber o primeiro.
+          </EmptyState>
+        ) : (
+          <EmptyState icon="Award" title="Seus certificados vão aparecer aqui">
+            Seus próximos aprendizados começam aqui. Em breve, novos cursos para transformar conhecimento em projetos reais.
+          </EmptyState>
+        ))}
 
       <div className="cert-grid">
         {d.certificates.map((c, i) => (
@@ -124,45 +135,13 @@ export function CertificatesView() {
         ))}
       </div>
 
-      {pending.length > 0 && (
-        <section className="cert-pending rise">
-          <h2 className="h-sec">A caminho</h2>
-          <ul>
-            {pending.map((c) => {
-              const st = d.courseStats[c.id]
-              const projectDone = st.project?.status === 'concluido'
-              return (
-                <li key={c.id}>
-                  <Link href={'/cursos/' + c.id}>
-                    <b>{c.title}</b>
-                  </Link>
-                  <div className="cp-req">
-                    <span className={st.complete ? 'ok' : ''}>
-                      <Icon name={st.complete ? 'CircleCheck' : 'Circle'} size={14} />
-                      Aulas {st.done}/{st.total}
-                    </span>
-                    <span className={projectDone ? 'ok' : ''}>
-                      <Icon name={projectDone ? 'CircleCheck' : 'Circle'} size={14} />
-                      Projeto {projectDone ? 'concluído' : st.project ? 'em andamento' : 'não iniciado'}
-                    </span>
-                  </div>
-                  <Progress
-                    value={(st.done / st.total) * 80 + (projectDone ? 20 : 0)}
-                    size="sm"
-                    label="Progresso até o certificado"
-                  />
-                </li>
-              )
-            })}
-          </ul>
-        </section>
-      )}
+      <OnTheWay />
 
       <Modal
         open={!!viewing}
         onClose={() => setViewing(null)}
         title={viewing ? viewing.course.title : ''}
-        eyebrow="Certificado demonstrativo"
+        eyebrow="Certificado de conclusão"
         size="lg"
         tone="ink"
         footer={
@@ -203,8 +182,8 @@ export function CertificatesView() {
         <div className="alert alert-info">
           <Icon name="Info" size={18} />
           <div>
-            O download em PDF chega numa próxima etapa. Na versão final, o certificado sai em PDF com código de
-            verificação público.
+            O download em PDF ainda não está disponível. Por enquanto, use “Visualizar” para ver o certificado completo e inclua-o
+            no currículo pela própria Folyo.
           </div>
         </div>
       </Modal>

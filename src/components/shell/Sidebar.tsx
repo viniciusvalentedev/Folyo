@@ -11,10 +11,10 @@ import { Avatar } from '@/components/ui/indicators'
 import { NAV_GROUPS, isActive } from './nav'
 
 function NavLinks({ compact, path }: { compact?: boolean; path: string | null }) {
-  const { s, d } = useApp()
+  const { d } = useApp()
+  // Cursos concluídos que ainda esperam o projeto (PDF ou link).
   const badges: Record<string, number | null> = {
-    '/projetos': s.projects.filter((p) => p.status !== 'concluido').length || null,
-    '/curriculo': d.gaps.length || null,
+    '/projetos': d.completedCourses.filter((c) => d.courseStats[c.id].offersProject && !d.courseStats[c.id].delivered).length || null,
   }
   return (
     <nav>
@@ -114,7 +114,7 @@ function UserMenu() {
         <Avatar name={s.user.name} size={34} />
         <span className="nav-text user-meta">
           <b>{s.user.name}</b>
-          <small>{s.user.email}</small>
+          <small>{s.user.headline || 'Aluno Folyo'}</small>
         </span>
         <Icon name="Ellipsis" size={16} className="nav-text" />
       </button>
@@ -123,6 +123,10 @@ function UserMenu() {
           <button role="menuitem" type="button" onClick={() => go('/perfil')}>
             <Icon name="User" size={16} />
             Meu perfil
+          </button>
+          <button role="menuitem" type="button" onClick={() => go('/publico')}>
+            <Icon name="Globe" size={16} />
+            Ver perfil público
           </button>
           <button role="menuitem" type="button" onClick={() => go('/configuracoes')}>
             <Icon name="Settings" size={16} />

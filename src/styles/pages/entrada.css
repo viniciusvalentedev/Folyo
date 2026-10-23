@@ -36,3 +36,7 @@
 .captcha { display: grid; gap: 6px; min-height: 65px; }
 .captcha > div:first-child { width: 100%; }
 .auth-actions form .captcha { margin-bottom: 10px; }
+
+/* ---------- Folyo 2.0 ---------- */
+.login-alert { margin: 0; }
+.login-form .seg { justify-self: start; }

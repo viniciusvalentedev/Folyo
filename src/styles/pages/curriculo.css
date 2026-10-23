@@ -57,34 +57,6 @@
 .org-list li .icon-btn { width: 34px; height: 34px; }
 .org-list li.hidden-sec { opacity: .5; }
 .org-n { font: 500 12px var(--f-mono); color: var(--mute); width: 18px; }
-.diag { display: grid; gap: 24px; }
-.diag-score { display: flex; gap: 18px; align-items: center; padding: 20px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); }
-.diag-score h2 { font-size: 19px; margin-bottom: 6px; }
-.diag-note { display: flex; gap: 6px; font-size: 13px; color: var(--mute); align-items: flex-start; }
-.diag-note .ico { margin-top: 3px; }
-.diag-strong { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
-.diag-strong li { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; }
-.diag-strong .ico { color: var(--lime-ink); margin-top: 3px; }
-.diag-clear { display: flex; gap: 8px; color: var(--lime-ink); }
-.diag-gaps { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
-.diag-gaps li { display: grid; grid-template-columns: 4px minmax(0, 1fr) auto; gap: 14px; align-items: center; padding: 14px 14px 14px 0; border-radius: 14px; background: var(--card); border: 1px solid var(--line); animation: fadeUp .3s var(--ease); }
-.sev-bar { align-self: stretch; border-radius: 0 3px 3px 0; }
-.sev-alta .sev-bar { background: var(--magenta); }
-.sev-media .sev-bar { background: var(--warn); }
-.sev-baixa .sev-bar { background: var(--line-2); }
-.gap-text { display: grid; gap: 3px; min-width: 0; }
-.gap-text b { font-weight: 600; font-size: 14.5px; line-height: 1.35; }
-.gap-text small { color: var(--mute); font-size: 13px; line-height: 1.45; }
-.sev-label { font: 500 10.5px var(--f-mono); text-transform: uppercase; letter-spacing: .07em; color: var(--mute); }
-.sev-alta .sev-label { color: var(--magenta-deep); }
-.sev-media .sev-label { color: var(--warn-c); }
-.diag-checks { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; }
-.diag-checks li { display: flex; gap: 8px; align-items: center; font-size: 13.5px; color: var(--mute); }
-.diag-checks li span { flex: 1; }
-.diag-checks li em { font-style: normal; font: 500 11.5px var(--f-mono); }
-.diag-checks li.ok { color: var(--fg); }
-.diag-checks li.ok .ico { color: var(--lime-ink); }
-.diag-checks li.part .ico { color: var(--warn-c); }
 
 /* Folha do currículo: discreta, preto e cinza, sem cores da marca */
 .cv { width: 794px; min-height: 1123px; background: #fff; color: #1B1B22; font: 400 12.5px/1.5 var(--f-ui); box-shadow: 0 1px 2px rgba(0,0,0,.08), 0 18px 40px -24px rgba(0,0,0,.35); display: flex; }

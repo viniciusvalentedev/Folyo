@@ -71,24 +71,6 @@ export function Ring({
   )
 }
 
-const EVIDENCE_LABELS = ['Aprendida', 'Praticada', 'Demonstrada']
-
-/** Medidor de evidência de uma competência (3 segmentos). */
-export function EvidenceMeter({ level, compact }: { level: number; compact?: boolean }) {
-  return (
-    <div
-      className={'evm' + (compact ? ' evm-compact' : '')}
-      role="img"
-      aria-label={level ? `Nível de evidência: ${EVIDENCE_LABELS[level - 1]}` : 'Sem evidência registrada'}
-    >
-      {[1, 2, 3].map((n) => (
-        <span key={n} className={'evm-seg' + (level >= n ? ' on l' + n : '')} />
-      ))}
-      {!compact && <em>{level ? EVIDENCE_LABELS[level - 1] : 'Declarada'}</em>}
-    </div>
-  )
-}
-
 export type PillTone = 'ok' | 'progress' | 'warn' | 'neutral' | 'blue'
 
 export function Pill({

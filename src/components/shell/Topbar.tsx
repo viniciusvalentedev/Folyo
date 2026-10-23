@@ -7,6 +7,7 @@ import { Wordmark } from '@/components/brand/Logo'
 import { useApp } from '@/components/providers/AppState'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { normalize } from '@/lib/domain/catalog'
+import { catalogSkills } from '@/lib/domain/derive'
 import { formatDayMonth } from '@/lib/format'
 
 /** Fecha um popover ao clicar fora ou apertar Esc. */
@@ -32,7 +33,7 @@ type Hit = { kind: string; label: string; to: string; icon: IconName }
 
 /** Busca global (Ctrl K / ⌘K). Hoje busca nos dados carregados; depois, no banco. */
 function GlobalSearch() {
-  const { s, d, catalog } = useApp()
+  const { d, catalog } = useApp()
   const router = useRouter()
   const [q, setQ] = useState('')
   const [open, setOpen] = useState(false)
@@ -67,15 +68,15 @@ function GlobalSearch() {
       if (normalize(c.title + ' ' + c.skills.join(' ')).includes(term))
         out.push({ kind: 'Curso', label: c.title, to: '/cursos/' + c.id, icon: 'BookOpen' })
     })
-    s.projects.forEach((p) => {
-      if (normalize(p.title + ' ' + p.skills.join(' ')).includes(term))
-        out.push({ kind: 'Projeto', label: p.title, to: '/projetos/' + p.id, icon: 'FolderKanban' })
+    d.works.forEach((w) => {
+      if (normalize(w.title + ' ' + (w.desc || '')).includes(term))
+        out.push({ kind: 'Projeto', label: w.title, to: '/projetos', icon: 'FolderKanban' })
     })
-    d.skills.forEach((k) => {
-      if (normalize(k.name).includes(term)) out.push({ kind: 'Competência', label: k.name, to: '/competencias', icon: 'Puzzle' })
+    catalogSkills(catalog).forEach((k) => {
+      if (normalize(k.name).includes(term)) out.push({ kind: 'Skill', label: k.name, to: '/objetivos', icon: 'Puzzle' })
     })
     return out.slice(0, 8)
-  }, [q, catalog.courses, s.projects, d.skills])
+  }, [q, catalog, d.works])
 
   const pick = (h: Hit) => {
     setOpen(false)
@@ -89,7 +90,7 @@ function GlobalSearch() {
       <input
         ref={input}
         type="search"
-        placeholder="Buscar cursos, projetos e competências"
+        placeholder="Buscar cursos, projetos e skills"
         value={q}
         maxLength={80}
         aria-label="Buscar na plataforma"

@@ -1,6 +1,7 @@
 # Supabase — passo a passo
 
-- **Etapa 4 (painel admin):** logo abaixo. Faça agora.
+- **Folyo 2.0 · Fase 1 (área do aluno):** logo abaixo. Faça agora (depois da etapa 4, que já deve estar feita).
+- **Etapa 4 (painel admin):** já feita; fica como referência.
 - **Etapa 3 (proteção contra robôs):** já feita; fica como referência.
 - **Etapa 2 (dados do aluno):** já feita; fica como referência.
 - **Etapa 1 (login + perfil):** mais para baixo. Já está feita; fica como referência.
@@ -9,6 +10,48 @@
 > A **secret key** (`sb_secret_...`) **não é usada** nesta etapa: não cole ela no `.env.local`, na Vercel,
 > no GitHub nem em conversas. Ela passa por cima de todas as regras de segurança do banco. Guarde só no
 > gerenciador de senhas.
+
+---
+
+# Folyo 2.0 · Fase 1 — trabalhos em PDF, tempo assistido e novo primeiro acesso
+
+Um SQL novo e um passo de verificação do Storage. **Rode depois da etapa 4b** e uma vez só.
+
+> **Atenção, este SQL apaga coisas.** Ele remove a tabela `projects` e as colunas `weekly_goal` e
+> `resume_projects` (recursos que saíram do Folyo 2.0). Os **links** dos projetos antigos viram "trabalhos".
+> Antes de rodar: **Supabase → Database → Backups** (faça um backup) ou, no mínimo, confira que não há dados
+> importantes em `projects`. Tudo roda numa transação: se algo der erro, nada fica pela metade.
+
+## 1. Rodar o SQL
+
+1. Supabase → **SQL Editor** → **New query**.
+2. Abra `supabase/migrations/20261023000001_folyo2_area_do_aluno.sql`, copie tudo, cole e **Run**.
+   Deve aparecer *Success. No rows returned*.
+3. Se aparecer um erro dizendo que algo "already exists", o arquivo já foi rodado (e nada foi alterado).
+
+O que ele cria/muda: colunas novas no perfil (etapa de vida, "ainda descobrindo", objetivo, skills e metas),
+tabela `works` (trabalhos em PDF ou link), tabela `lesson_watch` (tempo assistido por aula), o bucket privado
+`student-works` do Storage com as regras de acesso, e as funções `admin_*` passam a contar trabalhos.
+
+## 2. Conferir o Storage
+
+1. Supabase → **Storage**: deve existir o bucket **`student-works`**, marcado como **Private** (sem o selo
+   "Public"), com limite de **20 MB** e tipo permitido `application/pdf`.
+2. Não crie políticas à mão: elas já vieram no SQL (cada aluno só acessa a pasta com o próprio id).
+
+## 3. Publicar e testar (teste o envio de PDF primeiro)
+
+1. `git add .`, `git commit -m "Folyo 2.0: Fase 1"` e `git push`. A Vercel publica sozinha. Nenhuma variável nova.
+2. Entre com uma conta de teste: **Projetos e portfólio → Adicionar trabalho → PDF**. Envie um PDF pequeno.
+   Depois abra o trabalho (o PDF aparece no modal), baixe, troque o arquivo e apague.
+3. Teste em mais de um navegador (Chrome e Safari): o visualizador de PDF muda de um para outro.
+4. Com uma segunda conta, confirme que ela **não** abre o PDF da primeira (`/api/trabalhos/<id>/arquivo` dá 404).
+5. Se o envio falhar com erro de rede, olhe o Console do navegador: normalmente é a CSP (`connect-src`) ou a
+   URL do Supabase errada na Vercel (`NEXT_PUBLIC_SUPABASE_URL`).
+
+> **Por que o navegador fala com o Supabase só aqui:** o PDF de até 20 MB é enviado direto ao Storage por um
+> endereço de uso único gerado e conferido pelo servidor, sem passar pela Vercel. Antes de confirmar, o
+> servidor confere que é um PDF de verdade. Todo o resto continua só por Server Actions.
 
 ---
 
@@ -29,7 +72,7 @@ não abre.
 Cada arquivo roda **uma vez só**. Se rodar de novo, aparece um erro dizendo que algo "already exists" e nada é
 alterado (o arquivo inteiro é desfeito), então não tem perigo.
 
-  ## 2. Virar proprietário (uma vez só)
+## 2. Virar proprietário (uma vez só)
 
 No SQL Editor, troque pelo e-mail com que você faz login na Folyo e rode:
 
@@ -40,11 +83,11 @@ No SQL Editor, troque pelo e-mail com que você faz login na Folyo e rode:
 ```sql
 insert into private.staff_roles (user_id, role)
 select id, 'proprietario' from auth.users
-where email = lower('SEU_EMAIL') and email_confirmed_at is not null
+where email = lower('vinigvalente01@gmail.com') and email_confirmed_at is not null
 on conflict (user_id) do update set role = excluded.role;
 ```
 
-Aparece *Success. 1 row affected*. Se aparecer 0 linhas, o e-```mail está errado, ainda não foi confirmado
+Aparece *Success. 1 row affected*. Se aparecer 0 linhas, o e-mail está errado, ainda não foi confirmado
 ou a conta ainda não existe.
 
 > **Proprietário só pelo SQL Editor.** O painel não cria, não rebaixa e não suspende nenhum proprietário

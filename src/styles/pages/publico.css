@@ -1,0 +1,51 @@
+/* Página: Pré-visualização do portfólio (Folyo 2.0) */
+
+/* ---------- Folyo 2.0 ---------- */
+.public { min-height: 100vh; background: #FBFBFE; color: var(--ink); --fg: var(--ink); --mute: #5D5B72; --line: #E2E0EC; --card: #fff; --card-2: var(--paper-3); --ring-track: #E4E2F0; --link: var(--blue); --focus: var(--blue); color-scheme: light; }
+.public-bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); background: var(--ink); color: #fff; }
+.public-bar .backlink { margin: 0; color: #C9C7DA; }
+.public-bar .backlink:hover { color: #fff; }
+.public-bar .demo-tag { background: rgba(242,169,59,.16); color: var(--warn); }
+.public-alert { max-width: 1100px; margin: 16px auto 0; }
+.public-hero { background: var(--blue); color: #fff; position: relative; overflow: hidden; isolation: isolate; }
+.public-hero-in { max-width: 1100px; margin: 0 auto; padding-block: 72px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 12px; }
+.public-hero h1 { color: #fff; font-size: clamp(44px, 7vw, 96px); line-height: .95; letter-spacing: -0.045em; font-weight: 600; }
+.public-headline { font: 500 clamp(18px, 2vw, 24px)/1.3 var(--f-display); color: var(--lime); }
+.public-bio { max-width: 60ch; color: rgba(255,255,255,.85); font-size: 16.5px; }
+.public-meta { display: flex; gap: 18px; color: rgba(255,255,255,.75); font-size: 14px; flex-wrap: wrap; }
+.public-meta span { display: inline-flex; gap: 6px; align-items: center; }
+.public-hero-art { position: absolute; right: -40px; top: 0; height: 100%; width: auto; z-index: -1; opacity: .9; }
+.public-main { max-width: 1100px; margin: 0 auto; padding-block: 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 64px; }
+.public-main .eyebrow b { color: var(--magenta-deep); font-weight: 600; }
+.public-h2 { font-size: clamp(26px, 3vw, 36px); letter-spacing: -0.03em; margin-bottom: 22px; }
+.public-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 48px; }
+.public-two .public-h2 { font-size: 24px; }
+.public-two > div > .public-h2 + ul + .public-h2 { margin-top: 32px; }
+.public-certs { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+.public-certs li { display: flex; gap: 12px; align-items: flex-start; }
+.public-certs li .ico { color: var(--blue); margin-top: 2px; }
+.public-certs li span { display: grid; }
+.public-certs small { color: var(--mute); font-size: 13px; }
+.public-foot { display: flex; gap: 10px; justify-content: center; align-items: center; padding: 40px 16px 56px; color: var(--mute); font-size: 14px; border-top: 1px solid var(--line); }
+.public-main > * + * { margin-top: 48px; }
+.public-main > .eyebrow + * { margin-top: 12px; }
+.public-goal { display: flex; align-items: flex-start; gap: 8px; font: 500 17px/1.4 var(--f-display); color: var(--lime); max-width: 60ch; margin-top: 10px; }
+.public-goal .ico { margin-top: 3px; }
+.public-groups { display: grid; gap: 18px; }
+.pgroup { border: 1px solid var(--line); border-radius: 20px; padding: 20px; display: grid; gap: 14px; background: var(--card); }
+.pgroup > header { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 14px; align-items: center; }
+.pgroup h3 { font-size: 18px; }
+.pgroup small { font-size: 13px; color: var(--mute); }
+.pgroup-art { width: 56px; border-radius: 12px; overflow: hidden; }
+.pgroup-art .art-glyph { font-size: 18px; }
+.pworks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pw { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--card-2); }
+.pw b { font-size: 15px; }
+.pw p { font-size: 13.5px; color: var(--mute); }
+.pw small { font-size: 12.5px; color: var(--mute); }
+.pw-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.pgroup-ext { display: grid; place-items: center; aspect-ratio: 1; background: var(--blue-soft); color: var(--blue); }
+@media (max-width: 640px) {
+  .pw { grid-template-columns: 40px minmax(0, 1fr); }
+  .pw-actions { grid-column: 2; justify-content: flex-start; }
+}

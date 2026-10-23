@@ -5,16 +5,16 @@ import { useMemo, useState, type CSSProperties } from 'react'
 import { CourseArt, CourseCard, CourseRow, FavButton } from '@/components/course/CourseBits'
 import { useApp } from '@/components/providers/AppState'
 import { Button } from '@/components/ui/Button'
-import { Seg, Select } from '@/components/ui/controls'
+import { Select } from '@/components/ui/controls'
 import { Icon } from '@/components/ui/Icon'
 import { EmptyState } from '@/components/ui/indicators'
-import { categoryOf, findCourse, normalize } from '@/lib/domain/catalog'
+import { SoonBlock } from '@/components/ui/SoonBlock'
+import { categoryOf, normalize } from '@/lib/domain/catalog'
+import { recommendCourses } from '@/lib/domain/derive'
 import { plural } from '@/lib/format'
-import type { Course, CourseStatus, Level } from '@/lib/types'
+import type { Course, CourseStatus } from '@/lib/types'
 
 type Duration = 'all' | 'short' | 'mid' | 'long'
-type Sort = 'relevancia' | 'catalogo' | 'curtos'
-
 const DURATIONS: { value: Duration; label: string }[] = [
   { value: 'all', label: 'Qualquer duração' },
   { value: 'short', label: 'Até 5 h' },
@@ -30,16 +30,15 @@ export function ExploreView() {
   const router = useRouter()
   const [q, setQ] = useState('')
   const [cat, setCat] = useState('all')
-  const [level, setLevel] = useState<'Todos' | Level>('Todos')
   const [duration, setDuration] = useState<Duration>('all')
   const [plan, setPlan] = useState<'all' | 'free' | 'pro'>('all')
   const [situation, setSituation] = useState<'all' | CourseStatus>('all')
-  const [sort, setSort] = useState<Sort>('relevancia')
   const [onlyFav, setOnlyFav] = useState(false)
 
   const filtering =
-    !!q || cat !== 'all' || level !== 'Todos' || duration !== 'all' || plan !== 'all' || onlyFav || situation !== 'all'
-  const goalCourses = useMemo(() => d.goal?.courses ?? [], [d.goal])
+    !!q || cat !== 'all' || duration !== 'all' || plan !== 'all' || onlyFav || situation !== 'all'
+  const recommended = useMemo(() => recommendCourses(s, d, catalog), [s, d, catalog])
+  const recommendedIds = useMemo(() => recommended.map((r) => r.course.id), [recommended])
   const courses = catalog.courses
 
   const results = useMemo(() => {
@@ -50,7 +49,6 @@ export function ExploreView() {
       const haystack = [c.title, c.summary, c.skills.join(' '), categoryOf(catalog, c.cat).name, c.project.title].join(' ')
       if (term && !normalize(haystack).includes(term)) return false
       if (cat !== 'all' && c.cat !== cat) return false
-      if (level !== 'Todos' && c.level !== level) return false
       if (!fitsDuration(c.hours, duration)) return false
       if (plan !== 'all' && c.plan !== plan) return false
       if (onlyFav && !s.favorites.includes(c.id)) return false
@@ -58,20 +56,17 @@ export function ExploreView() {
       return true
     })
     const score = (c: Course) =>
-      (goalCourses.includes(c.id) ? 10 : 0) +
+      (recommendedIds.includes(c.id) ? 10 : 0) +
       (d.courseStats[c.id].status === 'iniciado' ? 5 : 0) +
       (term && normalize(c.title).includes(term) ? 20 : 0) +
       (c.featured ? 3 : 0) -
       order(c) / 1000
-    if (sort === 'catalogo') return [...list].sort((a, b) => order(a) - order(b))
-    if (sort === 'curtos') return [...list].sort((a, b) => a.hours - b.hours)
     return [...list].sort((a, b) => score(b) - score(a))
-  }, [q, cat, level, duration, plan, onlyFav, situation, sort, courses, catalog, d.courseStats, s.favorites, goalCourses])
+  }, [q, cat, duration, plan, onlyFav, situation, courses, catalog, d.courseStats, s.favorites, recommendedIds])
 
   const clear = () => {
     setQ('')
     setCat('all')
-    setLevel('Todos')
     setDuration('all')
     setPlan('all')
     setOnlyFav(false)
@@ -83,9 +78,30 @@ export function ExploreView() {
     [catalog.categories, courses],
   )
   const featured = courses.find((c) => c.featured) ?? null
-  const forGoal = goalCourses
-    .map((id) => findCourse(catalog, id))
-    .filter((c): c is Course => !!c && d.courseStats[c.id].status !== 'concluido')
+  const forSkills = recommended.map((r) => r.course)
+
+  if (!courses.length) {
+    return (
+      <div className="page surface-paper explore">
+        <header className="explore-head rise">
+          <p className="eyebrow">Explorar cursos</p>
+          <h1 className="display-xl">
+            O que você quer <span className="u-mark">saber fazer</span>?
+          </h1>
+        </header>
+        <div className="rise" style={{ '--i': 1 } as CSSProperties}>
+          <SoonBlock>
+            <Button variant="quiet" icon="Target" onClick={() => router.push('/objetivos')}>
+              Definir meus objetivos
+            </Button>
+            <Button variant="quiet" icon="User" onClick={() => router.push('/perfil')}>
+              Completar meu perfil
+            </Button>
+          </SoonBlock>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="page surface-paper explore">
@@ -134,13 +150,6 @@ export function ExploreView() {
       </div>
 
       <div className="filters rise" style={{ '--i': 2 } as CSSProperties}>
-        <Seg
-          label="Nível"
-          value={level}
-          onChange={setLevel}
-          options={['Todos', 'Iniciante', 'Intermediário', 'Avançado']}
-          size="sm"
-        />
         <Select id="f-dur" label="Duração" value={duration} onChange={setDuration} options={DURATIONS} />
         <Select
           id="f-plan"
@@ -175,22 +184,6 @@ export function ExploreView() {
           Favoritos
           <i>{s.favorites.length}</i>
         </button>
-        <div className="filters-sort">
-          <label htmlFor="f-sort" className="muted">
-            Ordenar
-          </label>
-          <Select
-            id="f-sort"
-            label="Ordenar"
-            value={sort}
-            onChange={setSort}
-            options={[
-              { value: 'relevancia', label: 'Relevância' },
-              { value: 'catalogo', label: 'Ordem do catálogo' },
-              { value: 'curtos', label: 'Mais curtos' },
-            ]}
-          />
-        </div>
       </div>
 
       {filtering ? (
@@ -248,10 +241,12 @@ export function ExploreView() {
                     <dt>Duração</dt>
                     <dd>{featured.hours} h</dd>
                   </div>
-                  <div>
-                    <dt>Você vai publicar</dt>
-                    <dd>{featured.project.title}</dd>
-                  </div>
+                  {featured.project.title && (
+                    <div>
+                      <dt>Você vai publicar</dt>
+                      <dd>{featured.project.title}</dd>
+                    </div>
+                  )}
                 </dl>
                 <div className="row gap-s">
                   <Button
@@ -283,19 +278,19 @@ export function ExploreView() {
             </section>
           )}
 
-          {forGoal.length > 0 && d.goal && (
+          {forSkills.length > 0 && (
             <section className="explore-sec rise" style={{ '--i': 5 } as CSSProperties}>
               <header className="section-head">
                 <div>
-                  <h2>Para o seu objetivo</h2>
-                  <p className="muted">Selecionados para &quot;{d.goal.title}&quot;.</p>
+                  <h2>Para as suas skills</h2>
+                  <p className="muted">Cursos que ensinam as skills que você escolheu em Objetivos.</p>
                 </div>
                 <button type="button" className="link-btn" onClick={() => router.push('/objetivos')}>
-                  Mudar objetivo
+                  Ajustar skills
                 </button>
               </header>
               <div className="grid-cards">
-                {forGoal.slice(0, 3).map((c, i) => (
+                {forSkills.slice(0, 3).map((c, i) => (
                   <CourseCard key={c.id} course={c} i={i} />
                 ))}
               </div>

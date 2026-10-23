@@ -8,8 +8,8 @@ import {
   lessonNoteSchema,
   profilePatchSchema,
   resumePatchSchema,
+  lessonWatchSchema,
   settingsPatchSchema,
-  storedProjectSchema,
   storedSkillSchema,
   uuidSchema,
 } from '@/lib/validation'
@@ -90,44 +90,19 @@ export async function saveLessonNoteAction(input: unknown): Promise<ActionResult
   return updateOrInsert(ctx, 'lesson_notes', { lesson_id: lessonId }, { body }, { course_id: courseId })
 }
 
-/** Cria ou atualiza um projeto inteiro. Datas de início e conclusão são marcadas pelo banco. */
-export async function saveProjectAction(input: unknown): Promise<ActionResult> {
-  const parsed = storedProjectSchema.safeParse(input)
+/**
+ * Tempo assistido de uma aula (total em segundos, medido pelo player).
+ * O banco só deixa o total crescer e no máximo na velocidade do relógio, então um
+ * pedido forjado não consegue "inventar" horas de estudo.
+ */
+export async function saveLessonWatchAction(input: unknown): Promise<ActionResult> {
+  const parsed = lessonWatchSchema.safeParse(input)
   if (!parsed.success) return INVALID
-  const p = parsed.data
-  if ((p.origin === 'curso') !== !!p.courseId) return INVALID
-  if (p.courseId && !findCourse(await getCatalog(), p.courseId)) return INVALID
+  const { courseId, lessonId, seconds } = parsed.data
+  if (findLesson(await getCatalog(), lessonId)?.course.id !== courseId) return INVALID
   const ctx = await actionContext()
   if (!ctx) return EXPIRED
-
-  return updateOrInsert(
-    ctx,
-    'projects',
-    { id: p.id },
-    {
-      status: p.status,
-      tone: p.tone,
-      title: p.title,
-      description: p.desc,
-      problem: p.problem,
-      skills: p.skills,
-      tools: p.tools,
-      steps: p.steps,
-      result: p.result,
-      links: p.links,
-    },
-    // Curso e origem só são gravados na criação (depois não mudam).
-    { course_id: p.courseId, origin: p.origin },
-  )
-}
-
-export async function deleteProjectAction(id: unknown): Promise<ActionResult> {
-  const parsed = uuidSchema.safeParse(id)
-  if (!parsed.success) return INVALID
-  const ctx = await actionContext()
-  if (!ctx) return EXPIRED
-  const { error } = await ctx.supabase.from('projects').delete().eq('user_id', ctx.user.id).eq('id', parsed.data)
-  return error ? dbFailure('projects.delete', error) : OK
+  return updateOrInsert(ctx, 'lesson_watch', { lesson_id: lessonId }, { seconds }, { course_id: courseId })
 }
 
 /** Cria ou atualiza uma competência. */
@@ -207,10 +182,9 @@ export async function saveResumeAction(input: unknown): Promise<ActionResult> {
         template: r.template,
         order: unique(r.order),
         hidden: unique(r.hidden),
-        projects: unique(r.projects),
         certs: unique(r.certs)?.filter((id) => courseIds.has(id)),
       },
-      { template: 'resume_template', order: 'resume_order', hidden: 'resume_hidden', projects: 'resume_projects', certs: 'resume_certs' },
+      { template: 'resume_template', order: 'resume_order', hidden: 'resume_hidden', certs: 'resume_certs' },
     ),
     'profiles.resume',
   )
@@ -228,7 +202,6 @@ export async function saveSettingsAction(input: unknown): Promise<ActionResult> 
       notifyLessons: 'notify_lessons',
       notifyWeekly: 'notify_weekly',
       notifyNews: 'notify_news',
-      weeklyGoal: 'weekly_goal',
       studyTime: 'study_time',
       captions: 'captions',
       autoplay: 'autoplay',

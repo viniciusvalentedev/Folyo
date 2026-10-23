@@ -1,22 +1,27 @@
 import type { z } from 'zod'
 import { findCourse, findLesson } from '@/lib/domain/catalog'
-import type { Catalog, Project, ResumeSection, Skill, UserState } from '@/lib/types'
+import { brDate } from '@/lib/format'
+import { STAGE_IDS, TRAIL_IDS, WANT_IDS } from '@/lib/trails'
+import type { Catalog, ResumeSection, Skill, UserState, Work } from '@/lib/types'
 import {
   achievementSchema,
   educationSchema,
   experienceSchema,
   languageSchema,
-  storedProjectSchema,
   storedSkillSchema,
+  storedWorkSchema,
 } from '@/lib/validation'
 
 /** Linhas como vêm do banco (só as colunas que o site lê). */
 export type ProfileRow = {
   name: string
   stage: string | null
+  exploring: boolean
   goal_primary: string | null
   goals_secondary: string[]
-  weekly_goal: number
+  goals_text: string
+  goals_skills: string[]
+  goals_wants: string[]
   onboarded: boolean
   created_at: string
   updated_at: string
@@ -35,7 +40,6 @@ export type ProfileRow = {
   resume_template: string
   resume_order: string[]
   resume_hidden: string[]
-  resume_projects: string[]
   resume_certs: string[]
   public_profile: boolean
   public_portfolio: boolean
@@ -59,22 +63,20 @@ export type CourseProgressRow = {
 }
 export type LessonCompletionRow = { course_id: string; lesson_id: string; completed_at: string }
 export type LessonNoteRow = { course_id: string; lesson_id: string; body: string }
-export type ProjectRow = {
+export type LessonWatchRow = { course_id: string; lesson_id: string; seconds: number }
+export type WorkRow = {
   id: string
   course_id: string | null
-  origin: string
-  status: string
-  tone: string
+  kind: string
   title: string
   description: string
-  problem: string
-  skills: string[]
-  tools: string[]
-  steps: unknown
-  result: string
-  links: unknown
-  started_at: string
-  completed_at: string | null
+  url: string | null
+  file_name: string | null
+  file_size: number | null
+  is_public: boolean
+  in_cv: boolean
+  created_at: string
+  updated_at: string
 }
 export type SkillRow = { id: string; name: string; type: string; in_cv: boolean; note: string; created_at: string }
 
@@ -85,7 +87,8 @@ export type StudentRows = {
   progress: CourseProgressRow[]
   completions: LessonCompletionRow[]
   notes: LessonNoteRow[]
-  projects: ProjectRow[]
+  watch: LessonWatchRow[]
+  works: WorkRow[]
   skills: SkillRow[]
 }
 
@@ -100,12 +103,28 @@ const RESUME_SECTIONS: ResumeSection[] = [
   'conquistas',
 ]
 
-/** O público da Folyo é do Brasil: as datas do banco viram AAAA-MM-DD no horário de Brasília. */
-const BR_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' })
-export function brDate(timestamp: string) {
-  const d = new Date(timestamp)
-  return Number.isNaN(d.getTime()) ? '' : BR_DATE.format(d)
+export { brDate }
+
+
+/** Uma linha de `works` vira um trabalho da tela (ou null se o conteúdo não passar na conferência). */
+export function workFromRow(r: WorkRow): Work | null {
+  const parsed = storedWorkSchema.safeParse({
+    id: r.id,
+    courseId: r.course_id,
+    kind: r.kind,
+    title: r.title,
+    desc: r.description,
+    url: r.url,
+    file: r.kind === 'pdf' && r.file_name && r.file_size ? { name: r.file_name, size: r.file_size } : null,
+    public: r.is_public,
+    inCV: r.in_cv,
+  })
+  return parsed.success ? { ...parsed.data, createdAt: r.created_at, updatedAt: r.updated_at } : null
 }
+
+/** Colunas lidas de `works` (nunca "select *", e o caminho do arquivo no Storage não sai do servidor). */
+export const WORK_COLUMNS =
+  'id, course_id, kind, title, description, url, file_name, file_size, is_public, in_cv, created_at, updated_at'
 
 /** Lista de itens: guarda só os itens válidos (o banco pode ter sido escrito direto pela API). */
 function validItems<T>(raw: unknown, schema: z.ZodType<T>, max: number): T[] {
@@ -120,6 +139,11 @@ function validItems<T>(raw: unknown, schema: z.ZodType<T>, max: number): T[] {
 
 function oneOf<T extends string>(value: string, options: readonly T[], fallback: T): T {
   return (options as readonly string[]).includes(value) ? (value as T) : fallback
+}
+
+/** Só os ids conhecidos, sem repetir. */
+function knownIds(list: string[] | null | undefined, known: string[], max: number) {
+  return [...new Set((list ?? []).filter((x) => known.includes(x)))].slice(0, max)
 }
 
 /**
@@ -158,32 +182,20 @@ export function stateFromRows(rows: StudentRows, catalog: Catalog): UserState {
     if (findLesson(catalog, r.lesson_id)?.course.id === r.course_id) notes[r.lesson_id] = r.body
   }
 
-  const projects: Project[] = []
-  for (const r of rows.projects) {
-    const parsed = storedProjectSchema.safeParse({
-      id: r.id,
-      courseId: r.course_id,
-      origin: r.origin,
-      status: r.status,
-      tone: r.tone,
-      title: r.title,
-      desc: r.description,
-      problem: r.problem,
-      skills: r.skills,
-      tools: r.tools,
-      steps: Array.isArray(r.steps) ? r.steps : [],
-      result: r.result,
-      links: Array.isArray(r.links) ? r.links : [],
-    })
-    if (!parsed.success) continue
-    if (parsed.data.courseId && !findCourse(catalog, parsed.data.courseId)) continue
-    projects.push({
-      ...parsed.data,
-      completedAt: r.completed_at ? brDate(r.completed_at) : null,
-      startedAt: brDate(r.started_at),
-    })
+  const watch: UserState['watch'] = {}
+  for (const r of rows.watch) {
+    if (findLesson(catalog, r.lesson_id)?.course.id === r.course_id && Number.isFinite(r.seconds) && r.seconds > 0) {
+      watch[r.lesson_id] = Math.min(86400, Math.floor(r.seconds))
+    }
   }
-  const projectIds = new Set(projects.map((p) => p.id))
+
+  const works: Work[] = []
+  for (const r of rows.works) {
+    const work = workFromRow(r)
+    if (!work) continue
+    if (work.courseId && !findCourse(catalog, work.courseId)) continue
+    works.push(work)
+  }
 
   const skills: Skill[] = []
   for (const r of rows.skills) {
@@ -198,9 +210,8 @@ export function stateFromRows(rows: StudentRows, catalog: Catalog): UserState {
 
   const welcomeRead = !!profile.notifications_read_at
 
-  const goalIds = new Set(catalog.goals.map((g) => g.id))
-  const primaryGoal = profile.goal_primary && goalIds.has(profile.goal_primary) ? profile.goal_primary : null
-  const secondaryGoals = (profile.goals_secondary ?? []).filter((g) => goalIds.has(g) && g !== primaryGoal).slice(0, 2)
+  const primaryGoal = profile.goal_primary && TRAIL_IDS.includes(profile.goal_primary) ? profile.goal_primary : null
+  const secondaryGoals = knownIds(profile.goals_secondary, TRAIL_IDS, 2).filter((g) => g !== primaryGoal)
 
   return {
     onboarded: profile.onboarded,
@@ -209,8 +220,9 @@ export function stateFromRows(rows: StudentRows, catalog: Catalog): UserState {
     user: {
       name,
       first: name.split(' ')[0] || name,
-      headline: profile.headline || profile.stage || '',
-      stage: profile.stage ?? '',
+      headline: profile.headline,
+      stage: profile.stage && STAGE_IDS.includes(profile.stage) ? profile.stage : '',
+      exploring: profile.exploring,
       city: profile.city,
       email: profile.contact_email,
       phone: profile.phone,
@@ -229,18 +241,24 @@ export function stateFromRows(rows: StudentRows, catalog: Catalog): UserState {
     started,
     favorites,
     notes,
-    projects,
+    watch,
+    works,
     skills,
     resume: {
       template: oneOf(profile.resume_template, ['classico', 'moderno'] as const, 'classico'),
       order,
       hidden: profile.resume_hidden.filter((x): x is ResumeSection => (RESUME_SECTIONS as string[]).includes(x)),
-      projects: profile.resume_projects.filter((id) => projectIds.has(id)),
       certs: profile.resume_certs.filter((id) => courseIds.has(id)),
       savedAt: profile.updated_at,
       dirty: false,
     },
-    goals: { primary: primaryGoal, secondary: secondaryGoals },
+    goals: {
+      primary: primaryGoal,
+      secondary: secondaryGoals,
+      text: (profile.goals_text ?? '').slice(0, 160),
+      skills: [...new Set((profile.goals_skills ?? []).map((s) => s.slice(0, 60)))].slice(0, 40),
+      wants: knownIds(profile.goals_wants, WANT_IDS, 6),
+    },
     settings: {
       publicProfile: profile.public_profile,
       showEmail: profile.show_email,
@@ -248,7 +266,6 @@ export function stateFromRows(rows: StudentRows, catalog: Catalog): UserState {
       notifyLessons: profile.notify_lessons,
       notifyWeekly: profile.notify_weekly,
       notifyNews: profile.notify_news,
-      weeklyGoal: profile.weekly_goal,
       studyTime: oneOf(profile.study_time, ['manha', 'tarde', 'noite'] as const, 'noite'),
       captions: profile.captions,
       autoplay: profile.autoplay,
@@ -257,7 +274,7 @@ export function stateFromRows(rows: StudentRows, catalog: Catalog): UserState {
     notifications: [
       {
         id: 'n-boas-vindas',
-        text: 'Boas-vindas à Folyo. Comece pelo curso recomendado para o seu objetivo.',
+        text: 'Boas-vindas à Folyo. Seu perfil está pronto para acompanhar seus aprendizados.',
         to: '/inicio',
         read: welcomeRead,
         date: joined,

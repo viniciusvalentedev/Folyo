@@ -58,7 +58,7 @@ const periodMetrics = z.object({
   newUsers: count,
   enrollments: count,
   lessons: count,
-  projectsDone: count,
+  works: count,
   activeUsers: count,
 })
 const overviewSchema = z.object({
@@ -171,8 +171,7 @@ const detailSchema = z
     role,
     suspension: z.object({ at: ts, reason: text(500), by: text(400).nullable() }).nullable(),
     lessons: count,
-    projects: count,
-    projectsDone: count,
+    works: count,
     skills: count,
     activeDays30: count,
     progress: z.array(z.object({ courseId: text(40), startedAt: ts.nullable(), done: count, lastAt: ts.nullable() })).max(200),

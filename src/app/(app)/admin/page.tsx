@@ -81,7 +81,7 @@ async function Overview({ searchParams }: { searchParams: PageProps<'/admin'>['s
         <Metric icon="UserCheck" label="Novos usuários" value={fmtNum(cur.newUsers)} change={delta(cur.newUsers, prev.newUsers)} prev={fmtNum(prev.newUsers)} />
         <Metric icon="LogIn" label="Matrículas" value={fmtNum(cur.enrollments)} change={delta(cur.enrollments, prev.enrollments)} prev={fmtNum(prev.enrollments)} />
         <Metric icon="CircleCheck" label="Aulas concluídas" value={fmtNum(cur.lessons)} change={delta(cur.lessons, prev.lessons)} prev={fmtNum(prev.lessons)} />
-        <Metric icon="FolderKanban" label="Projetos concluídos" value={fmtNum(cur.projectsDone)} change={delta(cur.projectsDone, prev.projectsDone)} prev={fmtNum(prev.projectsDone)} />
+        <Metric icon="FolderKanban" label="Projetos enviados" value={fmtNum(cur.works)} change={delta(cur.works, prev.works)} prev={fmtNum(prev.works)} />
         <Metric
           icon="Award"
           label="Taxa de conclusão"

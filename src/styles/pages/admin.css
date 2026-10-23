@@ -389,3 +389,6 @@ a.ad-ucell { color: inherit; }
 a.ad-ucell:hover { text-decoration: none; }
 a.ad-ucell:hover b { text-decoration: underline; text-underline-offset: 3px; }
 .ad-ucell > span { display: grid; min-width: 0; }
+
+/* ---------- Folyo 2.0 ---------- */
+.ad-notice-ok { background: var(--ok-soft, #E6F4EA); color: var(--ok-ink, #17603A); }

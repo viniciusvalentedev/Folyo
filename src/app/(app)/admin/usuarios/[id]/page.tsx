@@ -11,6 +11,7 @@ import { EmptyState, Progress } from '@/components/ui/indicators'
 import { assignableRoles, canManage, ROLES } from '@/lib/admin/roles'
 import { allowed, getUserDetail } from '@/lib/data/admin'
 import { getCatalog } from '@/lib/data/catalog'
+import { findTrail, LIFE_STAGES } from '@/lib/trails'
 import { uuidSchema } from '@/lib/validation'
 
 export const metadata: Metadata = { title: 'Usuário' }
@@ -44,7 +45,8 @@ async function UserPage({ params }: { params: PageProps<'/admin/usuarios/[id]'>[
   const target = { id: u.id, role: u.role }
   const manage = canManage(me, target)
   const roles = assignableRoles(me, target)
-  const goal = catalog.goals.find((g) => g.id === u.goal)?.title
+  const goal = findTrail(u.goal)?.title
+  const stage = LIFE_STAGES.find((x) => x.id === u.stage)?.title
   const display = u.name || u.email
 
   return (
@@ -80,7 +82,7 @@ async function UserPage({ params }: { params: PageProps<'/admin/usuarios/[id]'>[
         <Metric
           label="Aulas concluídas"
           value={fmtNum(u.lessons)}
-          hint={`${fmtNum(u.projectsDone)} de ${fmtNum(u.projects)} projetos concluídos · ${fmtNum(u.skills)} competências`}
+          hint={`${fmtNum(u.works)} projetos enviados · ${fmtNum(u.skills)} competências`}
         />
       </section>
 
@@ -124,7 +126,7 @@ async function UserPage({ params }: { params: PageProps<'/admin/usuarios/[id]'>[
           <dl className="ad-dl">
             <div>
               <dt>Momento</dt>
-              <dd>{u.stage || '—'}</dd>
+              <dd>{stage || '—'}</dd>
             </div>
             <div>
               <dt>Objetivo</dt>

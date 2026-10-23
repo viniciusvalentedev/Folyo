@@ -23,10 +23,6 @@ export function categoryOf(catalog: Catalog, id: string): Category {
   return catalog.categories.find((c) => c.id === id) ?? { id, name: 'Sem categoria', icon: 'Layers' }
 }
 
-export function findGoal(catalog: Catalog, id: string | null | undefined) {
-  return id ? catalog.goals.find((g) => g.id === id) ?? null : null
-}
-
 /** Texto em minúsculas e sem acentos, para buscas. */
 export function normalize(s: string | null | undefined) {
   return (s || '')

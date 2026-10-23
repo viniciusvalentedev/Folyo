@@ -1,4 +1,4 @@
-import type { CareerGoal, Category, Course } from '@/lib/types'
+import type { Category, Course } from '@/lib/types'
 
 /**
  * Catálogo de demonstração (copiado do protótipo da Gigi).
@@ -99,12 +99,11 @@ export const courses: Course[] = [
       "Escrever uma declaração de posicionamento defensável",
       "Apresentar uma estratégia de marca para quem decide"
     ],
-    skills: ["Posicionamento de marca", "Pesquisa de mercado", "Análise de concorrência", "Storytelling"],
+    skills: ["Marketing", "Comunicação"],
     project: {
       title: "Diagnóstico de marca e proposta de posicionamento",
       brief: "Escolha uma empresa real ou fictícia e entregue um diagnóstico de marca com uma proposta de posicionamento.",
-      expected: "Um documento de 6 a 10 páginas com pesquisa de público, mapa de concorrentes, declaração de posicionamento e mensagens-chave, pronto para apresentar.",
-      steps: ["Pesquisa com público", "Mapa de concorrentes", "Proposta de posicionamento", "Apresentação final"]
+      expected: "Um documento de 6 a 10 páginas com pesquisa de público, mapa de concorrentes, declaração de posicionamento e mensagens-chave, pronto para apresentar."
     },
     modules: [
       {
@@ -214,12 +213,11 @@ export const courses: Course[] = [
       "Tratar objeções sem pressionar",
       "Fazer follow-up e gerar indicações"
     ],
-    skills: ["Vendas consultivas", "Escuta ativa", "Negociação", "Atendimento ao cliente"],
+    skills: ["Vendas"],
     project: {
       title: "Roteiro de atendimento comercial",
       brief: "Crie um roteiro de atendimento para um negócio real e teste com clientes.",
-      expected: "Roteiro com momentos da conversa, perguntas abertas, respostas a objeções e registro do teste.",
-      steps: ["Observação do atendimento atual", "Roteiro de conversa", "Teste com clientes", "Ajustes e resultado"]
+      expected: "Roteiro com momentos da conversa, perguntas abertas, respostas a objeções e registro do teste."
     },
     modules: [
       {
@@ -304,12 +302,11 @@ export const courses: Course[] = [
       "Escrever funções, laços e condições em JavaScript",
       "Publicar um app simples na internet"
     ],
-    skills: ["Lógica de programação", "JavaScript", "Resolução de problemas"],
+    skills: ["Tecnologia"],
     project: {
       title: "App de lista de tarefas em JavaScript",
       brief: "Construa e publique um app de tarefas com adicionar, concluir e filtrar.",
-      expected: "Um link público do app funcionando e o código organizado em um repositório.",
-      steps: ["Planejamento das funções", "Lógica principal", "Interface", "Publicação"]
+      expected: "Um link público do app funcionando e o código organizado em um repositório."
     },
     modules: [
       {
@@ -392,12 +389,11 @@ export const courses: Course[] = [
       "Escrever e-mails claros e objetivos",
       "Responder perguntas comuns de entrevista"
     ],
-    skills: ["Inglês", "Comunicação escrita", "Comunicação oral"],
+    skills: ["Idiomas", "Comunicação"],
     project: {
       title: "Pitch pessoal em inglês",
       brief: "Grave um vídeo de 90 segundos apresentando sua trajetória e um projeto seu.",
-      expected: "Vídeo de até 90 segundos com roteiro revisado e transcrição.",
-      steps: ["Roteiro em inglês", "Revisão de pronúncia", "Gravação", "Transcrição e revisão"]
+      expected: "Vídeo de até 90 segundos com roteiro revisado e transcrição."
     },
     modules: [
       {
@@ -481,12 +477,11 @@ export const courses: Course[] = [
       "Propor um layout funcional para um espaço pequeno",
       "Montar uma prancha de apresentação"
     ],
-    skills: ["Leitura de planta", "Croqui", "Design de interiores"],
+    skills: ["Design"],
     project: {
       title: "Estudo de layout para um café de 40 m²",
       brief: "Proponha o layout de um café pequeno considerando fluxos, luz e mobiliário.",
-      expected: "Uma prancha com planta de layout, dois croquis e memorial curto.",
-      steps: ["Programa de necessidades", "Estudo de fluxos", "Planta de layout", "Prancha final"]
+      expected: "Uma prancha com planta de layout, dois croquis e memorial curto."
     },
     modules: [
       {
@@ -570,12 +565,11 @@ export const courses: Course[] = [
       "Usar PROCX, SOMASES e tabelas dinâmicas",
       "Montar um fluxo de caixa mensal com projeção"
     ],
-    skills: ["Excel", "Fluxo de caixa", "Análise de dados"],
+    skills: ["Gestão", "Tecnologia"],
     project: {
       title: "Fluxo de caixa para um pequeno negócio",
       brief: "Monte o fluxo de caixa de três meses de um negócio real ou fictício.",
-      expected: "Planilha com entradas, saídas, saldo projetado e um painel com 3 indicadores.",
-      steps: ["Levantamento de entradas e saídas", "Estrutura da planilha", "Projeção", "Painel de indicadores"]
+      expected: "Planilha com entradas, saídas, saldo projetado e um painel com 3 indicadores."
     },
     modules: [
       {
@@ -659,12 +653,11 @@ export const courses: Course[] = [
       "Montar slides que apoiam a fala",
       "Apresentar um pitch de 5 minutos"
     ],
-    skills: ["Comunicação oral", "Storytelling", "Apresentações"],
+    skills: ["Comunicação"],
     project: {
       title: "Pitch de 5 minutos",
       brief: "Prepare e apresente um pitch de 5 minutos sobre uma proposta real.",
-      expected: "Slides, roteiro de fala e registro de feedback de quem assistiu.",
-      steps: ["Mensagem central", "Roteiro e slides", "Ensaio gravado", "Apresentação e feedback"]
+      expected: "Slides, roteiro de fala e registro de feedback de quem assistiu."
     },
     modules: [
       {
@@ -748,12 +741,11 @@ export const courses: Course[] = [
       "Responder reclamações com método",
       "Acompanhar NPS e tempo de resposta"
     ],
-    skills: ["Atendimento ao cliente", "Jornada do cliente", "Empatia"],
+    skills: ["Vendas"],
     project: {
       title: "Mapa da jornada do cliente",
       brief: "Mapeie a jornada de um cliente em um negócio real e proponha três melhorias.",
-      expected: "Mapa com etapas, pontos de atrito e três melhorias priorizadas.",
-      steps: ["Entrevistas rápidas", "Mapa da jornada", "Pontos de atrito", "Melhorias priorizadas"]
+      expected: "Mapa com etapas, pontos de atrito e três melhorias priorizadas."
     },
     modules: [
       {
@@ -832,12 +824,11 @@ export const courses: Course[] = [
       "Usar assistentes de IA e conferir o que eles respondem",
       "Montar um relatório curto com recomendações"
     ],
-    skills: ["Análise de dados", "Uso responsável de IA", "Pensamento crítico"],
+    skills: ["Tecnologia"],
     project: {
       title: "Relatório de vendas com análise assistida",
       brief: "Analise três meses de vendas de um negócio e escreva um relatório com recomendações.",
-      expected: "Relatório de 2 páginas com gráficos, conclusões checadas e próximos passos.",
-      steps: ["Pergunta de negócio", "Preparação dos dados", "Análise e checagem", "Relatório"]
+      expected: "Relatório de 2 páginas com gráficos, conclusões checadas e próximos passos."
     },
     modules: [
       {
@@ -900,12 +891,11 @@ export const courses: Course[] = [
       "Responder entrevistas pelo método STAR",
       "Montar um kit de candidatura coerente"
     ],
-    skills: ["Entrevista por competências", "Autoapresentação", "Planejamento de carreira"],
+    skills: ["Carreira"],
     project: {
       title: "Kit de candidatura",
       brief: "Prepare currículo, carta de apresentação e perfil profissional para uma vaga real.",
-      expected: "Kit com currículo ajustado à vaga, carta de 200 palavras e três respostas STAR.",
-      steps: ["Leitura da vaga", "Currículo ajustado", "Carta de apresentação", "Respostas STAR"]
+      expected: "Kit com currículo ajustado à vaga, carta de 200 palavras e três respostas STAR."
     },
     modules: [
       {
@@ -968,91 +958,5 @@ export const courses: Course[] = [
       }
     ],
     featured: false
-  }
-]
-
-export const careerGoals: CareerGoal[] = [
-  {
-    id: "marketing",
-    title: "Construir carreira em marketing",
-    blurb: "Entender públicos, posicionar marcas e mostrar isso com projetos.",
-    skills: ["Posicionamento de marca", "Pesquisa de mercado", "Storytelling", "Canva", "Análise de dados", "Inglês"],
-    courses: ["mkt", "comun", "dados", "ingles"],
-    projects: [
-      "Diagnóstico de marca para um negócio do seu bairro",
-      "Calendário de conteúdo de 30 dias com metas",
-      "Análise de concorrentes de uma categoria que você conhece"
-    ],
-    keywords: ["marketing", "marca", "posicionamento", "comunicação"]
-  },
-  {
-    id: "estagio",
-    title: "Conseguir o primeiro estágio",
-    blurb: "Montar um currículo com evidências e chegar preparado às entrevistas.",
-    skills: [
-      "Autoapresentação",
-      "Entrevista por competências",
-      "Comunicação oral",
-      "Excel",
-      "Inglês",
-      "Trabalho em equipe"
-    ],
-    courses: ["selecao", "comun", "excel", "ingles"],
-    projects: ["Kit de candidatura para uma vaga real", "Pitch pessoal de 90 segundos"],
-    keywords: ["estágio", "estagio"]
-  },
-  {
-    id: "programacao",
-    title: "Aprender programação",
-    blurb: "Sair do zero e publicar o primeiro app.",
-    skills: ["Lógica de programação", "JavaScript", "Resolução de problemas", "Inglês"],
-    courses: ["prog", "dados", "ingles"],
-    projects: ["App de lista de tarefas", "Página pessoal publicada"],
-    keywords: ["programação", "desenvolvimento", "tecnologia"]
-  },
-  {
-    id: "vendas",
-    title: "Desenvolver habilidades de vendas",
-    blurb: "Vender com escuta, método e sem pressão.",
-    skills: ["Vendas consultivas", "Negociação", "Escuta ativa", "Atendimento ao cliente"],
-    courses: ["vendas", "atend", "comun"],
-    projects: ["Roteiro de atendimento comercial", "Simulação de negociação gravada"],
-    keywords: ["vendas", "comercial"]
-  },
-  {
-    id: "processo",
-    title: "Preparar-me para um processo seletivo",
-    blurb: "Treinar as etapas mais comuns com antecedência.",
-    skills: ["Entrevista por competências", "Autoapresentação", "Comunicação oral", "Inglês"],
-    courses: ["selecao", "comun", "ingles"],
-    projects: ["Três respostas STAR revisadas", "Simulação de entrevista em vídeo"],
-    keywords: ["processo seletivo", "trainee"]
-  },
-  {
-    id: "ingles",
-    title: "Melhorar o inglês",
-    blurb: "Usar o inglês em reuniões, e-mails e entrevistas.",
-    skills: ["Inglês", "Comunicação escrita", "Comunicação oral"],
-    courses: ["ingles"],
-    projects: ["Pitch pessoal em inglês", "Três e-mails profissionais revisados"],
-    keywords: ["inglês", "ingles"]
-  },
-  {
-    id: "familia",
-    title: "Ajudar a administrar a empresa da família",
-    blurb: "Organizar caixa, atendimento e vendas do negócio familiar.",
-    skills: ["Fluxo de caixa", "Excel", "Atendimento ao cliente", "Vendas consultivas", "Análise de dados"],
-    courses: ["excel", "atend", "vendas", "dados"],
-    projects: ["Fluxo de caixa de três meses", "Mapa da jornada do cliente do negócio"],
-    keywords: ["empresa", "negócio", "gestão"]
-  },
-  {
-    id: "criativo",
-    title: "Construir um portfólio criativo",
-    blurb: "Mostrar processo e resultado em projetos visuais.",
-    skills: ["Design gráfico", "Canva", "Croqui", "Storytelling"],
-    courses: ["arq", "comun"],
-    projects: ["Estudo de layout de um espaço pequeno", "Identidade visual para um projeto escolar"],
-    keywords: ["design", "criativo", "arquitetura"]
   }
 ]

@@ -1,8 +1,9 @@
 /**
  * Tipos do domínio da Folyo.
  *
- * Estes tipos descrevem os dados que o front usa hoje (dados de demonstração) e
- * servem de guia para modelar as tabelas no Supabase na próxima etapa.
+ * Descrevem os dados que a tela usa. O que é do aluno vem do banco (tabelas
+ * profiles, course_progress, lesson_completions, lesson_notes, lesson_watch, works
+ * e skills); o catálogo ainda é de demonstração até o painel de cursos.
  */
 
 // ---------- Catálogo ----------
@@ -33,11 +34,11 @@ export type Module = {
   lessons: Lesson[]
 }
 
+/** Projeto que o curso pede para o certificado: o aluno envia o resultado (PDF ou link). */
 export type CourseProject = {
   title: string
   brief: string
   expected: string
-  steps: string[]
 }
 
 export type Course = {
@@ -51,23 +52,31 @@ export type Course = {
   plan: Plan
   featured: boolean
   summary: string
+  /** Campos opcionais preenchidos pelo painel da equipe. */
+  subtitle?: string
+  description?: string
+  instructor?: string
+  language?: string
+  audience?: string
+  /** Ids de cursos que a pessoa deve fazer antes. */
+  prerequisites?: string[]
+  /** `arquivado` = não recebe novas matrículas, mas quem já começou continua. */
+  status?: 'publicado' | 'arquivado'
   outcomes: string[]
   skills: string[]
+  /** Sem título = o curso não pede projeto. */
   project: CourseProject
+  /** `enabled: false` = sem certificado. `hours` e `note` (opcionais) aparecem no certificado. */
+  certificate?: { enabled: boolean; hours?: number; note?: string }
   modules: Module[]
 }
 
 /** Aula com a posição dentro do curso (índice do módulo e da aula). */
 export type LessonRef = Lesson & { mi: number; li: number; module: string }
 
-export type CareerGoal = {
-  id: string
-  title: string
-  blurb: string
-  skills: string[]
-  courses: string[]
-  projects: string[]
-  keywords: string[]
+export type Catalog = {
+  courses: Course[]
+  categories: Category[]
 }
 
 // ---------- Usuário ----------
@@ -91,7 +100,10 @@ export type UserProfile = {
   name: string
   first: string
   headline: string
-  stage?: string
+  /** Id do momento de vida escolhido no primeiro acesso (ver LIFE_STAGES). */
+  stage: string
+  /** Marcou "ainda estou descobrindo meus interesses". */
+  exploring: boolean
   city: string
   email: string
   phone: string
@@ -109,32 +121,28 @@ export type UserProfile = {
 /** Listas do perfil que podem ser editadas item a item. */
 export type ProfileListKey = 'education' | 'experiences' | 'languages' | 'achievements'
 
-export type ProjectStatus = 'andamento' | 'concluido' | 'revisao'
+/** Material que o aluno anexa a um curso (ou a "fora da Folyo"): um link ou um PDF. */
+export type WorkKind = 'link' | 'pdf'
 
-export type ProjectStep = { id: string; title: string; done: boolean; note: string }
-export type ProjectLink = { id: string; label: string; url: string }
-
-export type Project = {
+export type Work = {
   id: string
-  /** Curso de origem (projetos feitos na Folyo). */
+  /** Curso do trabalho; null = feito fora da Folyo. */
   courseId: string | null
-  origin: 'curso' | 'externo'
-  status: ProjectStatus
-  tone: Tone
+  kind: WorkKind
   title: string
   desc: string
-  problem: string
-  skills: string[]
-  tools: string[]
-  steps: ProjectStep[]
-  result: string
-  links: ProjectLink[]
-  completedAt: string | null
-  startedAt: string | null
-  /** Projetos externos: contexto (ex.: escola, trabalho, voluntariado). */
-  context?: string
-  period?: string
+  /** Endereço (só links). */
+  url: string | null
+  /** Dados do arquivo (só PDFs). O arquivo em si fica no Storage e só o dono abre. */
+  file: { name: string; size: number } | null
+  public: boolean
+  inCV: boolean
+  /** Momento do envio (ISO) e da última alteração. */
+  createdAt: string
+  updatedAt: string
 }
+
+export type WorkEntry = Work & { course: Course | null }
 
 export type SkillType = 'tecnica' | 'ferramenta' | 'idioma' | 'comportamental'
 
@@ -161,7 +169,6 @@ export type ResumeState = {
   template: 'classico' | 'moderno'
   order: ResumeSection[]
   hidden: ResumeSection[]
-  projects: string[]
   certs: string[]
   savedAt: string | null
   dirty: boolean
@@ -174,7 +181,6 @@ export type Settings = {
   notifyLessons: boolean
   notifyWeekly: boolean
   notifyNews: boolean
-  weeklyGoal: number
   studyTime: string
   captions: boolean
   autoplay: boolean
@@ -187,6 +193,18 @@ export type AppNotification = {
   to: string
   read: boolean
   date: string
+}
+
+export type Goals = {
+  /** Trilha principal (ver TRAILS). */
+  primary: string | null
+  secondary: string[]
+  /** Objetivo escrito pelo aluno, com as próprias palavras. */
+  text: string
+  /** Skills que o aluno quer desenvolver. */
+  skills: string[]
+  /** O que ele quer conquistar (respostas do primeiro acesso). */
+  wants: string[]
 }
 
 /** Tudo o que pertence a um usuário. No banco, isso vira várias tabelas. */
@@ -206,10 +224,12 @@ export type UserState = {
   favorites: string[]
   /** id da aula -> anotação. */
   notes: Record<string, string>
-  projects: Project[]
+  /** id da aula -> segundos de vídeo assistidos (medidos pelo player). */
+  watch: Record<string, number>
+  works: Work[]
   skills: Skill[]
   resume: ResumeState
-  goals: { primary: string | null; secondary: string[] }
+  goals: Goals
   settings: Settings
   notifications: AppNotification[]
 }
@@ -229,7 +249,13 @@ export type CourseStats = {
   completedAt: string | null
   nextLesson: LessonRef | null
   resume: LessonRef
-  project: Project | null
+  /** Trabalhos enviados neste curso. */
+  works: Work[]
+  /** O aluno já enviou pelo menos um material neste curso. */
+  delivered: boolean
+  deliveredAt: string | null
+  /** O curso pede projeto para o certificado. */
+  offersProject: boolean
   certified: boolean
   certDate: string | null
   minutesLeft: number
@@ -262,48 +288,45 @@ export type SkillWithEvidence = Skill & {
   demonstrated: boolean
 }
 
-export type ResumeGapAction =
-  | 'suggest-objetivo'
-  | 'focus-objetivo'
-  | 'add-projects'
-  | 'focus-idiomas'
-  | 'register-skills'
-  | 'add-certs'
-  | 'go-skills'
-  | 'add-link'
 
-export type ResumeGap = {
-  id: string
-  sev: 'alta' | 'media' | 'baixa'
-  title: string
-  body: string
-  action: ResumeGapAction
-  cta: string
-  ids?: string[]
-  names?: string[]
+/** Uma aula concluída no histórico de estudo. */
+export type DoneEntry = { lid: string; cid: string; date: string }
+
+/** Quanto do que foi estudado cabe em cada skill (dividido entre as skills do curso). */
+export type SkillMix = {
+  items: { name: string; value: number; pct: number; share: number; courses: { id: string; title: string; lessons: number; share: number }[] }[]
+  counted: number
+  uncounted: number
 }
 
-export type ResumeCheck = { label: string; w: number; ok: boolean; partial?: boolean }
+export type Metrics = {
+  lessonsDone: number
+  watchSec: number
+  coursesCompleted: number
+  coursesStarted: number
+  certificates: number
+  projectsAdded: number
+  coursesWithProject: number
+  attachments: number
+  certPending: number
+}
 
 export type Derived = {
   courseStats: Record<string, CourseStats>
   certificates: Certificate[]
   inProgress: Course[]
   completedCourses: Course[]
-  projectsDone: Project[]
+  /** Todos os trabalhos do aluno, do mais novo para o mais antigo, com o curso de cada um. */
+  works: WorkEntry[]
   skills: SkillWithEvidence[]
-  goal: CareerGoal | null
-  gaps: ResumeGap[]
-  strengths: string[]
-  checks: ResumeCheck[]
+  goal: import('@/lib/trails').Trail | null
+  /** Situação do objetivo profissional do currículo. */
+  objectiveStatus: 'ok' | 'vazio' | 'generico'
   completeness: number
-  cvProjects: Project[]
-  unregisteredCourseSkills: string[]
+  /** Trabalhos marcados para aparecer no currículo. */
+  cvProjects: WorkEntry[]
   lessonsDone: number
-}
-
-export type Catalog = {
-  courses: Course[]
-  categories: Category[]
-  goals: CareerGoal[]
+  skillMix: SkillMix
+  metrics: Metrics
+  doneLog: DoneEntry[]
 }

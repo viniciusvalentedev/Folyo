@@ -35,7 +35,7 @@
 .module-n { font: 500 11.5px var(--f-mono); text-transform: uppercase; letter-spacing: .06em; color: var(--mute); width: 74px; flex: none; }
 .module-count { font: 500 13px var(--f-mono); color: var(--mute); }
 .chev { transition: transform var(--t) var(--ease); color: var(--mute); }
-.module.open .chev, .acc-item.open .chev, .skill-row.open .chev { transform: rotate(180deg); }
+.module.open .chev, .acc-item.open .chev { transform: rotate(180deg); }
 .module-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .35s var(--ease); }
 .module.open .module-body { grid-template-rows: 1fr; }
 .module-body > ul { overflow: hidden; list-style: none; margin: 0; padding: 0 8px; }
@@ -59,13 +59,7 @@
 .pb-expected { padding: 14px; border-radius: 12px; background: rgba(255,255,255,.06); }
 .pb-expected small { font: 500 11px var(--f-mono); text-transform: uppercase; letter-spacing: .06em; color: #8D8BA3; }
 .pb-expected p { font-size: 14px; color: #E7E6F0; margin-top: 4px; }
-.pb-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.pb-steps li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #D7D5E6; }
-.pb-steps li span { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 7px; font: 500 12px var(--f-mono); background: rgba(255,255,255,.08); flex: none; }
-.pb-steps li.done span { background: var(--lime); color: var(--ink); }
-.pb-steps li.done { color: #8D8BA3; text-decoration: line-through; text-decoration-color: rgba(255,255,255,.25); }
-.pb-status { display: flex; align-items: center; gap: 10px; }
-.pb-status small { color: #A6A4BA; }
+
 .project-brief .pill-progress { background: rgba(171,166,255,.14); color: var(--blue-on-dark); }
 .project-brief .pill-ok { background: rgba(201,226,63,.13); color: var(--lime); }
 .cert-req { padding: 20px; border-radius: 18px; border: 1px solid var(--line); background: var(--card); display: grid; gap: 10px; }
@@ -75,3 +69,23 @@
 .req li.ok { color: var(--fg); }
 .req li.ok .ico { color: var(--lime-ink); }
 .cert-ok { display: flex; gap: 8px; align-items: center; color: var(--lime-ink); font-weight: 500; }
+
+/* ---------- Folyo 2.0 ---------- */
+.module.open .chev, .acc-item.open .chev { transform: rotate(180deg); }
+.case { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; align-items: center; }
+.case dl { margin: 0; display: grid; gap: 4px; }
+.case dt { font: 500 11.5px var(--f-mono); text-transform: uppercase; letter-spacing: .07em; color: var(--mute); margin-top: 8px; }
+.case dd { margin: 0; font-size: 15.5px; line-height: 1.6; }
+.pb-how { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--mute); margin: 4px 0 10px; }
+@media (max-width: 1080px) {
+  .course-cols, .profile-cols { grid-template-columns: minmax(0, 1fr); }
+  .course-side { position: static; }
+}
+@media (max-width: 900px) {
+  .feature, .cert-card, .case { grid-template-columns: minmax(0, 1fr); }
+  .feature-art { min-height: 200px; }
+}
+@media (max-width: 640px) {
+  .outcomes, .grid-form { grid-template-columns: minmax(0, 1fr); }
+  .feature-body { padding: 24px; }
+}

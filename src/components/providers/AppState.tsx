@@ -15,26 +15,27 @@ import {
 import { saveGoalsAction } from '@/lib/actions/profile'
 import type { ActionResult } from '@/lib/actions/shared'
 import {
-  deleteProjectAction,
   deleteSkillAction,
   markNotificationsReadAction,
   saveCourseProgressAction,
   saveLessonNoteAction,
   saveProfileAction,
-  saveProjectAction,
   saveResumeAction,
   saveSettingsAction,
   saveSkillAction,
+  saveLessonWatchAction,
   setLessonDoneAction,
 } from '@/lib/actions/student'
+import { confirmNewPdfAction, confirmReplacePdfAction, deleteWorkAction, preparePdfUploadAction, saveWorkAction } from '@/lib/actions/works'
 import { deriveUserData } from '@/lib/domain/derive'
 import { findCourse, findLesson, sameText } from '@/lib/domain/catalog'
 import { newId, newUuid, todayISO } from '@/lib/format'
-import { LIST_MAX } from '@/lib/validation'
+import { computeOnboarding, findTrail, type OnboardingResult } from '@/lib/trails'
+import { pdfProblem } from '@/lib/pdf-file'
+import { LIST_MAX, MAX_PDFS, MAX_WORKS, normalizeWorkUrl, WORK_DESC_MAX, WORK_TITLE_MAX } from '@/lib/validation'
 import type {
   Catalog,
   Derived,
-  Project,
   ProfileListKey,
   ResumeSection,
   ResumeState,
@@ -42,6 +43,7 @@ import type {
   Skill,
   UserProfile,
   UserState,
+  Work,
 } from '@/lib/types'
 
 export type ToastKind = 'ok' | 'err' | 'info'
@@ -66,25 +68,16 @@ const PROFILE_FIELDS = new Set([
   'name', 'headline', 'city', 'email', 'phone', 'link', 'bio', 'objective',
   'interests', 'education', 'experiences', 'languages', 'achievements',
 ])
-const RESUME_FIELDS = new Set(['template', 'order', 'hidden', 'projects', 'certs'])
+const RESUME_FIELDS = new Set(['template', 'order', 'hidden', 'certs'])
+const GOAL_FIELDS = new Set(['primary', 'secondary', 'text', 'skills', 'wants'])
+const GOAL_TEXT_MAX = 160
+const GOAL_SKILLS_MAX = 40
+/** Tempo assistido: manda ao servidor no máximo a cada 10 s por aula. */
+const WATCH_DELAY = 10_000
 
-/** Só os campos que vão para o banco (o resto é calculado ou marcado pelo servidor). */
-function toStoredProject(p: Project) {
-  return {
-    id: p.id,
-    courseId: p.courseId,
-    origin: p.origin,
-    status: p.status,
-    tone: p.tone,
-    title: p.title,
-    desc: p.desc,
-    problem: p.problem,
-    skills: p.skills,
-    tools: p.tools,
-    steps: p.steps,
-    result: p.result,
-    links: p.links,
-  }
+/** Só os campos que o aluno pode mudar num trabalho (o arquivo de um PDF tem fluxo próprio). */
+function toStoredWork(w: Work) {
+  return { id: w.id, courseId: w.courseId, kind: w.kind, title: w.title, desc: w.desc, url: w.url, public: w.public, inCV: w.inCV }
 }
 
 function toStoredProfile(u: UserProfile) {
@@ -105,19 +98,45 @@ function toStoredProfile(u: UserProfile) {
   }
 }
 
+/**
+ * Passos 1 e 2 do envio de PDF: pede o endereço de envio ao servidor e manda o arquivo
+ * direto para o Storage privado (a Vercel não aceita arquivos grandes no servidor).
+ */
+async function sendPdf(file: File): Promise<{ ok: true; fileId: string } | { ok: false; error: string }> {
+  try {
+    const ticket = await preparePdfUploadAction({ size: file.size })
+    if (!ticket.ok) return ticket
+    const res = await fetch(ticket.uploadUrl, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/pdf', apikey: ticket.apiKey },
+      body: file,
+      credentials: 'omit',
+      referrerPolicy: 'no-referrer',
+    })
+    if (!res.ok) {
+      return { ok: false, error: res.status === 413 ? 'O PDF é maior que o limite de 20 MB.' : 'Não foi possível enviar o arquivo. Tente de novo.' }
+    }
+    return { ok: true, fileId: ticket.fileId }
+  } catch {
+    return { ok: false, error: OFFLINE }
+  }
+}
+
 type Job = () => Promise<ActionResult>
 type Sync = {
   schedule: (key: string, job: Job, delay?: number) => void
   flush: () => void
   /** Esta chave ainda tem algo esperando para ser gravado (ou sendo gravado)? */
   isPending: (key: string) => boolean
+  /** Esta chave está na fila esperando para ser enviada (ainda não começou a gravar)? */
+  isQueued: (key: string) => boolean
 }
 
 /**
  * Fila de gravação no servidor.
  *
  * A tela muda na hora (o aluno não espera) e, logo depois, o servidor grava.
- *  - Cada "chave" (ex.: "project:<id>") tem no máximo um pedido por vez, e sempre
+ *  - Cada "chave" (ex.: "work:<id>") tem no máximo um pedido por vez, e sempre
  *    manda o estado mais recente. Assim os pedidos nunca chegam fora de ordem.
  *  - Sem internet: tenta de novo algumas vezes antes de avisar.
  *  - Se a pessoa tentar fechar a aba com algo ainda não salvo, o navegador pergunta antes.
@@ -202,6 +221,9 @@ function useSync(onError: (message: string) => void, onIdle: (clean: boolean) =>
       isPending(key) {
         return queued.current.has(key) || inflight.current.has(key)
       },
+      isQueued(key) {
+        return queued.current.has(key)
+      },
     }
   }, [])
 
@@ -268,7 +290,7 @@ function useActions(
         })
       }
 
-    // Cada "chave" sincroniza o estado ATUAL de uma coisa (um curso, uma aula, um projeto...).
+    // Cada "chave" sincroniza o estado ATUAL de uma coisa (um curso, uma aula, um trabalho...).
     // Se a pessoa clicar várias vezes, vai só o resultado final.
     const syncCourse = (cid: string) =>
       sync.schedule('course:' + cid, () => {
@@ -296,12 +318,26 @@ function useActions(
         TYPING_DELAY,
       )
     }
-    /** Projeto existe no estado → salva; não existe mais → apaga. */
-    const syncProject = (pid: string, delay = 0) =>
-      sync.schedule('project:' + pid, () => {
-        const p = now().projects.find((x) => x.id === pid)
-        return p ? saveProjectAction(toStoredProject(p)) : deleteProjectAction(pid)
+    /** Trabalho existe no estado → salva; não existe mais → apaga (a linha e o arquivo). */
+    const syncWork = (wid: string, delay = 0) =>
+      sync.schedule('work:' + wid, () => {
+        const w = now().works.find((x) => x.id === wid)
+        return w ? saveWorkAction(toStoredWork(w)) : deleteWorkAction(wid)
       }, delay)
+    /**
+     * Tempo assistido: a tela soma na hora e o servidor recebe o TOTAL da aula, no máximo
+     * a cada 10 s (o banco só aceita total que cresce no ritmo do relógio).
+     */
+    const syncWatch = (lid: string) => {
+      const found = findLesson(catalog, lid)
+      if (!found || sync.isQueued('watch:' + lid)) return
+      sync.schedule('watch:' + lid, () => {
+        const seconds = Math.min(86400, Math.floor(now().watch[lid] ?? 0))
+        return seconds >= 1
+          ? saveLessonWatchAction({ courseId: found.course.id, lessonId: lid, seconds })
+          : Promise.resolve(OK_RESULT)
+      }, WATCH_DELAY)
+    }
     const syncSkill = (id: string) =>
       sync.schedule('skill:' + id, () => {
         const k = now().skills.find((x) => x.id === id)
@@ -319,11 +355,42 @@ function useActions(
       mark('settings', [field])
       sync.schedule('settings', patchJob('settings', () => now().settings, saveSettingsAction), 300)
     }
-    const syncGoals = () =>
-      sync.schedule('goals', () => {
-        const g = now().goals
-        return g.primary ? saveGoalsAction({ primary: g.primary, secondary: g.secondary }) : Promise.resolve(OK_RESULT)
-      }, 300)
+    const syncGoals = (fields: Iterable<string>, delay = 300) => {
+      mark('goals', [...fields].filter((f) => GOAL_FIELDS.has(f)))
+      sync.schedule('goals', patchJob('goals', () => now().goals, saveGoalsAction), delay)
+    }
+
+  /** Edita título, descrição, endereço (links) e visibilidade. O curso e o arquivo não mudam por aqui. */
+  const updateWork = (id: string, patch: Partial<Pick<Work, 'title' | 'desc' | 'url' | 'public' | 'inCV'>>) => {
+      const current = now().works.find((w) => w.id === id)
+      if (!current) return { ok: false as const, error: 'Material não encontrado.' }
+      const next: typeof patch = { ...patch }
+      if (next.title !== undefined) {
+        next.title = next.title.trim().slice(0, WORK_TITLE_MAX)
+        if (!next.title) return { ok: false as const, error: 'O título não pode ficar vazio.' }
+      }
+      if (next.desc !== undefined) next.desc = next.desc.trim().slice(0, WORK_DESC_MAX)
+      if (next.url !== undefined) {
+        if (current.kind !== 'link') return { ok: false as const, error: 'Só links têm endereço.' }
+        const url = normalizeWorkUrl(next.url ?? '')
+        if ('error' in url) return { ok: false as const, error: url.error }
+        next.url = url.url
+      }
+      const adding = next.inCV === true
+      commit((s) => {
+        const w = s.works.find((x) => x.id === id)
+        if (!w) return
+        Object.assign(w, next, { updatedAt: new Date().toISOString() })
+        if (adding) {
+          if (!s.resume.order.includes('projetos')) s.resume.order.push('projetos')
+          s.resume.hidden = s.resume.hidden.filter((x) => x !== 'projetos')
+        }
+        if (next.inCV !== undefined) s.resume.dirty = true
+      })
+      syncWork(id, 'title' in next || 'desc' in next || 'url' in next ? TYPING_DELAY : 0)
+      if (adding) syncResume(['order', 'hidden'])
+      return { ok: true as const }
+    }
 
     return {
       startCourse: (cid: string) => {
@@ -363,106 +430,99 @@ function useActions(
         })
         syncNote(lid)
       },
-      /** Garante que o projeto do curso exista e devolve o id dele. */
-      ensureCourseProject: (cid: string) => {
-        const result = commit((s) => {
-          const existing = s.projects.find((p) => p.courseId === cid)
-          if (existing) return { id: existing.id, created: false }
-          const course = findCourse(catalog, cid)
-          if (!course) return null
-          const id = newUuid()
-          s.projects.unshift({
+      /** Novo trabalho do tipo LINK (o PDF tem o fluxo `uploadPdf`). */
+      addLinkWork: (input: { courseId: string | null; title: string; desc: string; url: string; public: boolean }) => {
+        const url = normalizeWorkUrl(input.url)
+        if ('error' in url) return { ok: false as const, error: url.error }
+        const title = input.title.trim().slice(0, WORK_TITLE_MAX)
+        if (!title) return { ok: false as const, error: 'Dê um título para o link.' }
+        if (input.courseId && !findCourse(catalog, input.courseId)) return { ok: false as const, error: 'Curso não encontrado.' }
+        if (now().works.length >= MAX_WORKS) {
+          return { ok: false as const, error: `Você chegou ao limite de ${MAX_WORKS} materiais. Apague alguns para criar novos.` }
+        }
+        const id = newUuid()
+        const at = new Date().toISOString()
+        commit((s) => {
+          s.works.unshift({
             id,
-            courseId: cid,
-            origin: 'curso',
-            status: 'andamento',
-            tone: course.tone === 'paper' ? 'blue' : course.tone,
-            title: course.project.title,
-            desc: course.project.brief,
-            problem: '',
-            skills: course.skills.slice(0, 3),
-            tools: [],
-            steps: course.project.steps.map((t, i) => ({ id: 's' + (i + 1), title: t, done: false, note: '' })),
-            result: '',
-            links: [],
-            completedAt: null,
-            startedAt: todayISO(),
+            courseId: input.courseId,
+            kind: 'link',
+            title,
+            desc: input.desc.trim().slice(0, WORK_DESC_MAX),
+            url: url.url,
+            file: null,
+            public: input.public,
+            inCV: false,
+            createdAt: at,
+            updatedAt: at,
           })
-          if (!s.started[cid]) s.started[cid] = todayISO()
-          return { id, created: true }
         })
-        if (!result) return null
-        if (result.created) {
-          syncProject(result.id)
-          syncCourse(cid)
+        syncWork(id)
+        return { ok: true as const, id }
+      },
+      updateWork,
+      /** Marca ou desmarca o trabalho no currículo (e mostra a seção Projetos se estava escondida). */
+      toggleWorkCV: (id: string, on?: boolean) => {
+        const w = now().works.find((x) => x.id === id)
+        if (!w) return
+        return updateWork(id, { inCV: on === undefined ? !w.inCV : on })
+      },
+      removeWork: (id: string) => {
+        commit((s) => {
+          s.works = s.works.filter((w) => w.id !== id)
+        })
+        syncWork(id)
+      },
+      /**
+       * Envia um PDF para um curso (ou "fora da Folyo"). O arquivo vai direto para o Storage
+       * privado e o servidor só cria o trabalho depois de conferir que é mesmo um PDF.
+       */
+      uploadPdf: async (file: File, input: { courseId: string | null; title: string }) => {
+        const checked = await pdfProblem(file)
+        if (checked) return { ok: false as const, error: checked }
+        if (now().works.length >= MAX_WORKS) {
+          return { ok: false as const, error: `Você chegou ao limite de ${MAX_WORKS} materiais. Apague alguns para enviar novos.` }
         }
-        return result.id
-      },
-      saveProject: (p: Project) => {
-        commit((s) => {
-          const i = s.projects.findIndex((x) => x.id === p.id)
-          if (i >= 0) s.projects[i] = p
-          else s.projects.unshift(p)
-        })
-        syncProject(p.id)
-      },
-      deleteProject: (id: string) => {
-        const wasInCV = commit((s) => {
-          const inCV = s.resume.projects.includes(id)
-          s.projects = s.projects.filter((p) => p.id !== id)
-          s.resume.projects = s.resume.projects.filter((p) => p !== id)
-          return inCV
-        })
-        syncProject(id)
-        if (wasInCV) syncResume(['projects'])
-      },
-      updateStep: (pid: string, sid: string, patch: Partial<Project['steps'][number]>) => {
-        commit((s) => {
-          const step = s.projects.find((p) => p.id === pid)?.steps.find((st) => st.id === sid)
-          if (step) Object.assign(step, patch)
-        })
-        syncProject(pid, 'note' in patch ? TYPING_DELAY : 0)
-      },
-      setProjectField: (pid: string, patch: Partial<Project>) => {
-        commit((s) => {
-          const p = s.projects.find((x) => x.id === pid)
-          if (p) Object.assign(p, patch)
-        })
-        syncProject(pid, TYPING_DELAY)
-      },
-      /** Conclui o projeto e registra as competências novas. Devolve os nomes registrados. */
-      finishProject: (pid: string) => {
-        const created: { id: string; name: string }[] = []
-        const found = commit((s) => {
-          const p = s.projects.find((x) => x.id === pid)
-          if (!p) return false
-          p.status = 'concluido'
-          p.completedAt = todayISO()
-          for (const name of p.skills) {
-            if (!s.skills.some((k) => sameText(k.name, name))) {
-              const id = newUuid()
-              created.push({ id, name })
-              s.skills.push({ id, name, type: 'tecnica', inCV: false, note: '', createdAt: todayISO() })
-            }
-          }
-          return true
-        })
-        if (found) {
-          syncProject(pid)
-          created.forEach((k) => syncSkill(k.id))
+        if (now().works.filter((w) => w.kind === 'pdf').length >= MAX_PDFS) {
+          return { ok: false as const, error: `Você chegou ao limite de ${MAX_PDFS} PDFs. Apague alguns para enviar novos.` }
         }
-        return created.map((k) => k.name)
-      },
-      toggleProjectCV: (pid: string, on?: boolean) => {
-        commit((s) => {
-          const has = s.resume.projects.includes(pid)
-          const want = on === undefined ? !has : on
-          s.resume.projects = want ? [...new Set([...s.resume.projects, pid])] : s.resume.projects.filter((x) => x !== pid)
-          if (want && !s.resume.order.includes('projetos')) s.resume.order.push('projetos')
-          s.resume.hidden = s.resume.hidden.filter((x) => !(want && x === 'projetos'))
-          s.resume.dirty = true
+        const stored = await sendPdf(file)
+        if (!stored.ok) return stored
+        const result = await confirmNewPdfAction({
+          fileId: stored.fileId,
+          courseId: input.courseId,
+          fileName: file.name || 'documento.pdf',
+          title: input.title.trim().slice(0, WORK_TITLE_MAX),
         })
-        syncResume(['projects', 'order', 'hidden'])
+        if (!result.ok) return result
+        commit((s) => {
+          if (!s.works.some((w) => w.id === result.work.id)) s.works.unshift(result.work)
+        })
+        return { ok: true as const, id: result.work.id }
+      },
+      /** Troca o arquivo de um PDF que já existe (o título e as marcações continuam). */
+      replacePdf: async (workId: string, file: File) => {
+        const current = now().works.find((w) => w.id === workId)
+        if (!current || current.kind !== 'pdf') return { ok: false as const, error: 'Material não encontrado.' }
+        const checked = await pdfProblem(file)
+        if (checked) return { ok: false as const, error: checked }
+        const stored = await sendPdf(file)
+        if (!stored.ok) return stored
+        const result = await confirmReplacePdfAction({ fileId: stored.fileId, workId, fileName: file.name || 'documento.pdf' })
+        if (!result.ok) return result
+        commit((s) => {
+          const w = s.works.find((x) => x.id === workId)
+          if (w) Object.assign(w, { file: result.work.file, updatedAt: result.work.updatedAt })
+        })
+        return { ok: true as const }
+      },
+      /** Tempo assistido (segundos) medido pelo player: soma na tela e sincroniza aos poucos. */
+      addWatch: (lid: string, seconds: number) => {
+        if (!(seconds > 0) || !findLesson(catalog, lid)) return
+        commit((s) => {
+          s.watch[lid] = Math.min(86400, Math.round(((s.watch[lid] ?? 0) + Math.min(seconds, 120)) * 10) / 10)
+        })
+        syncWatch(lid)
       },
       toggleCertCV: (cid: string, on?: boolean) => {
         commit((s) => {
@@ -480,20 +540,6 @@ function useActions(
           s.resume.dirty = true
         })
         syncSkill(id)
-      },
-      registerSkills: (names: string[]) => {
-        const ids: string[] = []
-        commit((s) => {
-          for (const name of names) {
-            if (!s.skills.some((k) => sameText(k.name, name))) {
-              const id = newUuid()
-              ids.push(id)
-              s.skills.push({ id, name, type: 'tecnica', inCV: true, note: '', createdAt: todayISO() })
-            }
-          }
-          s.resume.dirty = true
-        })
-        ids.forEach(syncSkill)
       },
       updateSkill: (id: string, patch: Partial<Skill>) => {
         commit((s) => {
@@ -575,24 +621,61 @@ function useActions(
       saveResume: () => sync.flush(),
       setGoal: (id: string) => {
         const changed = commit((s) => {
-          if (s.goals.primary === id) return false
+          if (!findTrail(id) || s.goals.primary === id) return false
           s.goals.secondary = [s.goals.primary, ...s.goals.secondary.filter((g) => g !== id)]
             .filter((g): g is string => !!g)
             .slice(0, 2)
           s.goals.primary = id
           return true
         })
-        if (changed) syncGoals()
+        if (changed) syncGoals(['primary', 'secondary'])
       },
       toggleSecondaryGoal: (id: string) => {
         const changed = commit((s) => {
-          if (id === s.goals.primary || !s.goals.primary) return false
+          if (!findTrail(id) || id === s.goals.primary || !s.goals.primary) return false
           s.goals.secondary = s.goals.secondary.includes(id)
             ? s.goals.secondary.filter((g) => g !== id)
             : [...s.goals.secondary, id].slice(-2)
           return true
         })
-        if (changed) syncGoals()
+        if (changed) syncGoals(['secondary'])
+      },
+      /** Objetivo escrito com as próprias palavras (até 160 letras). */
+      setGoalText: (text: string) => {
+        commit((s) => {
+          s.goals.text = text.slice(0, GOAL_TEXT_MAX)
+        })
+        syncGoals(['text'], TYPING_DELAY)
+      },
+      toggleGoalSkill: (name: string) => {
+        const clean = name.trim().slice(0, 60)
+        if (!clean) return
+        const full = commit((s) => {
+          const has = s.goals.skills.some((k) => sameText(k, clean))
+          if (!has && s.goals.skills.length >= GOAL_SKILLS_MAX) return true
+          s.goals.skills = has ? s.goals.skills.filter((k) => !sameText(k, clean)) : [...s.goals.skills, clean]
+          return false
+        })
+        if (full) notify(`Você pode acompanhar até ${GOAL_SKILLS_MAX} skills.`, 'err')
+        else syncGoals(['skills'])
+      },
+      /** Adota uma trilha como objetivo: soma as skills dela às suas ou troca todas. */
+      applyTrail: (id: string, mode: 'somar' | 'substituir' = 'somar') => {
+        const trail = findTrail(id)
+        if (!trail) return
+        commit((s) => {
+          if (s.goals.primary !== trail.id) {
+            s.goals.secondary = s.goals.secondary.filter((g) => g !== trail.id)
+            if (s.goals.primary) s.goals.secondary = [s.goals.primary, ...s.goals.secondary].slice(0, 2)
+          }
+          s.goals.primary = trail.id
+          s.goals.text = trail.title.slice(0, GOAL_TEXT_MAX)
+          s.goals.skills =
+            mode === 'substituir'
+              ? [...trail.skills]
+              : [...s.goals.skills, ...trail.skills.filter((k) => !s.goals.skills.some((x) => sameText(x, k)))].slice(0, GOAL_SKILLS_MAX)
+        })
+        syncGoals(['primary', 'secondary', 'text', 'skills'])
       },
       setSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => {
         commit((s) => {
@@ -631,15 +714,23 @@ function useActions(
         commit((s) => {
           s.notifications.unshift({ id: newId('n'), text, to, read: false, date: todayISO() })
         }),
-      /** Atualiza a tela depois que o primeiro acesso foi salvo no banco (pela própria tela). */
-      completeOnboarding: ({ goal, stage, weekly }: { goal: string; stage: string; weekly: number }) =>
+      /**
+       * Atualiza a tela depois que o primeiro acesso foi salvo no banco (pela própria tela).
+       * Usa a mesma função que o servidor, então o que aparece é o que foi gravado.
+       */
+      completeOnboarding: (input: { stage: string; areas: string[]; wants: string[] }): OnboardingResult | null => {
+        const result = computeOnboarding(input)
+        if (!result) return null
         commit((s) => {
           s.onboarded = true
-          s.goals.primary = goal
-          s.user.stage = stage
-          if (!s.user.headline) s.user.headline = stage
-          s.settings.weeklyGoal = weekly
-        }),
+          s.user.stage = result.stage
+          s.user.interests = result.interests
+          s.user.exploring = result.exploring
+          if (!s.user.headline.trim()) s.user.headline = result.headline
+          s.goals = { primary: result.primary, secondary: [], text: result.text, skills: result.skills, wants: result.wants }
+        })
+        return result
+      },
     }
   }, [commit, stateRef, catalog, sync, changed, notify])
 }
@@ -715,8 +806,8 @@ export function AppStateProvider({
   )
   const sync = useSync(onSyncError, onSyncIdle)
 
-  const { schedule, flush, isPending } = sync
-  const queue = useMemo<Sync>(() => ({ schedule, flush, isPending }), [schedule, flush, isPending])
+  const { schedule, flush, isPending, isQueued } = sync
+  const queue = useMemo<Sync>(() => ({ schedule, flush, isPending, isQueued }), [schedule, flush, isPending, isQueued])
   const changed = useRef(new Map<string, Set<string>>())
   const a = useActions(commit, stateRef, catalog, queue, changed, toast)
   const d = useMemo(() => deriveUserData(state, catalog), [state, catalog])

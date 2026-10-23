@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AREA_IDS, STAGE_IDS, TRAIL_IDS, WANT_IDS } from '@/lib/trails'
 
 /**
  * Regras de validação dos dados que entram no site (URLs e formulários).
@@ -107,28 +108,6 @@ export const LIMITS = {
   tag: 60,
 } as const
 
-/** Formulário de projeto (novo projeto externo ou edição). */
-export const projectFormSchema = z.object({
-  title: z.string().trim().min(1, 'Dê um nome ao projeto.').max(LIMITS.title),
-  desc: z.string().trim().max(LIMITS.short),
-  problem: z
-    .string()
-    .trim()
-    .min(1, 'Explique em uma ou duas frases o problema que o projeto resolve.')
-    .max(LIMITS.text),
-  skills: z.array(z.string().max(LIMITS.tag)).min(1, 'Escolha pelo menos uma habilidade demonstrada.').max(20),
-  tools: z.array(z.string().max(LIMITS.tag)).max(20),
-  result: z.string().max(LIMITS.long),
-  links: z
-    .array(
-      z.object({
-        label: z.string().max(LIMITS.title),
-        url: z.string().refine((v) => !v.trim() || urlSchema.safeParse(v).success, 'Links precisam começar com http:// ou https://'),
-      }),
-    )
-    .max(10),
-})
-
 /** Formulário de competência. */
 export const skillFormSchema = z.object({
   name: z.string().trim().min(1, 'Dê um nome à competência.').max(LIMITS.tag),
@@ -137,26 +116,35 @@ export const skillFormSchema = z.object({
   inCV: z.boolean(),
 })
 
-/** Dados pessoais (Configurações): por enquanto só o nome fica salvo no banco. */
-export const personalDataSchema = z.object({ name: personNameSchema })
+/** Dados pessoais (Configurações). O nome vai por `saveName`; cidade e telefone, pelo perfil. */
+export const personalDataSchema = z.object({
+  name: personNameSchema,
+  city: z.string().trim().max(80),
+  phone: z.string().trim().max(30),
+})
 
 /** Ids de objetivos e cursos (iguais aos do catálogo). */
 const idSchema = z.string().regex(/^[a-z0-9-]{1,40}$/)
 
-/** Respostas do primeiro acesso. */
+/** Respostas do primeiro acesso: só ids das listas de src/lib/trails.ts. */
 export const onboardingSchema = z.object({
-  goal: idSchema,
-  stage: z.string().min(1).max(120),
-  weekly: z.number().int().min(1).max(20),
+  stage: z.enum(STAGE_IDS as [string, ...string[]]),
+  areas: z.array(z.enum(AREA_IDS as [string, ...string[]])).max(AREA_IDS.length),
+  wants: z.array(z.enum(WANT_IDS as [string, ...string[]])).max(WANT_IDS.length),
 })
 
-/** Objetivos de carreira (1 principal + até 2 acompanhados). */
-export const goalsSchema = z.object({
-  primary: idSchema,
-  secondary: z.array(idSchema).max(2),
-})
-
-export const weeklyGoalSchema = z.number().int().min(1).max(20)
+/** Objetivos de carreira. Só os campos que mudaram (pelo menos um). */
+export const GOAL_TEXT_MAX = 160
+export const goalsPatchSchema = z
+  .object({
+    primary: z.enum(TRAIL_IDS as [string, ...string[]]).nullable(),
+    secondary: z.array(z.enum(TRAIL_IDS as [string, ...string[]])).max(2),
+    text: z.string().max(GOAL_TEXT_MAX),
+    skills: z.array(z.string().trim().min(1).max(60)).max(40),
+    wants: z.array(z.enum(WANT_IDS as [string, ...string[]])).max(WANT_IDS.length),
+  })
+  .partial()
+  .refine((v) => Object.values(v).some((x) => x !== undefined))
 
 /** Editar perfil. */
 export const profileSchema = z.object({
@@ -216,29 +204,85 @@ export const courseProgressSchema = z.object({
 export const NOTE_MAX = 5000
 export const lessonNoteSchema = z.object({ courseId: idSchema, lessonId: idSchema, body: text(NOTE_MAX) })
 
-/** Link de projeto: vazio ou http(s). */
-const projectLinkUrl = z.string().trim().max(500).refine((v) => !v || urlSchema.safeParse(v).success)
+// ---------- Trabalhos (PDF ou link) ----------
 
-export const storedProjectSchema = z.object({
+export const WORK_TITLE_MAX = 90
+export const WORK_DESC_MAX = 280
+export const MAX_PDF_BYTES = 20 * 1024 * 1024
+export const MAX_WORKS = 100
+export const MAX_PDFS = 40
+
+const workBase = z.object({
   id: uuidSchema,
   courseId: idSchema.nullable(),
-  origin: z.enum(['curso', 'externo']),
-  status: z.enum(['andamento', 'concluido', 'revisao']),
-  tone: z.enum(['blue', 'magenta', 'ink', 'lime', 'paper']),
-  title: z.string().trim().min(1).max(LIMITS.title),
-  desc: text(LIMITS.short),
-  problem: text(LIMITS.text),
-  skills: tagList(20),
-  tools: tagList(20),
-  steps: z
-    .array(z.object({ id: itemIdSchema, title: text(LIMITS.title), done: z.boolean(), note: text(LIMITS.text) }))
-    .max(30)
-    .refine(fitsBytes(65536), 'Os passos do projeto ficaram grandes demais.'),
-  result: text(LIMITS.long),
-  links: z
-    .array(z.object({ id: itemIdSchema, label: text(LIMITS.title), url: projectLinkUrl }))
-    .max(10)
-    .refine(fitsBytes(16384)),
+  kind: z.enum(['link', 'pdf']),
+  title: z.string().trim().min(1).max(WORK_TITLE_MAX),
+  desc: text(WORK_DESC_MAX),
+  public: z.boolean(),
+  inCV: z.boolean(),
+})
+
+/** O que o aluno pode mudar num trabalho (o arquivo de um PDF não passa por aqui). */
+export const workEditSchema = workBase
+  .extend({ url: urlSchema.nullable() })
+  .refine((w) => (w.kind === 'link') === (w.url !== null), 'Links têm endereço; PDFs não.')
+
+/** Como o trabalho volta do banco (conferido de novo antes de ir para a tela). */
+export const storedWorkSchema = workBase
+  .extend({
+    url: urlSchema.nullable(),
+    file: z.object({ name: z.string().min(1).max(200), size: z.number().int().min(5).max(MAX_PDF_BYTES) }).nullable(),
+  })
+  .refine(
+    (w) => (w.kind === 'link' ? w.url !== null && w.file === null : w.url === null && w.file !== null),
+    'Trabalho com dados misturados.',
+  )
+
+/**
+ * Endereço digitado pelo aluno → endereço seguro. Aceita "site.com" (coloca https://),
+ * só aceita http(s) e exige um domínio com ponto. Roda na tela e de novo no servidor.
+ */
+export function normalizeWorkUrl(raw: string): { url: string; host: string } | { error: string } {
+  let value = (raw || '').trim()
+  if (!value) return { error: 'Informe o endereço do link.' }
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(value)) value = 'https://' + value
+  let parsed: URL
+  try {
+    parsed = new URL(value)
+  } catch {
+    return { error: 'Esse endereço não parece ser um link válido.' }
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+    return { error: 'Use um link que comece com http:// ou https://' }
+  }
+  if (!parsed.hostname.includes('.')) return { error: 'Esse endereço não parece ser um link válido.' }
+  if (parsed.href.length > 500) return { error: 'Esse endereço é longo demais (máximo de 500 caracteres).' }
+  return { url: parsed.href, host: parsed.hostname.replace(/^www\./, '') }
+}
+
+/** Pedido para enviar um PDF: o servidor devolve um endereço de envio válido por pouco tempo. */
+export const pdfUploadRequestSchema = z.object({
+  size: z.number().int().min(5, 'O arquivo está vazio.').max(MAX_PDF_BYTES, 'O limite é de 20 MB.'),
+})
+
+/** Depois do envio, o servidor confere o arquivo e só então cria (ou troca) o trabalho. */
+export const pdfConfirmNewSchema = z.object({
+  fileId: z.uuid(),
+  courseId: idSchema.nullable(),
+  fileName: z.string().min(1).max(300),
+  title: z.string().trim().max(WORK_TITLE_MAX),
+})
+export const pdfConfirmReplaceSchema = z.object({
+  fileId: z.uuid(),
+  workId: uuidSchema,
+  fileName: z.string().min(1).max(300),
+})
+
+/** Tempo assistido de uma aula (total em segundos). */
+export const lessonWatchSchema = z.object({
+  courseId: idSchema,
+  lessonId: idSchema,
+  seconds: z.number().int().min(1).max(86400),
 })
 
 export const storedSkillSchema = z.object({
@@ -311,7 +355,6 @@ export const storedResumeSchema = z.object({
   template: z.enum(['classico', 'moderno']),
   order: z.array(resumeSectionSchema).max(8),
   hidden: z.array(resumeSectionSchema).max(8),
-  projects: z.array(uuidSchema).max(100),
   certs: z.array(idSchema).max(100),
 })
 export const resumePatchSchema = storedResumeSchema.partial().refine(atLeastOne)
@@ -323,7 +366,6 @@ export const storedSettingsSchema = z.object({
   notifyLessons: z.boolean(),
   notifyWeekly: z.boolean(),
   notifyNews: z.boolean(),
-  weeklyGoal: weeklyGoalSchema,
   studyTime: z.enum(['manha', 'tarde', 'noite']),
   captions: z.boolean(),
   autoplay: z.boolean(),

@@ -2,7 +2,7 @@ import type { IconName } from '@/components/ui/Icon'
 
 export type NavItem = { to: string; label: string; icon: IconName }
 
-/** Menu lateral, na ordem do protótipo (Aprenda → Pratique → Demonstre). */
+/** Menu lateral, na ordem do Folyo 2.0 (Aprenda → Crie → Conquiste). */
 export const NAV_GROUPS: { group: string | null; items: NavItem[] }[] = [
   {
     group: null,
@@ -19,14 +19,11 @@ export const NAV_GROUPS: { group: string | null; items: NavItem[] }[] = [
     ],
   },
   {
-    group: 'Pratique',
-    items: [
-      { to: '/projetos', label: 'Projetos', icon: 'FolderKanban' },
-      { to: '/competencias', label: 'Competências', icon: 'Puzzle' },
-    ],
+    group: 'Crie',
+    items: [{ to: '/projetos', label: 'Projetos e portfólio', icon: 'FolderKanban' }],
   },
   {
-    group: 'Demonstre',
+    group: 'Conquiste',
     items: [
       { to: '/curriculo', label: 'Currículo', icon: 'FileText' },
       { to: '/certificados', label: 'Certificados', icon: 'Award' },

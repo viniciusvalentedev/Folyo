@@ -4,11 +4,10 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useApp } from '@/components/providers/AppState'
-import { Art } from '@/components/ui/Art'
 import { Button } from '@/components/ui/Button'
 import { ChipInput, Field } from '@/components/ui/controls'
 import { Icon } from '@/components/ui/Icon'
-import { Avatar, DemoTag, EvidenceMeter } from '@/components/ui/indicators'
+import { Avatar } from '@/components/ui/indicators'
 import { Modal } from '@/components/ui/Modal'
 import { formatDate } from '@/lib/format'
 import { fieldErrors, LIMITS, LIST_MAX, profileSchema } from '@/lib/validation'
@@ -126,11 +125,8 @@ export function ProfileView() {
   const { s, d } = useApp()
   const router = useRouter()
   const [editing, setEditing] = useState(false)
-  const topSkills = [...d.skills]
-    .filter((k) => k.type !== 'idioma')
-    .sort((x, y) => y.level - x.level)
-    .slice(0, 6)
-  const featured = d.projectsDone.slice(0, 3)
+  const skills = d.skillMix.items.slice(0, 6)
+  const featured = d.works.slice(0, 4)
 
   return (
     <div className="page surface-paper profile-page">
@@ -154,6 +150,9 @@ export function ProfileView() {
             </p>
           </div>
           <div className="ph-actions">
+            <Button variant="ghost-on-blue" icon="Eye" onClick={() => router.push('/publico')}>
+              Ver como público
+            </Button>
             <Button variant="go" icon="Pencil" onClick={() => setEditing(true)}>
               Editar perfil
             </Button>
@@ -165,16 +164,16 @@ export function ProfileView() {
             <span>cursos concluídos</span>
           </div>
           <div>
-            <b>{d.projectsDone.length}</b>
-            <span>projetos concluídos</span>
+            <b>{d.works.length}</b>
+            <span>projetos enviados</span>
           </div>
           <div>
             <b>{d.certificates.length}</b>
             <span>certificados</span>
           </div>
           <div>
-            <b>{d.skills.filter((k) => k.demonstrated).length}</b>
-            <span>competências demonstradas</span>
+            <b>{d.metrics.lessonsDone}</b>
+            <span>aulas concluídas</span>
           </div>
         </div>
       </section>
@@ -210,14 +209,21 @@ export function ProfileView() {
               </Link>
             </div>
             <div className="pf-projects">
-              {featured.map((p, i) => (
-                <button key={p.id} type="button" className="pf-proj" onClick={() => router.push('/projetos/' + p.id)}>
-                  <Art tone={p.tone} seed={i + 1} ratio="16 / 9" />
-                  <b>{p.title}</b>
-                  <small>{p.skills.slice(0, 2).join(' · ')}</small>
+              {featured.map((w) => (
+                <button key={w.id} type="button" className="pf-work" onClick={() => router.push('/projetos')}>
+                  <span className={'work-ico ' + w.kind}>
+                    <Icon name={w.kind === 'pdf' ? 'FileText' : 'Link'} size={18} />
+                  </span>
+                  <span>
+                    <b>{w.title}</b>
+                    <small>
+                      {w.course ? w.course.title : 'Fora da Folyo'}
+                      {w.public ? ' · público' : ''}
+                    </small>
+                  </span>
                 </button>
               ))}
-              {!featured.length && <p className="muted">Finalize um projeto para destacá-lo aqui.</p>}
+              {!featured.length && <p className="muted">Anexe o projeto de um curso (PDF ou link) para destacá-lo aqui.</p>}
             </div>
           </section>
           <section className="pf-sec">
@@ -250,18 +256,22 @@ export function ProfileView() {
 
         <aside className="profile-side">
           <section className="side-card">
-            <p className="eyebrow">Competências principais</p>
-            {!topSkills.length && <p className="muted small">Suas competências aparecem aqui conforme você estuda.</p>}
-            <ul className="pf-skills">
-              {topSkills.map((k) => (
-                <li key={k.id}>
-                  <span>{k.name}</span>
-                  <EvidenceMeter level={k.level} compact />
-                </li>
-              ))}
-            </ul>
-            <Link href="/competencias" className="link-sm">
-              Gerenciar competências <Icon name="ArrowRight" size={14} />
+            <p className="eyebrow">Skills em desenvolvimento</p>
+            {skills.length ? (
+              <ul className="pf-skills">
+                {skills.map((k) => (
+                  <li key={k.name}>
+                    <span>{k.name}</span>
+                    <b className="pf-skill-pct">{k.pct}%</b>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted small">Aparecem quando você conclui aulas.</p>
+            )}
+            <p className="muted small">Distribuição das aulas concluídas entre as skills dos cursos.</p>
+            <Link href="/progresso" className="link-sm">
+              Ver gráfico de skills <Icon name="ArrowRight" size={14} />
             </Link>
           </section>
           <section className="side-card">
@@ -310,12 +320,16 @@ export function ProfileView() {
           </section>
           <section className="side-card">
             <p className="eyebrow">Portfólio público</p>
-            <p className="pf-link">
-              <DemoTag>Em breve</DemoTag>
-            </p>
             <p className="muted small">
-              Em breve você vai ter um endereço próprio para mostrar seu perfil e seus projetos.{' '}
-              {s.settings.publicProfile ? 'Hoje ele está marcado como público.' : 'Hoje ele está marcado como privado.'}{' '}
+              Veja como o seu portfólio aparece para quem visita. O endereço público para compartilhar será liberado em breve.
+            </p>
+            <div className="row gap-s">
+              <Button size="sm" variant="quiet" icon="Eye" onClick={() => router.push('/publico')}>
+                Pré-visualizar
+              </Button>
+            </div>
+            <p className="muted small">
+              {s.settings.publicProfile ? 'Seu perfil está visível publicamente.' : 'Seu perfil está privado.'}{' '}
               <Link href="/configuracoes">Privacidade</Link>
             </p>
           </section>

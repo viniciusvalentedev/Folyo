@@ -15,8 +15,8 @@ export function AuthShell({ children }: { children: ReactNode }) {
         </div>
         <h1 className="login-words">
           <span>Aprenda.</span>
-          <span>Pratique.</span>
-          <span>Demonstre.</span>
+          <span>Crie.</span>
+          <span>Conquiste.</span>
         </h1>
         <p className="login-sub">{siteConfig.tagline}</p>
         <svg className="login-svg" viewBox="0 0 400 400">

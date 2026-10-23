@@ -20,7 +20,7 @@
 .filter-fav i { font-style: normal; font-size: 12px; color: var(--mute); }
 .filter-fav.on { background: var(--magenta-soft); border-color: transparent; color: var(--magenta-deep); }
 .filter-fav.on .ico { fill: currentColor; }
-.filters-sort { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 14px; }
+
 .feature { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); border-radius: 26px; overflow: hidden; background: var(--ink); color: #fff; cursor: pointer; min-height: 340px; }
 .feature-art { height: 100%; min-height: 240px; }
 .feature-art .art-glyph { color: var(--lime); }
