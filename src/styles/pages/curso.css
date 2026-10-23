@@ -89,3 +89,8 @@
   .outcomes, .grid-form { grid-template-columns: minmax(0, 1fr); }
   .feature-body { padding: 24px; }
 }
+
+/* Banner escolhido na biblioteca de mídia (foto atrás do topo da página do curso) */
+.course-hero-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -2; pointer-events: none; }
+.course-hero.has-banner::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(90deg, rgba(14,13,28,.86) 0%, rgba(14,13,28,.62) 55%, rgba(14,13,28,.35) 100%); }
+.course-hero.has-banner::after { display: none; }

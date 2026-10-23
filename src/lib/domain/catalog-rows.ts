@@ -10,7 +10,8 @@ import {
   type AdminCourse,
   type AdminModule,
 } from '@/lib/admin/catalog'
-import type { Catalog, Category, Course, Lesson, Module } from '@/lib/types'
+import { clampPct, imageUrl, materialUrl, type CourseImages, type ImageSlot, type MediaItem, type StudentImages } from '@/lib/media'
+import type { Catalog, Category, Course, Lesson, LessonMaterial, Module } from '@/lib/types'
 
 /**
  * Do banco para a tela: catálogo de cursos.
@@ -23,16 +24,17 @@ import type { Catalog, Category, Course, Lesson, Module } from '@/lib/types'
 
 // ---------- Colunas lidas (nunca "select *") ----------
 
-export const CATEGORY_COLUMNS = 'id, name, description, icon, position, active'
+export const CATEGORY_COLUMNS = 'id, name, description, icon, position, active, media_id'
 export const COURSE_COLUMNS = [
   'id, title, subtitle, summary, description, category_id, instructor, level, language, tags, hours',
   'outcomes, audience, skills, tone, glyph, position, featured, recommended, hidden, prerequisites, related',
   'status, publish_at, plan, access, project_title, project_brief, project_expected, project_steps',
-  'cert_enabled, cert_hours, cert_note, created_at, updated_at',
+  'cert_enabled, cert_hours, cert_note, images, created_at, updated_at',
 ].join(', ')
 export const MODULE_COLUMNS = 'id, course_id, title, description, archived, position'
-export const LESSON_COLUMNS = 'id, module_id, course_id, title, description, minutes, published, video_url, position'
-export const MATERIAL_COLUMNS = 'id, lesson_id, label, url, position'
+export const LESSON_COLUMNS = 'id, module_id, course_id, title, description, minutes, published, video_kind, video_url, bunny_video_id, position'
+export const MATERIAL_COLUMNS = 'id, lesson_id, label, url, media_id, position'
+export const MEDIA_COLUMNS = 'id, kind, name, alt, path, mime, size, width, height, created_at, updated_at'
 
 // ---------- Linhas ----------
 
@@ -47,7 +49,19 @@ const categoryRow = z.object({
   icon: text(40),
   position: z.number().int(),
   active: z.boolean(),
+  media_id: z.uuid().nullable(),
 })
+
+const imageRefRow = z.object({
+  media: z.uuid(),
+  x: z.number().min(0).max(100).catch(50),
+  y: z.number().min(0).max(100).catch(50),
+  alt: z.string().max(160).catch(''),
+})
+// Imagem estragada não derruba o curso: vira "sem imagem".
+const imagesRow = z
+  .object({ cover: imageRefRow.optional().catch(undefined), thumb: imageRefRow.optional().catch(undefined), banner: imageRefRow.optional().catch(undefined) })
+  .catch({})
 
 const courseRow = z.object({
   id,
@@ -83,6 +97,7 @@ const courseRow = z.object({
   cert_enabled: z.boolean(),
   cert_hours: z.number().int().min(1).max(500).nullable(),
   cert_note: text(160),
+  images: imagesRow,
   created_at: z.string(),
   updated_at: z.string(),
 })
@@ -106,11 +121,50 @@ const lessonRow = z.object({
   description: text(2000),
   minutes: z.number().int().min(1).max(300),
   published: z.boolean(),
+  video_kind: z.enum(['link', 'bunny']).nullable(),
   video_url: httpsUrl.nullable(),
+  bunny_video_id: z.uuid().nullable(),
   position: z.number().int(),
 })
 
-const materialRow = z.object({ id, lesson_id: id, label: text(90), url: httpsUrl, position: z.number().int() })
+const materialRow = z.object({
+  id,
+  lesson_id: id,
+  label: text(90),
+  url: httpsUrl.nullable(),
+  media_id: z.uuid().nullable(),
+  position: z.number().int(),
+})
+
+const mediaRow = z.object({
+  id: z.uuid(),
+  kind: z.enum(['image', 'file']),
+  name: text(120),
+  alt: text(160),
+  path: text(120),
+  mime: text(60),
+  size: z.number().int().nonnegative(),
+  width: z.number().int().nullable(),
+  height: z.number().int().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+})
+
+export function mediaFromRows(rows: unknown[]): MediaItem[] {
+  return valid(rows, mediaRow).map((m) => ({
+    id: m.id,
+    kind: m.kind,
+    name: m.name,
+    alt: m.alt,
+    path: m.path,
+    mime: m.mime,
+    size: m.size,
+    width: m.width,
+    height: m.height,
+    createdAt: m.created_at,
+    updatedAt: m.updated_at,
+  }))
+}
 
 export type CatalogRows = {
   categories: unknown[]
@@ -118,6 +172,7 @@ export type CatalogRows = {
   modules: unknown[]
   lessons: unknown[]
   materials: unknown[]
+  media?: unknown[]
 }
 
 function valid<T>(rows: unknown[], schema: z.ZodType<T>): T[] {
@@ -150,7 +205,7 @@ const iconOrDefault = (name: string) => ((CATEGORY_ICONS as readonly string[]).i
 export function adminCatalogFromRows(rows: CatalogRows, tags: string[] = []): AdminCatalog {
   const categories: AdminCategory[] = valid(rows.categories, categoryRow)
     .sort(byPosition)
-    .map((c) => ({ id: c.id, name: c.name, desc: c.description, icon: iconOrDefault(c.icon), order: c.position, active: c.active }))
+    .map((c) => ({ id: c.id, name: c.name, desc: c.description, icon: iconOrDefault(c.icon), order: c.position, active: c.active, media: c.media_id }))
 
   const modules = valid(rows.modules, moduleRow)
   const lessons = valid(rows.lessons, lessonRow)
@@ -190,6 +245,9 @@ export function adminCatalogFromRows(rows: CatalogRows, tags: string[] = []): Ad
       access: c.access,
       project: { title: c.project_title, brief: c.project_brief, expected: c.project_expected, steps: c.project_steps },
       certificate: { enabled: c.cert_enabled, hours: c.cert_hours, note: c.cert_note },
+      images: Object.fromEntries(
+        Object.entries(c.images).filter(([, ref]) => !!ref).map(([slot, ref]) => [slot, { media: ref!.media, x: ref!.x, y: ref!.y, alt: ref!.alt }]),
+      ) as CourseImages,
       modules: (modulesByCourse.get(c.id) ?? []).sort(byPosition).map(
         (m): AdminModule => ({
           id: m.id,
@@ -202,10 +260,15 @@ export function adminCatalogFromRows(rows: CatalogRows, tags: string[] = []): Ad
             desc: l.description,
             min: l.minutes,
             published: l.published,
-            video: l.video_url ? { url: l.video_url } : null,
+            video:
+              l.video_kind === 'bunny' && l.bunny_video_id
+                ? { kind: 'bunny', id: l.bunny_video_id }
+                : l.video_url
+                  ? { kind: 'link', url: l.video_url }
+                  : null,
             materials: (materialsByLesson.get(l.id) ?? [])
               .sort(byPosition)
-              .map((x) => ({ id: x.id, label: x.label, url: x.url })),
+              .map((x) => ({ id: x.id, label: x.label, url: x.url ?? '', media: x.media_id })),
           })),
         }),
       ),
@@ -225,8 +288,12 @@ export function isLive(course: Pick<AdminCourse, 'status' | 'publishAt'>, now = 
 }
 
 /** Vira o catálogo do aluno: sem rascunhos, módulos arquivados, aulas despublicadas e cursos vazios. */
-export function studentCatalog(admin: AdminCatalog, now = Date.now()): Catalog {
-  const categories: Category[] = admin.categories.map((c) => ({ id: c.id, name: c.name, icon: c.icon, active: c.active }))
+export function studentCatalog(admin: AdminCatalog, now = Date.now(), mediaList: MediaItem[] = []): Catalog {
+  const media = new Map(mediaList.map((m) => [m.id, m]))
+  const categories: Category[] = admin.categories.map((c) => {
+    const file = c.media ? media.get(c.media) : undefined
+    return { id: c.id, name: c.name, icon: c.icon, active: c.active, ...(file?.kind === 'image' ? { image: imageUrl(file.path) } : {}) }
+  })
   const courses: Course[] = []
   for (const c of admin.courses) {
     if (!isLive(c, now)) continue
@@ -243,8 +310,12 @@ export function studentCatalog(admin: AdminCatalog, now = Date.now()): Catalog {
               title: l.title,
               min: l.min,
               desc: l.desc || undefined,
-              video: l.video?.url ?? null,
-              materials: l.materials,
+              video: l.video && (l.video.kind === 'bunny' || l.video.url) ? l.video : null,
+              materials: l.materials.flatMap((x): LessonMaterial[] => {
+                if (!x.media) return x.url ? [{ id: x.id, label: x.label, url: x.url }] : []
+                const file = media.get(x.media)
+                return file?.kind === 'file' ? [{ id: x.id, label: x.label, url: materialUrl(x.id), file: { name: file.name, size: file.size } }] : []
+              }),
             }),
           ),
       }))
@@ -279,7 +350,21 @@ export function studentCatalog(admin: AdminCatalog, now = Date.now()): Catalog {
         note: c.certificate.note || undefined,
       },
       modules,
+      images: studentImages(c.images, media),
     })
   }
   return { courses, categories }
+}
+
+/** Capa, miniatura e banner prontos para a tela (só arquivos que ainda existem e são imagens). */
+function studentImages(images: CourseImages, media: Map<string, MediaItem>): StudentImages | undefined {
+  const out: StudentImages = {}
+  for (const slot of ['cover', 'thumb', 'banner'] as ImageSlot[]) {
+    const ref = images[slot]
+    const file = ref ? media.get(ref.media) : undefined
+    if (ref && file?.kind === 'image') {
+      out[slot] = { url: imageUrl(file.path), x: clampPct(ref.x), y: clampPct(ref.y), alt: ref.alt || file.alt }
+    }
+  }
+  return Object.keys(out).length ? out : undefined
 }

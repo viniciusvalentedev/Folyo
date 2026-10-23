@@ -13,6 +13,7 @@ import {
   type RefObject,
 } from 'react'
 import { saveGoalsAction } from '@/lib/actions/profile'
+import type { PublicConfig } from '@/lib/app-config'
 import type { ActionResult } from '@/lib/actions/shared'
 import {
   deleteSkillAction,
@@ -739,6 +740,8 @@ export type Actions = ReturnType<typeof useActions>
 
 type AppContextValue = {
   catalog: Catalog
+  /** Configurações públicas da plataforma (nome, e-mail de suporte, ordenação do catálogo...). */
+  config: PublicConfig
   s: UserState
   d: Derived
   a: Actions
@@ -753,10 +756,12 @@ const AppContext = createContext<AppContextValue | null>(null)
 
 export function AppStateProvider({
   catalog,
+  config,
   initialState,
   children,
 }: {
   catalog: Catalog
+  config: PublicConfig
   initialState: UserState
   children: ReactNode
 }) {
@@ -819,8 +824,8 @@ export function AppStateProvider({
   // `sync` muda a cada mudança da fila, então quem usa isSaving é redesenhado na hora certa.
   const isSaving = useMemo(() => (key: string) => sync.isPending(key), [sync])
   const value = useMemo(
-    () => ({ catalog, s: state, d, a, isSaving, toast, toasts, dismissToast }),
-    [catalog, state, d, a, isSaving, toast, toasts, dismissToast],
+    () => ({ catalog, config, s: state, d, a, isSaving, toast, toasts, dismissToast }),
+    [catalog, config, state, d, a, isSaving, toast, toasts, dismissToast],
   )
   return <AppContext value={value}>{children}</AppContext>
 }

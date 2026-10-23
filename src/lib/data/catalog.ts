@@ -7,11 +7,14 @@ import {
   COURSE_COLUMNS,
   LESSON_COLUMNS,
   MATERIAL_COLUMNS,
+  MEDIA_COLUMNS,
+  mediaFromRows,
   MODULE_COLUMNS,
   studentCatalog,
   type CatalogRows,
 } from '@/lib/domain/catalog-rows'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
+import type { MediaItem } from '@/lib/media'
 import type { Catalog } from '@/lib/types'
 
 /**
@@ -55,14 +58,15 @@ async function fetchAll(supabase: Supabase, table: string, columns: string, orde
 
 const rawRows = cache(async (): Promise<CatalogRows> => {
   const supabase = await createSupabaseServerClient()
-  const [categories, courses, modules, lessons, materials] = await Promise.all([
+  const [categories, courses, modules, lessons, materials, media] = await Promise.all([
     fetchAll(supabase, 'categories', CATEGORY_COLUMNS, 'position'),
     fetchAll(supabase, 'courses', COURSE_COLUMNS, 'position'),
     fetchAll(supabase, 'course_modules', MODULE_COLUMNS, 'position'),
     fetchAll(supabase, 'lessons', LESSON_COLUMNS, 'position'),
     fetchAll(supabase, 'lesson_materials', MATERIAL_COLUMNS, 'position'),
+    fetchAll(supabase, 'media_files', MEDIA_COLUMNS, 'created_at'),
   ])
-  return { categories, courses, modules, lessons, materials }
+  return { categories, courses, modules, lessons, materials, media }
 })
 
 /** Tags sugeridas (a RLS só deixa a equipe ler; para o aluno vem vazio). */
@@ -82,8 +86,12 @@ async function readTags(): Promise<string[]> {
  * também, não só no banco, para que uma pessoa da equipe veja no site o mesmo que os alunos.
  */
 export const getCatalog = cache(async (): Promise<Catalog> => {
-  return studentCatalog(adminCatalogFromRows(await rawRows()))
+  const rows = await rawRows()
+  return studentCatalog(adminCatalogFromRows(rows), Date.now(), mediaFromRows(rows.media ?? []))
 })
+
+/** Biblioteca de mídia inteira (só a equipe lê arquivos que não aparecem para o aluno). */
+export const getMediaLibrary = cache(async (): Promise<MediaItem[]> => mediaFromRows((await rawRows()).media ?? []))
 
 /** Catálogo completo para o painel (rascunhos, agendados e arquivados). Só chamar depois de conferir o papel. */
 export const getFullCatalog = cache(async (): Promise<AdminCatalog> => {

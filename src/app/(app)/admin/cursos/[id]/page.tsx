@@ -1,3 +1,4 @@
+import { bunnyConfigured } from '@/lib/bunny'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
@@ -7,7 +8,8 @@ import { SectionDenied, SectionLoading } from '@/components/admin/sections'
 import { DEFAULT_SKILLS, ID_PATTERN } from '@/lib/admin/catalog'
 import { rankOf } from '@/lib/admin/roles'
 import { allowed } from '@/lib/data/admin'
-import { getFullCatalog } from '@/lib/data/catalog'
+import { getFullCatalog, getMediaLibrary } from '@/lib/data/catalog'
+import { getPublicConfig } from '@/lib/data/config'
 
 // O título do curso vem do banco e depende de quem está logado, então a aba usa um título fixo.
 export const metadata: Metadata = { title: 'Editar curso' }
@@ -25,7 +27,7 @@ async function EditCourse({ params, searchParams }: PageProps<'/admin/cursos/[id
   if (!ID_PATTERN.test(id)) notFound()
   const ctx = await allowed('conteudo')
   if (!ctx) return <SectionDenied />
-  const catalog = await getFullCatalog()
+  const [catalog, media, config] = await Promise.all([getFullCatalog(), getMediaLibrary(), getPublicConfig()])
   const course = catalog.courses.find((c) => c.id === id)
   if (!course) notFound()
   const aba = typeof query.aba === 'string' ? query.aba : ''
@@ -44,6 +46,9 @@ async function EditCourse({ params, searchParams }: PageProps<'/admin/cursos/[id
         others: catalog.courses.filter((c) => c.id !== course.id).map((c) => ({ id: c.id, title: c.title })),
         tags: [...new Set([...catalog.tags, ...catalog.courses.flatMap((c) => c.tags)])],
         skills: [...new Set([...DEFAULT_SKILLS, ...catalog.courses.flatMap((c) => c.skills)])],
+        media,
+        requireCover: config.requireCover,
+        bunny: bunnyConfigured(),
       }}
     />
   )

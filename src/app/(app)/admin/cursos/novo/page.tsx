@@ -1,3 +1,4 @@
+import { bunnyConfigured } from '@/lib/bunny'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { CourseEditor } from '@/components/admin/catalog/CourseEditor'
@@ -7,7 +8,8 @@ import { ButtonLink } from '@/components/ui/Button'
 import { blankCourse, DEFAULT_SKILLS } from '@/lib/admin/catalog'
 import { rankOf } from '@/lib/admin/roles'
 import { allowed } from '@/lib/data/admin'
-import { getFullCatalog } from '@/lib/data/catalog'
+import { getFullCatalog, getMediaLibrary } from '@/lib/data/catalog'
+import { getPublicConfig } from '@/lib/data/config'
 
 export const metadata: Metadata = { title: 'Novo curso' }
 
@@ -22,7 +24,7 @@ export default function NewCoursePage() {
 async function NewCourse() {
   const ctx = await allowed('conteudo')
   if (!ctx) return <SectionDenied />
-  const catalog = await getFullCatalog()
+  const [catalog, media, config] = await Promise.all([getFullCatalog(), getMediaLibrary(), getPublicConfig()])
   if (!catalog.categories.length) {
     return (
       <div className="ad-page">
@@ -46,6 +48,9 @@ async function NewCourse() {
         others: catalog.courses.map((c) => ({ id: c.id, title: c.title })),
         tags: [...new Set([...catalog.tags, ...catalog.courses.flatMap((c) => c.tags)])],
         skills: [...new Set([...DEFAULT_SKILLS, ...catalog.courses.flatMap((c) => c.skills)])],
+        media,
+        requireCover: config.requireCover,
+        bunny: bunnyConfigured(),
       }}
     />
   )

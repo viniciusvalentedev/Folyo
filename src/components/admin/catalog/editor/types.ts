@@ -1,4 +1,5 @@
 import type { AdminCategory, AdminCourse, CourseErrors } from '@/lib/admin/catalog'
+import type { MediaItem } from '@/lib/media'
 
 /** O que cada aba do editor recebe. */
 export type TabProps = {
@@ -13,6 +14,12 @@ export type EditorContext = {
   others: { id: string; title: string }[]
   tags: string[]
   skills: string[]
+  /** Biblioteca de mídia (imagens e PDFs) para escolher capas e materiais. */
+  media: MediaItem[]
+  /** Regra das Configurações: exigir capa para publicar. */
+  requireCover: boolean
+  /** O Bunny Stream está configurado no servidor? (só um sim/não) */
+  bunny: boolean
 }
 
 /** Abas do editor. Fica aqui (e não no editor) porque a página, que roda no servidor, também precisa da lista. */

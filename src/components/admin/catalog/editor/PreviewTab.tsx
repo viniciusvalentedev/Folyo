@@ -15,7 +15,7 @@ import { Notice } from '../../ui'
  * nada daqui é gravado.
  */
 export function PreviewTab({ draft, categories }: { draft: AdminCourse; categories: AdminCategory[] }) {
-  const { s } = useApp()
+  const { s, config } = useApp()
   const id = draft.id || 'previa'
   const catalog = useMemo(
     () => studentCatalog({ categories, courses: [{ ...draft, id, status: 'publicado', publishAt: null, hidden: false }], tags: [] }),
@@ -34,7 +34,7 @@ export function PreviewTab({ draft, categories }: { draft: AdminCourse; categori
     <div className="ad-preview">
       <Notice icon="Eye">Prévia da página do curso como o aluno vai ver, com as alterações ainda não salvas. Os botões ficam desativados aqui.</Notice>
       <div className="ad-preview-frame" inert>
-        <AppStateProvider catalog={catalog} initialState={state}>
+        <AppStateProvider catalog={catalog} config={config} initialState={state}>
           <CourseView id={id} />
         </AppStateProvider>
       </div>

@@ -12,7 +12,7 @@ import { SoonBlock } from '@/components/ui/SoonBlock'
 import { categoryOf, isListed, normalize } from '@/lib/domain/catalog'
 import { recommendCourses } from '@/lib/domain/derive'
 import { plural } from '@/lib/format'
-import type { Course, CourseStatus } from '@/lib/types'
+import type { Category, Course, CourseStatus } from '@/lib/types'
 
 type Duration = 'all' | 'short' | 'mid' | 'long'
 const DURATIONS: { value: Duration; label: string }[] = [
@@ -25,8 +25,15 @@ const DURATIONS: { value: Duration; label: string }[] = [
 const fitsDuration = (h: number, f: Duration) =>
   f === 'all' || (f === 'short' && h <= 5) || (f === 'mid' && h > 5 && h <= 10) || (f === 'long' && h > 10)
 
+/** Imagem da categoria (quando a equipe escolheu uma) ou o ícone dela. */
+function CategoryMark({ cat, size }: { cat: Category; size: number }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  if (cat.image) return <img className="cat-img" src={cat.image} alt="" width={size} height={size} loading="lazy" decoding="async" style={{ width: size, height: size }} />
+  return <Icon name={cat.icon} size={size} />
+}
+
 export function ExploreView() {
-  const { s, d, catalog } = useApp()
+  const { s, d, catalog, config } = useApp()
   const router = useRouter()
   const [q, setQ] = useState('')
   const [cat, setCat] = useState('all')
@@ -57,6 +64,8 @@ export function ExploreView() {
       if (situation !== 'all' && st.status !== situation) return false
       return true
     })
+    if (config.catalog.defaultSort === 'catalogo') return [...list].sort((a, b) => order(a) - order(b))
+    if (config.catalog.defaultSort === 'curtos') return [...list].sort((a, b) => a.hours - b.hours || order(a) - order(b))
     const score = (c: Course) =>
       (recommendedIds.includes(c.id) ? 10 : 0) +
       (d.courseStats[c.id].status === 'iniciado' ? 5 : 0) +
@@ -64,7 +73,7 @@ export function ExploreView() {
       (c.featured ? 3 : 0) -
       order(c) / 1000
     return [...list].sort((a, b) => score(b) - score(a))
-  }, [q, cat, duration, plan, onlyFav, situation, courses, catalog, d.courseStats, s.favorites, recommendedIds])
+  }, [q, cat, duration, plan, onlyFav, situation, courses, catalog, d.courseStats, s.favorites, recommendedIds, config.catalog.defaultSort])
 
   const clear = () => {
     setQ('')
@@ -144,7 +153,7 @@ export function ExploreView() {
             onClick={() => setCat(cat === c.id ? 'all' : c.id)}
             aria-pressed={cat === c.id}
           >
-            <Icon name={c.icon} size={16} />
+            <CategoryMark cat={c} size={16} />
             {c.name}
             <i>{countByCat[c.id] || 'em breve'}</i>
           </button>
@@ -308,7 +317,7 @@ export function ExploreView() {
                 .filter((c) => countByCat[c.id])
                 .map((c) => (
                   <button key={c.id} type="button" className="area-tile" onClick={() => setCat(c.id)}>
-                    <Icon name={c.icon} size={22} />
+                    <CategoryMark cat={c} size={22} />
                     <b>{c.name}</b>
                     <small>{plural(countByCat[c.id], 'curso', 'cursos')}</small>
                   </button>

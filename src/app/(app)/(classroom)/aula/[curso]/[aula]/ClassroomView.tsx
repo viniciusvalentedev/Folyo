@@ -10,11 +10,13 @@ import { Tabs } from '@/components/ui/controls'
 import { Icon } from '@/components/ui/Icon'
 import { EmptyState, Progress, Ring } from '@/components/ui/indicators'
 import { Modal } from '@/components/ui/Modal'
+import { useAudience } from '@/components/classroom/useAudience'
 import { WorksPanel } from '@/components/works/WorksPanel'
 import { findCourse, lessonsOf } from '@/lib/domain/catalog'
 import { isExternalVideo, isHttpsUrl } from '@/lib/admin/catalog'
 import { issuesCertificate } from '@/lib/domain/derive'
 import { plural } from '@/lib/format'
+import { formatBytes } from '@/lib/media'
 import { NOTE_MAX } from '@/lib/validation'
 import type { Course, LessonRef } from '@/lib/types'
 
@@ -36,18 +38,26 @@ function Slide({ lesson, n }: { lesson: LessonRef; n: number }) {
 
 /** Quantos segundos assistidos juntar antes de mandar para a fila de gravação. */
 const WATCH_BATCH = 5
+/** Endereço de onde vem o player do Bunny (só mensagens desta origem são aceitas). */
+const BUNNY_ORIGIN = 'https://iframe.mediadelivery.net'
+const BUNNY_EVENTS = ['play', 'pause', 'ended', 'timeupdate'] as const
 
 /**
- * Espaço do vídeo. O vídeo é um link https cadastrado pela equipe:
- *  - YouTube/Vimeo não tocam dentro de outro site (a Folyo não carrega iframes de terceiros),
- *    então a aula mostra um botão que abre o vídeo no site deles;
- *  - qualquer outro link (.mp4/.webm) toca aqui, e o tempo assistido é somado em "Progresso";
- *  - sem vídeo (ou se o link falhar), aparece o aviso de vídeo indisponível.
+ * Espaço do vídeo. Três jeitos de a aula ter vídeo:
+ *  - hospedado no Bunny: o servidor gera o endereço do player com token (só depois de conferir
+ *    que a pessoa pode ver a aula); o player manda play/pause/tempo e a Folyo mede a audiência;
+ *  - link .mp4/.webm: toca aqui e também é medido;
+ *  - YouTube/Vimeo: não tocam dentro de outro site (a Folyo não carrega iframes de terceiros
+ *    além do Bunny), então a aula mostra um botão que abre o vídeo no site deles.
+ * Sem vídeo (ou se falhar), aparece o aviso de vídeo indisponível.
  */
-function LessonPlayer({ lesson, n }: { lesson: LessonRef; n: number }) {
+function LessonPlayer({ lesson, courseId, n, embedUrl }: { lesson: LessonRef; courseId: string; n: number; embedUrl: string | null }) {
   const { a } = useApp()
-  const url = lesson.video ?? null
+  const audience = useAudience(courseId, lesson.id)
+  const video = lesson.video ?? null
+  const url = video?.kind === 'link' ? video.url : null
   const [failed, setFailed] = useState(false)
+  const frame = useRef<HTMLIFrameElement>(null)
   // Soma o tempo realmente assistido (ignora quem pula a barra de tempo).
   const track = useRef({ last: 0, pending: 0 })
 
@@ -55,6 +65,96 @@ function LessonPlayer({ lesson, n }: { lesson: LessonRef; n: number }) {
     const t = track.current
     if (t.pending > 0) a.addWatch(lesson.id, t.pending)
     t.pending = 0
+  }
+
+  const tick = (current: number, duration: number, playing: boolean) => {
+    const t = track.current
+    const delta = current - t.last
+    t.last = current
+    audience.time(current, duration)
+    if (!playing || delta <= 0 || delta > 3) return
+    t.pending += delta
+    if (t.pending >= WATCH_BATCH) flush()
+  }
+
+  // Player do Bunny (protocolo player.js): pede os eventos quando ele avisa que está pronto.
+  const bunnyEmbed = video?.kind === 'bunny' ? embedUrl : null
+  useEffect(() => {
+    if (!bunnyEmbed) return
+    const post = (message: Record<string, unknown>) => frame.current?.contentWindow?.postMessage(JSON.stringify({ context: 'player.js', version: '0.0.11', ...message }), BUNNY_ORIGIN)
+    let duration = 0
+    let playing = false
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin !== BUNNY_ORIGIN || e.source !== frame.current?.contentWindow || typeof e.data !== 'string') return
+      let msg: { context?: string; event?: string; value?: { seconds?: number; duration?: number } }
+      try {
+        msg = JSON.parse(e.data)
+      } catch {
+        return
+      }
+      if (msg.context !== 'player.js') return
+      const seconds = Number(msg.value?.seconds ?? 0)
+      if (Number(msg.value?.duration) > 0) duration = Number(msg.value?.duration)
+      switch (msg.event) {
+        case 'ready':
+          for (const event of BUNNY_EVENTS) post({ method: 'addEventListener', value: event })
+          break
+        case 'play':
+          playing = true
+          track.current.last = seconds
+          audience.play()
+          break
+        case 'timeupdate':
+          tick(seconds, duration, playing)
+          break
+        case 'pause':
+          playing = false
+          flush()
+          audience.pause()
+          break
+        case 'ended':
+          playing = false
+          flush()
+          audience.end()
+          break
+      }
+    }
+    window.addEventListener('message', onMessage)
+    return () => {
+      window.removeEventListener('message', onMessage)
+      flush()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bunnyEmbed])
+
+  if (video?.kind === 'bunny') {
+    if (!bunnyEmbed) {
+      return (
+        <div className="player">
+          <div className="player-stage">
+            <Slide lesson={lesson} n={n} />
+            <p className="player-none" role="status">
+              <Icon name="VideoOff" size={18} />
+              Não foi possível carregar o vídeo desta aula agora. Tente de novo mais tarde.
+            </p>
+          </div>
+        </div>
+      )
+    }
+    return (
+      <div className="player">
+        <iframe
+          ref={frame}
+          className="player-video player-embed"
+          src={bunnyEmbed}
+          title={`Vídeo: ${lesson.title}`}
+          loading="lazy"
+          allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope"
+          allowFullScreen
+          referrerPolicy="strict-origin-when-cross-origin"
+        />
+      </div>
+    )
   }
 
   if (url && isExternalVideo(url) && isHttpsUrl(url)) {
@@ -87,18 +187,21 @@ function LessonPlayer({ lesson, n }: { lesson: LessonRef; n: number }) {
           onError={() => setFailed(true)}
           onPlay={(e) => {
             track.current.last = e.currentTarget.currentTime
+            audience.time(e.currentTarget.currentTime, e.currentTarget.duration)
+            audience.play()
           }}
           onTimeUpdate={(e) => {
             const el = e.currentTarget
-            const t = track.current
-            const delta = el.currentTime - t.last
-            t.last = el.currentTime
-            if (el.paused || delta <= 0 || delta > 2) return
-            t.pending += delta
-            if (t.pending >= WATCH_BATCH) flush()
+            tick(el.currentTime, el.duration, !el.paused)
           }}
-          onPause={flush}
-          onEnded={flush}
+          onPause={() => {
+            flush()
+            audience.pause()
+          }}
+          onEnded={() => {
+            flush()
+            audience.end()
+          }}
         />
       </div>
     )
@@ -159,7 +262,7 @@ function Notes({ lid }: { lid: string }) {
 type Tab = 'sobre' | 'material' | 'notas' | 'projeto'
 type Celebration = null | 'cert' | 'lessons' | 'done'
 
-export function ClassroomView({ courseId, lessonId }: { courseId: string; lessonId: string }) {
+export function ClassroomView({ courseId, lessonId, embedUrl }: { courseId: string; lessonId: string; embedUrl: string | null }) {
   const { s, d, a, toast, catalog } = useApp()
   const router = useRouter()
   const course = findCourse(catalog, courseId) as Course | undefined
@@ -243,7 +346,7 @@ export function ClassroomView({ courseId, lessonId }: { courseId: string; lesson
 
       <div className="class-grid">
         <div className="class-main">
-          <LessonPlayer key={lesson.id} lesson={lesson} n={n} />
+          <LessonPlayer key={lesson.id} lesson={lesson} courseId={course.id} n={n} embedUrl={embedUrl} />
           <div className="class-titlebar">
             <div>
               <p className="eyebrow">
@@ -296,8 +399,9 @@ export function ClassroomView({ courseId, lessonId }: { courseId: string; lesson
                   {lesson.materials.map((m) => (
                     <li key={m.id}>
                       <a href={m.url} target="_blank" rel="noopener noreferrer">
-                        <Icon name="Paperclip" size={16} />
+                        <Icon name={m.file ? 'FileText' : 'Paperclip'} size={16} />
                         <span>{m.label}</span>
+                        {m.file && <small>PDF · {formatBytes(m.file.size)}</small>}
                         <Icon name="ExternalLink" size={14} />
                       </a>
                     </li>

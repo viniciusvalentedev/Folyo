@@ -3,6 +3,7 @@ import { Mark } from '@/components/brand/Logo'
 import { AppStateProvider } from '@/components/providers/AppState'
 import { Toasts } from '@/components/ui/Toasts'
 import { getCatalog } from '@/lib/data/catalog'
+import { getPublicConfig } from '@/lib/data/config'
 import { getCurrentUserState } from '@/lib/data/user'
 
 /**
@@ -22,9 +23,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 async function SignedInApp({ children }: { children: React.ReactNode }) {
-  const [catalog, state] = await Promise.all([getCatalog(), getCurrentUserState()])
+  const [catalog, config, state] = await Promise.all([getCatalog(), getPublicConfig(), getCurrentUserState()])
   return (
-    <AppStateProvider catalog={catalog} initialState={state}>
+    <AppStateProvider catalog={catalog} config={config} initialState={state}>
       {children}
       <Toasts />
     </AppStateProvider>

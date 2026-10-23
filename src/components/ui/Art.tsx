@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { MarkPath } from '@/components/brand/Logo'
+import type { CourseImage } from '@/lib/media'
 import type { Tone } from '@/lib/types'
 
 /** Cores de cada tom de arte (fundo, texto, destaque e marca d'água). */
@@ -33,6 +34,7 @@ export function Art({
   children,
   big,
   style,
+  image,
 }: {
   tone?: Tone
   glyph?: string
@@ -42,16 +44,25 @@ export function Art({
   children?: ReactNode
   big?: boolean
   style?: CSSProperties
+  /** Imagem própria (capa do curso). Sem ela, vale a arte padrão. */
+  image?: CourseImage
 }) {
   const c = TONES[tone] ?? TONES.blue
   const l = LAYOUTS[Math.abs(seed) % LAYOUTS.length]
   return (
     <div className={'art ' + className} style={{ aspectRatio: ratio, background: c.bg, color: c.fg, ...style }}>
-      <svg className="art-svg" viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <MarkPath x={l.x} y={l.y} r={l.r} fill={c.b} rotate={l.rot} />
-        <MarkPath x={l.x - l.r * 0.62} y={86} r={7} fill={c.a} rotate={l.rot} />
-      </svg>
-      {glyph && <span className={'art-glyph' + (big ? ' big' : '')}>{glyph}</span>}
+      {image ? (
+        // eslint-disable-next-line @next/next/no-img-element -- imagem pública do Storage; o foco (object-position) é escolhido no painel
+        <img className="art-img" src={image.url} alt={image.alt} loading="lazy" decoding="async" style={{ objectPosition: `${image.x}% ${image.y}%` }} />
+      ) : (
+        <>
+          <svg className="art-svg" viewBox="0 0 160 100" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <MarkPath x={l.x} y={l.y} r={l.r} fill={c.b} rotate={l.rot} />
+            <MarkPath x={l.x - l.r * 0.62} y={86} r={7} fill={c.a} rotate={l.rot} />
+          </svg>
+          {glyph && <span className={'art-glyph' + (big ? ' big' : '')}>{glyph}</span>}
+        </>
+      )}
       {children}
     </div>
   )

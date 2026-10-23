@@ -6,6 +6,9 @@ import { Field, Select, Seg, Toggle } from '@/components/ui/controls'
 import { Icon } from '@/components/ui/Icon'
 import { EmptyState } from '@/components/ui/indicators'
 import { Modal } from '@/components/ui/Modal'
+import { MediaPicker } from '../../media/MediaPicker'
+import { BunnyVideo } from './BunnyVideo'
+import type { MediaItem } from '@/lib/media'
 import {
   CATALOG_LIMITS as L,
   isExternalVideo,
@@ -23,7 +26,7 @@ type Removal = { kind: 'mod'; mi: number } | { kind: 'lesson'; mi: number; lid: 
 const blankLesson = (): AdminLesson => ({ id: newId('l'), title: '', desc: '', min: 10, published: true, video: null, materials: [] })
 
 /** Aba "Módulos e aulas": criar, reordenar (setas ou arrastando), arquivar e excluir. */
-export function ContentTab({ draft, set }: { draft: AdminCourse; set: (patch: Partial<AdminCourse>) => void }) {
+export function ContentTab({ draft, set, media, bunny }: { draft: AdminCourse; set: (patch: Partial<AdminCourse>) => void; media: MediaItem[]; bunny: boolean }) {
   const modules = draft.modules
   const [dialog, setDialog] = useState<Dialog | null>(null)
   const [removal, setRemoval] = useState<Removal | null>(null)
@@ -155,7 +158,7 @@ export function ContentTab({ draft, set }: { draft: AdminCourse; set: (patch: Pa
                 <button type="button" className="ad-l-main" onClick={() => setDialog({ mi, lesson: structuredClone(l), isNew: false })}>
                   <b>{l.title || 'Aula sem título'}</b>
                   <small>
-                    {l.min} min · {l.video ? 'vídeo por link' : 'sem vídeo'}
+                    {l.min} min · {l.video ? (l.video.kind === 'bunny' ? 'vídeo hospedado' : 'vídeo por link') : 'sem vídeo'}
                     {l.materials.length ? ` · ${l.materials.length} ${l.materials.length === 1 ? 'material' : 'materiais'}` : ''}
                   </small>
                 </button>
@@ -187,7 +190,7 @@ export function ContentTab({ draft, set }: { draft: AdminCourse; set: (patch: Pa
         </section>
       ))}
 
-      {dialog && <LessonDialog key={dialog.lesson.id} dialog={dialog} modules={modules} onClose={() => setDialog(null)} onSave={saveLesson} />}
+      {dialog && <LessonDialog key={dialog.lesson.id} dialog={dialog} modules={modules} media={media} bunny={bunny} onClose={() => setDialog(null)} onSave={saveLesson} />}
 
       <Modal
         open={!!removal}
@@ -237,11 +240,15 @@ export function ContentTab({ draft, set }: { draft: AdminCourse; set: (patch: Pa
 function LessonDialog({
   dialog,
   modules,
+  media,
+  bunny,
   onClose,
   onSave,
 }: {
   dialog: Dialog
   modules: AdminModule[]
+  media: MediaItem[]
+  bunny: boolean
   onClose: () => void
   onSave: (from: number, lesson: AdminLesson, to: number) => void
 }) {
@@ -249,15 +256,19 @@ function LessonDialog({
   const [target, setTarget] = useState(dialog.mi)
   const [errors, setErrors] = useState<{ title?: string; min?: string; video?: string }>({})
   const [mat, setMat] = useState({ label: '', url: '' })
+  const [pickFile, setPickFile] = useState(false)
+  const [bunnyMode, setBunnyMode] = useState(false)
   const patch = (p: Partial<AdminLesson>) => setLesson((l) => ({ ...l, ...p }))
-  const videoUrl = lesson.video?.url ?? ''
+  const videoUrl = lesson.video?.kind === 'link' ? lesson.video.url : ''
   const external = isExternalVideo(videoUrl)
+  const videoMode: 'nenhum' | 'link' | 'bunny' = lesson.video ? lesson.video.kind : bunnyMode ? 'bunny' : 'nenhum'
+  const mediaById = new Map(media.map((m) => [m.id, m]))
 
   const apply = () => {
     const next: typeof errors = {}
     if (lesson.title.trim().length < L.lessonTitle.min) next.title = 'Dê um título com pelo menos 3 caracteres.'
     if (!(Number.isInteger(lesson.min) && lesson.min >= L.lessonMin.min && lesson.min <= L.lessonMin.max)) next.min = 'Informe a duração em minutos (1 a 300).'
-    if (lesson.video && !isHttpsUrl(lesson.video.url)) next.video = 'Use um endereço que comece com https://'
+    if (lesson.video?.kind === 'link' && !isHttpsUrl(lesson.video.url)) next.video = 'Use um endereço que comece com https://'
     setErrors(next)
     if (Object.keys(next).length) return
     onSave(dialog.mi, { ...lesson, title: lesson.title.trim() }, target)
@@ -265,8 +276,14 @@ function LessonDialog({
 
   const addMaterial = () => {
     if (!mat.label.trim() || !isHttpsUrl(mat.url) || lesson.materials.length >= L.materials) return
-    patch({ materials: [...lesson.materials, { id: newId('mt'), label: mat.label.trim().slice(0, L.materialLabel), url: mat.url.trim() }] })
+    patch({ materials: [...lesson.materials, { id: newId('mt'), label: mat.label.trim().slice(0, L.materialLabel), url: mat.url.trim(), media: null }] })
     setMat({ label: '', url: '' })
+  }
+
+  const addFile = (item: MediaItem) => {
+    if (lesson.materials.length >= L.materials) return
+    patch({ materials: [...lesson.materials, { id: newId('mt'), label: item.name.replace(/\.pdf$/i, '').slice(0, L.materialLabel), url: '', media: item.id }] })
+    setPickFile(false)
   }
 
   return (
@@ -318,22 +335,26 @@ function LessonDialog({
 
       <section className="ad-fs">
         <h3>Vídeo</h3>
-        <Seg<'nenhum' | 'link'>
+        <Seg<'nenhum' | 'link' | 'bunny'>
           label="Origem do vídeo"
-          value={lesson.video ? 'link' : 'nenhum'}
-          onChange={(v) => patch({ video: v === 'link' ? { url: '' } : null })}
+          value={videoMode}
+          onChange={(v) => {
+            if (v === videoMode) return
+            patch({ video: v === 'link' ? { kind: 'link', url: '' } : null })
+            setBunnyMode(v === 'bunny')
+          }}
           options={[
             { value: 'nenhum', label: 'Sem vídeo' },
             { value: 'link', label: 'Link', icon: 'Link' },
+            { value: 'bunny', label: 'Enviar arquivo', icon: 'Upload' },
           ]}
         />
-        {!lesson.video && (
+        {videoMode === 'nenhum' && (
           <p className="ad-help">
-            Sem vídeo, a aula pode ficar salva, mas o curso só é publicado quando todas as aulas publicadas têm vídeo. Até lá, o aluno veria um aviso de vídeo indisponível. O envio de
-            arquivos de vídeo chega na próxima fase.
+            Sem vídeo, a aula pode ficar salva, mas o curso só é publicado quando todas as aulas publicadas têm vídeo. Até lá, o aluno veria um aviso de vídeo indisponível.
           </p>
         )}
-        {lesson.video && (
+        {lesson.video?.kind === 'link' && (
           <Field
             label="Endereço do vídeo"
             id="l-url"
@@ -344,8 +365,17 @@ function LessonDialog({
                 : 'Link direto para um arquivo .mp4 ou .webm. A reprodução é medida na audiência.'
             }
           >
-            <input id="l-url" className="inp" value={videoUrl} maxLength={L.url} placeholder="https://" onChange={(e) => patch({ video: { url: e.target.value.trim() } })} />
+            <input id="l-url" className="inp" value={videoUrl} maxLength={L.url} placeholder="https://" onChange={(e) => patch({ video: { kind: 'link', url: e.target.value.trim() } })} />
           </Field>
+        )}
+        {videoMode === 'bunny' && (
+          <BunnyVideo
+            videoId={lesson.video?.kind === 'bunny' ? lesson.video.id : null}
+            title={lesson.title}
+            configured={bunny}
+            onChange={(id) => patch({ video: id ? { kind: 'bunny', id } : null })}
+            onDuration={(minutes) => patch({ min: minutes })}
+          />
         )}
       </section>
 
@@ -355,7 +385,7 @@ function LessonDialog({
           <ul className="ad-mats">
             {lesson.materials.map((x, i) => (
               <li key={x.id}>
-                <Icon name="Link" size={16} />
+                <Icon name={x.media ? 'FileText' : 'Link'} size={16} />
                 <input
                   className="inp inp-sm"
                   value={x.label}
@@ -363,7 +393,7 @@ function LessonDialog({
                   aria-label="Nome do material"
                   onChange={(e) => patch({ materials: lesson.materials.map((y, j) => (j === i ? { ...y, label: e.target.value } : y)) })}
                 />
-                <small>{x.url}</small>
+                <small>{x.media ? (mediaById.get(x.media)?.name ?? 'PDF da biblioteca') : x.url}</small>
                 <IconButton icon="X" label="Remover material" onClick={() => patch({ materials: lesson.materials.filter((_, j) => j !== i) })} />
               </li>
             ))}
@@ -378,7 +408,13 @@ function LessonDialog({
             Adicionar link
           </Button>
         </div>
-        <p className="ad-help">Arquivos (PDF, planilhas) poderão ser enviados na próxima fase; por enquanto use links.</p>
+        <div>
+          <Button size="sm" variant="quiet" icon="FileText" disabled={lesson.materials.length >= L.materials} onClick={() => setPickFile(true)}>
+            Anexar PDF da biblioteca
+          </Button>
+        </div>
+        <p className="ad-help">PDFs de até 20 MB. O aluno abre pelo site, sem endereço público.</p>
+        <MediaPicker open={pickFile} onClose={() => setPickFile(false)} onPick={addFile} kind="file" items={media} title="Escolher PDF" />
       </section>
     </Modal>
   )

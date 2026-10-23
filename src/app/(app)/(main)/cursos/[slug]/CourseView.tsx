@@ -53,7 +53,17 @@ export function CourseView({ id }: { id: string }) {
 
   return (
     <div className="page course-page">
-      <section className={'course-hero tone-' + course.tone}>
+      <section className={'course-hero tone-' + course.tone + (course.images?.banner ? ' has-banner' : '')}>
+        {course.images?.banner && (
+          // eslint-disable-next-line @next/next/no-img-element -- imagem pública do Storage
+          <img
+            className="course-hero-bg"
+            src={course.images.banner.url}
+            alt=""
+            fetchPriority="high"
+            style={{ objectPosition: `${course.images.banner.x}% ${course.images.banner.y}%` }}
+          />
+        )}
         <div className="course-hero-in">
           <button type="button" className="backlink on-dark" onClick={() => back('/cursos')}>
             <Icon name="ArrowLeft" size={16} />

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
+import { getPublicConfig } from '@/lib/data/config'
 
 import '@/styles/tokens.css'
 import '@/styles/base.css'
@@ -52,11 +53,15 @@ const mono = localFont({
   display: 'swap',
 })
 
-export const metadata: Metadata = {
-  title: { default: 'Folyo', template: '%s · Folyo' },
-  description: 'Cursos práticos, projetos reais e um currículo que mostra o que você sabe fazer.',
-  // Versão de demonstração: não queremos que o Google indexe ainda.
-  robots: { index: false, follow: false },
+/** Nome e frase vêm das Configurações do painel (em cache; sem elas, valem os padrões da Folyo). */
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await getPublicConfig()
+  return {
+    title: { default: config.name, template: `%s · ${config.name}` },
+    description: config.tagline,
+    // Versão de demonstração: não queremos que o Google indexe ainda.
+    robots: { index: false, follow: false },
+  }
 }
 
 export const viewport: Viewport = {

@@ -9,6 +9,8 @@ import { AUDIT_LABELS, can, roleChangeText } from '@/lib/admin/roles'
 import { allowed, getOverview } from '@/lib/data/admin'
 import { courseCounts } from '@/lib/admin/catalog'
 import { getFullCatalog } from '@/lib/data/catalog'
+import { getPublicConfig } from '@/lib/data/config'
+import { contentAlerts } from '@/lib/admin/alerts'
 
 export const metadata: Metadata = { title: 'Visão geral' }
 
@@ -29,7 +31,7 @@ async function Overview({ searchParams }: { searchParams: PageProps<'/admin'>['s
   const asked = Number(Array.isArray(sp.dias) ? sp.dias[0] : sp.dias)
   const days = (PERIODS as readonly number[]).includes(asked) ? (asked as 7 | 30 | 90) : 30
 
-  const [o, catalog] = await Promise.all([getOverview(days), getFullCatalog()])
+  const [o, catalog, config] = await Promise.all([getOverview(days), getFullCatalog(), getPublicConfig()])
   const cur = o.cur
   const prev = o.prev
 
@@ -49,6 +51,8 @@ async function Overview({ searchParams }: { searchParams: PageProps<'/admin'>['s
   const completedAll = courses.reduce((n, c) => n + c.completed, 0)
   const rate = enrolledAll ? (completedAll / enrolledAll) * 100 : null
   const seeUsers = can(ctx.role, 'usuarios')
+
+  const alerts = contentAlerts(catalog, config.notifications)
 
   return (
     <div className="ad-page">
@@ -71,6 +75,25 @@ async function Overview({ searchParams }: { searchParams: PageProps<'/admin'>['s
           ))}
         </div>
       </div>
+
+      {alerts.length > 0 && (
+        <section className="panel" aria-label="Avisos">
+          <header className="ad-sec-head">
+            <h2>Precisa de atenção</h2>
+          </header>
+          <ul className="ad-alerts">
+            {alerts.map((a) => (
+              <li key={a.key}>
+                <Icon name={a.icon} size={16} />
+                <span>{a.text}</span>
+                <Link href={a.href} className="ad-link">
+                  Ver
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="ad-metrics" aria-label="Indicadores">
         <Metric

@@ -14,6 +14,7 @@ import type { Tone } from '@/lib/types'
 import { fmtDate, fmtNum } from '../ui'
 import { CourseActions } from './CourseActions'
 import { DataTable, type Column } from './DataTable'
+import type { CourseImage } from '@/lib/media'
 import { CourseThumb, StatusBadge } from './parts'
 import { ReorderModal } from './ReorderModal'
 
@@ -28,6 +29,9 @@ export type CourseListRow = {
   publishAt: string | null
   tone: Tone
   glyph: string
+  image: CourseImage | null
+  /** Contagens de audiência (null se não deu para carregar). */
+  stats: { enrolled: number; views: number; live: number } | null
   order: number
   modules: number
   lessons: number
@@ -80,7 +84,7 @@ export function CoursesList({
       label: 'Curso',
       render: (c) => (
         <Link href={`/admin/cursos/${c.id}`} className="ad-ccell" onClick={(e) => e.stopPropagation()}>
-          <CourseThumb tone={c.tone} glyph={c.glyph} />
+          <CourseThumb tone={c.tone} glyph={c.glyph} image={c.image} />
           <span>
             <b>{c.title}</b>
             <small>
@@ -102,6 +106,21 @@ export function CoursesList({
           {c.lessons !== c.published ? ` (${c.published} publicadas)` : ''}
         </span>
       ),
+    },
+    {
+      key: 'audience',
+      label: 'Audiência',
+      num: true,
+      sortValue: (c) => c.stats?.views ?? -1,
+      render: (c) =>
+        c.stats ? (
+          <span className="ad-sub" title="Alunos matriculados · visualizações · assistindo agora">
+            {c.stats.enrolled} alunos · {c.stats.views} vis.
+            {c.stats.live ? ` · ${c.stats.live} agora` : ''}
+          </span>
+        ) : (
+          <span className="ad-sub">–</span>
+        ),
     },
     { key: 'status', label: 'Status', sortValue: (c) => c.status, render: (c) => <StatusBadge status={c.status} publishAt={c.publishAt} /> },
     { key: 'updatedAt', label: 'Atualizado', sortValue: (c) => stamp(c.updatedAt), render: (c) => <span className="ad-sub">{fmtDate(c.updatedAt)}</span> },

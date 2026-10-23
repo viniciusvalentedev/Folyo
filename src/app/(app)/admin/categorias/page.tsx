@@ -3,7 +3,7 @@ import { Suspense } from 'react'
 import { CategoriesManager } from '@/components/admin/catalog/CategoriesManager'
 import { SectionDenied, SectionLoading } from '@/components/admin/sections'
 import { allowed } from '@/lib/data/admin'
-import { getFullCatalog } from '@/lib/data/catalog'
+import { getFullCatalog, getMediaLibrary } from '@/lib/data/catalog'
 
 export const metadata: Metadata = { title: 'Categorias' }
 
@@ -17,7 +17,7 @@ export default function AdminCategoriesPage() {
 
 async function Categories() {
   if (!(await allowed('conteudo'))) return <SectionDenied />
-  const catalog = await getFullCatalog()
+  const [catalog, media] = await Promise.all([getFullCatalog(), getMediaLibrary()])
   const usage: Record<string, number> = {}
   const tagCount = new Map<string, number>()
   for (const c of catalog.courses) {
@@ -31,6 +31,7 @@ async function Categories() {
       featured={catalog.courses.filter((c) => c.featured).map((c) => ({ id: c.id, title: c.title }))}
       suggested={catalog.tags}
       tagUsage={[...tagCount].map(([tag, count]) => ({ tag, count }))}
+      media={media}
     />
   )
 }

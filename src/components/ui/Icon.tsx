@@ -127,6 +127,10 @@ import {
   Star,
   Image,
   Upload,
+  Radio,
+  Timer,
+  Database,
+  ImageOff,
 } from 'lucide-react'
 
 /**
@@ -261,6 +265,10 @@ const ICONS = {
   Star,
   Image,
   Upload,
+  Radio,
+  Timer,
+  Database,
+  ImageOff,
 } satisfies Record<string, LucideIcon>
 
 export type IconName = keyof typeof ICONS

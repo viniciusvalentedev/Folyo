@@ -53,18 +53,16 @@ function NavItems({ role, path, collapsed }: { role: Role; path: string | null; 
     <nav>
       {ADMIN_NAV.filter((item) => can(role, item.perm)).map((item) => {
         const on = isOn(path, item.to)
-        const soon = 'soon' in item && item.soon
         return (
           <Link
             key={item.to}
             href={item.to}
-            className={'ad-nav' + (on ? ' on' : '') + (soon ? ' soon' : '')}
+            className={'ad-nav' + (on ? ' on' : '')}
             aria-current={on ? 'page' : undefined}
-            title={collapsed ? item.label + (soon ? ' (em breve)' : '') : undefined}
+            title={collapsed ? item.label : undefined}
           >
             <Icon name={item.icon} size={18} />
             <span>{item.label}</span>
-            {soon && <em className="ad-soon-tag">breve</em>}
           </Link>
         )
       })}

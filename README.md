@@ -12,7 +12,6 @@ Onde estamos:
 - **Etapa 3 — proteção contra robôs** ✅ CAPTCHA (Cloudflare Turnstile) e limites de tentativas e de alterações.
 - **Etapa 4 — painel admin (fundação)** ✅ papéis (aluno / editor / administrador / proprietário), visão geral com
   números reais, lista e ficha dos usuários, suspender e reativar contas, permissões e histórico de auditoria.
-  Mídia, audiência, relatórios e configurações aparecem como "em breve" (Fase 3).
 - **Folyo 2.0 — Fase 1 (área do aluno)** ✅ novo primeiro acesso (3 passos), Objetivos, Início, Cursos, sala de aula,
   Progresso, **Projetos e portfólio** (trabalhos em PDF ou link), Currículo, Certificados, Perfil, Configurações e
   **perfil público** (`/publico`), seguindo o protótipo Folyo 2.0. Exige rodar um SQL novo (veja
@@ -21,8 +20,12 @@ Onde estamos:
   (a equipe cadastra, agenda, publica e despublica; o aluno só vê o que está publicado). Editor de curso com 5 abas
   (informações, capa e visual, módulos e aulas, publicação e acesso, prévia), vídeo por link e materiais por link,
   tags, destaques e ordem do catálogo. Exige rodar um SQL novo (veja [`supabase/README.md`](supabase/README.md)).
-- **Próxima fase do 2.0:** Fase 3 — biblioteca de mídia (capas, vídeos e arquivos no Supabase Storage), audiência,
-  relatórios e configurações do painel. Depois: certificados e PDF de verdade; pagamentos.
+- **Folyo 2.0 — Fase 3 (mídia, vídeo e métricas)** ✅ **Biblioteca de mídia** (imagens e PDFs no Supabase Storage),
+  capa/miniatura/banner com ponto de foco, imagem nas categorias, PDFs nos materiais das aulas, **vídeo no Bunny
+  Stream** (envio direto do navegador, player com token), **Audiência** (ao vivo e histórico), **Relatórios**
+  (5 relatórios + CSV) e **Configurações** (6 abas). Exige um SQL novo e, para o vídeo, as variáveis `BUNNY_STREAM_*`
+  (veja [`supabase/README.md`](supabase/README.md)).
+- **Próxima fase do 2.0:** certificados e PDF de verdade; pagamentos.
 
 **Configurar o Supabase pela primeira vez:** siga o passo a passo em [`supabase/README.md`](supabase/README.md).
 
@@ -245,12 +248,12 @@ supabase/
 | --- | --- | --- |
 | **Login / cadastro** | ✅ Supabase Auth, rotas protegidas, e-mail próprio (Zoho, usefolyo.com), CAPTCHA e limite de tentativas | Excluir/exportar conta (LGPD) |
 | **Banco de dados** | ✅ Perfil, progresso, anotações, tempo assistido, trabalhos (PDF/link), competências e currículo, todos com RLS e limite de alterações por minuto | Certificado emitido pelo servidor |
-| **Painel admin** | ✅ Papéis, visão geral, usuários, permissões, auditoria e (Fase 2) **cursos, categorias, módulos e aulas** no banco. Papel e regras ficam no banco; a tela só esconde o que não se pode usar | Fase 3: audiência, relatórios, biblioteca de mídia e configurações (hoje "em breve") |
-| **Player de aula** | ✅ Vídeo por link: `.mp4`/`.webm` toca na aula (com tempo assistido); YouTube/Vimeo abrem no site deles. Sem vídeo: aviso | Fase 3: envio de vídeo para o Supabase Storage |
-| **Capas e imagens dos cursos** | Arte padrão (cor + letra) | Fase 3: envio de capa, miniatura e banner |
+| **Painel admin** | ✅ Papéis, visão geral, usuários, permissões, auditoria e (Fase 2) **cursos, categorias, módulos e aulas** no banco. Papel e regras ficam no banco; a tela só esconde o que não se pode usar | Certificado emitido pelo servidor |
+| **Player de aula** | ✅ Vídeo hospedado no Bunny Stream (player com token) ou link `.mp4`/`.webm`, ambos medidos na audiência; YouTube/Vimeo abrem no site deles. Sem vídeo: aviso | Legendas e capítulos |
+| **Capas e imagens dos cursos** | ✅ Capa, miniatura e banner enviados pela biblioteca de mídia, com ponto de foco; sem imagem, arte padrão | Recorte automático por IA |
 | **Currículo em PDF e certificados** | Só visual ("Certificados a caminho"). Hoje "aula concluída" é marcada pelo próprio aluno | Certificado emitido pelo servidor (conferindo aulas e trabalho) + código de verificação |
 | **Perfil público** | `/publico` é só a pré-visualização para o próprio aluno (o que ele marcou como público) | Rota pública de verdade (`/u/nome` ou subdomínio) com controle de privacidade |
-| **Objetivos com recomendação** | ✅ Trilhas em `src/lib/trails.ts`; as recomendações usam os cursos do banco (publicados e visíveis) | Refinar com dados de audiência (Fase 3) |
+| **Objetivos com recomendação** | ✅ Trilhas em `src/lib/trails.ts`; as recomendações usam os cursos do banco (publicados e visíveis) | Refinar com os dados de audiência |
 | **Pagamentos (Plano Pro)** | Só o selo "Pro" | Mercado Pago / Stripe / Pagar.me |
 
 ### Como os dados vão para o banco

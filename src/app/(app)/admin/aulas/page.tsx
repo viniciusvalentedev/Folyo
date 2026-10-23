@@ -4,7 +4,9 @@ import { LessonsTable, type LessonRow } from '@/components/admin/catalog/Lessons
 import { SectionDenied, SectionLoading } from '@/components/admin/sections'
 import { AdminHead } from '@/components/admin/ui'
 import { allowed } from '@/lib/data/admin'
+import { getContentStatsOrNull } from '@/lib/data/audience'
 import { getFullCatalog } from '@/lib/data/catalog'
+import { hasVideo } from '@/lib/admin/catalog'
 
 export const metadata: Metadata = { title: 'Módulos e aulas' }
 
@@ -18,7 +20,8 @@ export default function AdminLessonsPage() {
 
 async function Lessons() {
   if (!(await allowed('conteudo'))) return <SectionDenied />
-  const catalog = await getFullCatalog()
+  const [catalog, stats] = await Promise.all([getFullCatalog(), getContentStatsOrNull()])
+  const views = new Map((stats?.lessons ?? []).map((s) => [s.id, s.views]))
   const rows: LessonRow[] = []
   for (const c of catalog.courses) {
     c.modules.forEach((m, mi) =>
@@ -32,7 +35,9 @@ async function Lessons() {
           module: `${mi + 1}. ${m.title}`,
           moduleArchived: m.archived,
           min: l.min,
-          hasVideo: !!l.video,
+          hasVideo: hasVideo(l.video),
+          videoKind: l.video?.kind ?? null,
+          views: stats ? (views.get(l.id) ?? 0) : null,
           materials: l.materials.length,
           published: l.published,
           order: mi * 1000 + li,

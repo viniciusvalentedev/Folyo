@@ -39,10 +39,10 @@ export const ROLE_MATRIX: [string, number][] = [
   ['Criar, editar, publicar e despublicar cursos, módulos e aulas', 1],
   ['Categorias, tags, destaques e ordem do catálogo', 1],
   ['Excluir cursos (só os que nenhum aluno começou)', 2],
-  ['Biblioteca de mídia (em breve)', 1],
+  ['Biblioteca de mídia: enviar, trocar e excluir arquivos', 1],
   ['Usuários: consultar, suspender e reativar', 2],
-  ['Audiência e relatórios (em breve)', 2],
-  ['Configurações da plataforma (em breve)', 2],
+  ['Audiência e relatórios (com exportação para planilha)', 2],
+  ['Configurações da plataforma', 2],
   ['Conceder papel de editor', 2],
   ['Conceder papel de administrador ou proprietário', 3],
 ]
@@ -66,27 +66,19 @@ export function canManage(actor: { id: string; role: Role }, target: { id: strin
   return actor.id !== target.id && a >= 2 && (actor.role === 'proprietario' || rankOf(target.role) < a)
 }
 
-/** Itens do menu do painel. "soon" = área que ainda vai ser feita. */
+/** Itens do menu do painel. */
 export const ADMIN_NAV = [
   { to: '/admin', label: 'Visão geral', icon: 'LayoutDashboard', perm: 'painel' },
   { to: '/admin/cursos', label: 'Cursos', icon: 'BookOpen', perm: 'conteudo' },
   { to: '/admin/categorias', label: 'Categorias', icon: 'Tags', perm: 'conteudo' },
   { to: '/admin/aulas', label: 'Módulos e aulas', icon: 'Layers', perm: 'conteudo' },
   { to: '/admin/usuarios', label: 'Alunos e usuários', icon: 'Users', perm: 'usuarios' },
-  { to: '/admin/audiencia', label: 'Audiência', icon: 'Activity', perm: 'relatorios', soon: true },
-  { to: '/admin/relatorios', label: 'Relatórios', icon: 'FileSpreadsheet', perm: 'relatorios', soon: true },
-  { to: '/admin/midia', label: 'Biblioteca de mídia', icon: 'Images', perm: 'conteudo', soon: true },
-  { to: '/admin/configuracoes', label: 'Configurações', icon: 'Settings', perm: 'configuracoes', soon: true },
+  { to: '/admin/audiencia', label: 'Audiência', icon: 'Activity', perm: 'relatorios' },
+  { to: '/admin/relatorios', label: 'Relatórios', icon: 'FileSpreadsheet', perm: 'relatorios' },
+  { to: '/admin/midia', label: 'Biblioteca de mídia', icon: 'Images', perm: 'conteudo' },
+  { to: '/admin/configuracoes', label: 'Configurações', icon: 'Settings', perm: 'configuracoes' },
   { to: '/admin/permissoes', label: 'Administração e permissões', icon: 'ShieldCheck', perm: 'permissoes' },
-] as const satisfies readonly { to: string; label: string; icon: string; perm: Perm; soon?: boolean }[]
-
-/** O que vai entrar em cada área "em breve" (aparece na própria página). */
-export const SOON: Record<string, string> = {
-  audiencia: 'Quem está assistindo agora e o histórico de visualizações (depende do player de vídeo).',
-  relatorios: 'Relatórios com exportação para planilha.',
-  midia: 'Enviar e organizar capas, imagens, vídeos e PDFs.',
-  configuracoes: 'Configurações gerais da plataforma.',
-}
+] as const satisfies readonly { to: string; label: string; icon: string; perm: Perm }[]
 
 /** Nomes das ações do histórico. */
 export const AUDIT_LABELS: Record<string, { label: string; icon: string }> = {
@@ -107,6 +99,12 @@ export const AUDIT_LABELS: Record<string, { label: string; icon: string }> = {
   'categorias.reordenadas': { label: 'Categorias reordenadas', icon: 'ArrowUpDown' },
   'catalogo.reordenado': { label: 'Catálogo reordenado', icon: 'ArrowUpDown' },
   'catalogo.atualizado': { label: 'Catálogo atualizado', icon: 'Layers' },
+  'midia.enviada': { label: 'Arquivo enviado', icon: 'Upload' },
+  'midia.substituida': { label: 'Arquivo trocado', icon: 'RefreshCw' },
+  'midia.atualizada': { label: 'Arquivo renomeado', icon: 'SquarePen' },
+  'midia.excluida': { label: 'Arquivo excluído', icon: 'Trash2' },
+  'config.alterada': { label: 'Configurações alteradas', icon: 'Settings' },
+  'relatorio.exportado': { label: 'Relatório exportado', icon: 'Download' },
 }
 
 /** "aluno → editor" vira "Aluno → Editor de conteúdo". */

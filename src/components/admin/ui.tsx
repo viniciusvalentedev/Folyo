@@ -23,6 +23,24 @@ export const fmtDateTime = (v: string | null | undefined) => (valid(v) ? DATE_TI
 /** "2026-10-22" (dia do banco, já no horário de Brasília) → "22/10". */
 export const fmtDay = (day: string) => (valid(day + 'T12:00:00Z') ? DAY.format(new Date(day + 'T12:00:00Z')) : day)
 
+/** 3725 → "1 h 02 min"; 540 → "9 min"; 45 → "45 s". */
+export function fmtDuration(sec: number) {
+  const s = Math.max(0, Math.round(sec))
+  if (s < 60) return `${s} s`
+  const m = Math.floor(s / 60)
+  if (m < 60) return `${m} min`
+  return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min`
+}
+
+/** 125 → "2:05"; 3725 → "1:02:05" (posição dentro do vídeo). */
+export function fmtClock(sec: number) {
+  const s = Math.max(0, Math.round(sec))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const r = String(s % 60).padStart(2, '0')
+  return h ? `${h}:${String(m).padStart(2, '0')}:${r}` : `${m}:${r}`
+}
+
 /** "há 3 dias", "hoje", "nunca". */
 export function fmtAgo(v: string | null | undefined, now: number) {
   const d = valid(v)

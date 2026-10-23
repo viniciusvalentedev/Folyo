@@ -10,6 +10,8 @@
 
 // ---------- Catálogo ----------
 
+import type { StudentImages } from '@/lib/media'
+
 export type Tone = 'blue' | 'magenta' | 'ink' | 'lime' | 'paper'
 export type Level = 'Iniciante' | 'Intermediário' | 'Avançado'
 export type Plan = 'free' | 'pro'
@@ -21,6 +23,8 @@ export type Category = {
   icon: string
   /** Categoria desativada some dos filtros de Explorar cursos (os cursos continuam). */
   active?: boolean
+  /** Imagem da categoria (endereço público), quando a equipe escolheu uma. */
+  image?: string
 }
 
 export type Lesson = {
@@ -30,13 +34,16 @@ export type Lesson = {
   min: number
   /** Resumo da aula (algumas aulas ainda não têm). */
   desc?: string
-  /** Vídeo por link (https). Sem vídeo, o aluno vê um aviso. */
-  video?: string | null
-  /** Links complementares da aula. */
+  /** Vídeo: link (https) ou vídeo hospedado no Bunny Stream. Sem vídeo, o aluno vê um aviso. */
+  video?: LessonVideo | null
+  /** Links e arquivos complementares da aula. */
   materials?: LessonMaterial[]
 }
 
-export type LessonMaterial = { id: string; label: string; url: string }
+export type LessonVideo = { kind: 'link'; url: string } | { kind: 'bunny'; id: string }
+
+/** `url` já é o endereço para abrir (link externo, ou /api/materiais/<id> quando é um arquivo da biblioteca). */
+export type LessonMaterial = { id: string; label: string; url: string; file?: { name: string; size: number } }
 
 export type Module = {
   id: string
@@ -83,6 +90,8 @@ export type Course = {
   /** `enabled: false` = sem certificado. `hours` e `note` (opcionais) aparecem no certificado. */
   certificate?: { enabled: boolean; hours?: number; note?: string }
   modules: Module[]
+  /** Capa, miniatura e banner (imagens da biblioteca de mídia). Sem imagem, vale a arte padrão. */
+  images?: StudentImages
 }
 
 /** Aula com a posição dentro do curso (índice do módulo e da aula). */

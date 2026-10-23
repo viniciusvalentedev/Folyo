@@ -7,6 +7,7 @@
  * mude lá também.
  */
 
+import type { CourseImages } from '@/lib/media'
 import type { Level, Plan, Tone } from '@/lib/types'
 
 export const LEVELS: readonly Level[] = ['Iniciante', 'Intermediário', 'Avançado']
@@ -92,15 +93,19 @@ export const CATALOG_LIMITS = {
   categoryDesc: 200,
 } as const
 
-export type AdminMaterial = { id: string; label: string; url: string }
+/** Material da aula: um link (`url`) OU um PDF da biblioteca de mídia (`media`). */
+export type AdminMaterial = { id: string; label: string; url: string; media: string | null }
+
+/** Vídeo da aula: link https ou vídeo hospedado no Bunny Stream (id = GUID do vídeo). */
+export type AdminVideo = { kind: 'link'; url: string } | { kind: 'bunny'; id: string }
 export type AdminLesson = {
   id: string
   title: string
   desc: string
   min: number
   published: boolean
-  /** Vídeo por link (https). null = sem vídeo. */
-  video: { url: string } | null
+  /** null = sem vídeo. */
+  video: AdminVideo | null
   materials: AdminMaterial[]
 }
 export type AdminModule = { id: string; title: string; desc: string; archived: boolean; lessons: AdminLesson[] }
@@ -135,6 +140,8 @@ export type AdminCourse = {
   access: 'todos' | 'assinantes'
   project: { title: string; brief: string; expected: string; steps: string[] }
   certificate: { enabled: boolean; hours: number | null; note: string }
+  /** Capa, miniatura e banner (arquivos da biblioteca de mídia). */
+  images: CourseImages
   modules: AdminModule[]
   createdAt: string | null
   /** Instante da última gravação, exatamente como o banco devolveu (volta junto ao salvar). */
@@ -148,6 +155,8 @@ export type AdminCategory = {
   icon: string
   order: number
   active: boolean
+  /** Imagem da categoria (arquivo da biblioteca de mídia). */
+  media: string | null
 }
 
 export type AdminCatalog = { categories: AdminCategory[]; courses: AdminCourse[]; tags: string[] }
@@ -182,6 +191,7 @@ export function blankCourse(order = 0): AdminCourse {
     access: 'todos',
     project: { title: '', brief: '', expected: '', steps: [] },
     certificate: { enabled: true, hours: null, note: '' },
+    images: {},
     modules: [],
     createdAt: null,
     updatedAt: null,
@@ -217,6 +227,10 @@ export const isHttpsUrl = (value: string) => /^https:\/\/[^\s]+\.[^\s]+$/i.test(
 /** YouTube e Vimeo não deixam tocar em outro site: abrem no site deles. */
 export const isExternalVideo = (url: string) => /youtu\.?be|vimeo\.com/i.test(url)
 
+/** A aula tem vídeo de verdade (link preenchido ou vídeo do Bunny escolhido)? */
+export const hasVideo = (video: AdminVideo | null | undefined) =>
+  !!video && (video.kind === 'bunny' ? video.id.length > 0 : video.url.trim().length > 0)
+
 export type CourseErrors = Partial<Record<'title' | 'summary' | 'cat' | 'hours' | 'certHours' | 'publishAt', string>>
 
 /** Erros que impedem de salvar (campos obrigatórios do cadastro). */
@@ -248,11 +262,11 @@ export function validateCourse(course: AdminCourse, others: { id: string; title:
  * O que falta para publicar. `quick` confere só o conteúdo (usado quando o curso já está
  * publicado e continua com o mesmo status); sem `quick`, confere também título, descrições e skills.
  */
-export function publishProblems(course: AdminCourse, quick = false): string[] {
+export function publishProblems(course: AdminCourse, quick = false, opts: { requireCover?: boolean } = {}): string[] {
   const out: string[] = []
   const lessons = course.modules.filter((m) => !m.archived).flatMap((m) => m.lessons.filter((l) => l.published))
   if (!lessons.length) out.push('O curso precisa de pelo menos uma aula publicada.')
-  const noVideo = lessons.filter((l) => !l.video || !l.video.url)
+  const noVideo = lessons.filter((l) => !hasVideo(l.video))
   if (noVideo.length === 1) out.push(`A aula "${noVideo[0].title || 'sem título'}" ainda não tem vídeo.`)
   else if (noVideo.length > 1) out.push(`${noVideo.length} aulas publicadas ainda não têm vídeo.`)
   if (!quick) {
@@ -263,6 +277,7 @@ export function publishProblems(course: AdminCourse, quick = false): string[] {
     }
     if (!course.skills.some((s) => s.trim())) out.push('Informe pelo menos uma skill desenvolvida.')
   }
+  if (opts.requireCover && !course.images.cover) out.push('Escolha uma capa para o curso.')
   return out
 }
 

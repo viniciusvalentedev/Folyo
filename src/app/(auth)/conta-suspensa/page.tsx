@@ -4,7 +4,8 @@ import { Suspense } from 'react'
 import { Wordmark } from '@/components/brand/Logo'
 import { Icon } from '@/components/ui/Icon'
 import { getAccount, requireUser } from '@/lib/data/user'
-import { siteConfig } from '@/lib/config'
+import { supportEmailOf } from '@/lib/app-config'
+import { getPublicConfig } from '@/lib/data/config'
 import { signOutAction } from '../actions'
 
 export const metadata: Metadata = { title: 'Conta suspensa', robots: { index: false, follow: false } }
@@ -22,6 +23,7 @@ async function Suspended() {
   await requireUser()
   const account = await getAccount()
   if (!account.suspended) redirect('/inicio')
+  const email = supportEmailOf(await getPublicConfig())
   return (
     <div className="suspended-page">
       <Wordmark height={40} tone="indigo" text="var(--ink)" />
@@ -31,7 +33,7 @@ async function Suspended() {
       <h1>Sua conta está suspensa</h1>
       <p>
         Enquanto a suspensão durar, não é possível usar a Folyo. Seus dados continuam guardados. Se achar que foi um
-        engano, fale com a gente pelo {siteConfig.supportEmail}.
+        engano, fale com a gente pelo {email}.
       </p>
       <form action={signOutAction}>
         <button type="submit" className="btn btn-quiet btn-md">

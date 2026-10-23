@@ -23,6 +23,9 @@ export type LessonRow = {
   moduleArchived: boolean
   min: number
   hasVideo: boolean
+  videoKind: 'link' | 'bunny' | null
+  /** Visualizações (null se a contagem não carregou). */
+  views: number | null
   materials: number
   published: boolean
   order: number
@@ -91,13 +94,14 @@ export function LessonsTable({ rows, courses }: { rows: LessonRow[]; courses: { 
       render: (r) =>
         r.hasVideo ? (
           <span className="ad-sub">
-            <Icon name="Film" size={13} /> Link
+            <Icon name="Film" size={13} /> {r.videoKind === 'bunny' ? 'Bunny' : 'Link'}
           </span>
         ) : (
           <span className="ad-sub">Sem vídeo</span>
         ),
     },
     { key: 'materials', label: 'Materiais', num: true, sortValue: (r) => r.materials },
+    { key: 'views', label: 'Visualizações', num: true, sortValue: (r) => r.views ?? -1, render: (r) => (r.views === null ? '–' : r.views) },
     {
       key: 'published',
       label: 'Para alunos',

@@ -1,12 +1,17 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 import { MarkPath, Wordmark } from '@/components/brand/Logo'
 import { Icon } from '@/components/ui/Icon'
-import { siteConfig } from '@/lib/config'
+import { DEFAULT_PUBLIC_CONFIG } from '@/lib/app-config'
+
+/** Frase da tela de entrada (vem das Configurações do painel; o layout das telas de entrada preenche). */
+const TaglineContext = createContext(DEFAULT_PUBLIC_CONFIG.tagline)
+export const AuthTaglineProvider = TaglineContext.Provider
 
 /** Moldura das telas de entrada: arte da marca à esquerda, formulário à direita. */
 export function AuthShell({ children }: { children: ReactNode }) {
+  const tagline = useContext(TaglineContext)
   return (
     <div className="login">
       <section className="login-art" aria-hidden="true">
@@ -18,7 +23,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
           <span>Crie.</span>
           <span>Conquiste.</span>
         </h1>
-        <p className="login-sub">{siteConfig.tagline}</p>
+        <p className="login-sub">{tagline}</p>
         <svg className="login-svg" viewBox="0 0 400 400">
           <defs>
             <linearGradient id="lg-g" x1="0" y1="0" x2="0" y2="1">

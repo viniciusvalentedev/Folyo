@@ -26,17 +26,25 @@ const SUPABASE_ORIGIN = (() => {
     return ''
   }
 })()
+/**
+ * Bunny Stream (vídeo das aulas): o player abre em iframe de iframe.mediadelivery.net (só com o
+ * token que o servidor gera) e o envio do vídeo vai direto do navegador para video.bunnycdn.com
+ * (protocolo TUS, com assinatura de uso único). Os dois endereços são fixos.
+ */
+const BUNNY_PLAYER = 'https://iframe.mediadelivery.net'
+const BUNNY_UPLOAD = 'https://video.bunnycdn.com'
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline' ${TURNSTILE}${isDev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' blob: data:",
+  // Capas e imagens da biblioteca vêm do bucket PÚBLICO de imagens do Supabase (só imagens, sem script).
+  `img-src 'self' blob: data:${SUPABASE_ORIGIN ? ' ' + SUPABASE_ORIGIN : ''}`,
   "font-src 'self'",
-  `connect-src 'self'${SUPABASE_ORIGIN ? ' ' + SUPABASE_ORIGIN : ''}${isDev ? ' ws:' : ''}`,
+  `connect-src 'self'${SUPABASE_ORIGIN ? ' ' + SUPABASE_ORIGIN : ''} ${BUNNY_UPLOAD}${isDev ? ' ws:' : ''}`,
   // Vídeos das aulas são links https cadastrados pela equipe (a lista de endereços não é fixa).
   // "media-src" só vale para <video>/<audio>: não executa nada e não libera scripts, imagens nem iframes.
   "media-src 'self' https:",
-  `frame-src 'self' ${TURNSTILE}`,
+  `frame-src 'self' ${TURNSTILE} ${BUNNY_PLAYER}`,
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -53,7 +61,7 @@ const csp = [
  * (%PDF-) antes de ser salvo.
  */
 const pdfCsp = "base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
-const PDF_ROUTE = 'api/trabalhos/'
+const PDF_ROUTE = 'api/trabalhos/|api/materiais/|api/admin/midia/'
 
 const frameDeny = { key: 'X-Frame-Options', value: 'DENY' }
 const frameSame = { key: 'X-Frame-Options', value: 'SAMEORIGIN' }
@@ -80,6 +88,8 @@ const nextConfig: NextConfig = {
       // Ninguém pode colocar a Folyo dentro de um iframe de outro site (evita clickjacking).
       { source: `/((?!${PDF_ROUTE}).*)`, headers: [{ key: 'Content-Security-Policy', value: csp }, frameDeny, ...baseHeaders] },
       { source: '/api/trabalhos/:path*', headers: [{ key: 'Content-Security-Policy', value: pdfCsp }, frameSame, ...baseHeaders] },
+      { source: '/api/materiais/:path*', headers: [{ key: 'Content-Security-Policy', value: pdfCsp }, frameSame, ...baseHeaders] },
+      { source: '/api/admin/midia/:path*', headers: [{ key: 'Content-Security-Policy', value: pdfCsp }, frameSame, ...baseHeaders] },
     ]
   },
 }

@@ -17,6 +17,8 @@ import {
   setFeaturedAction,
 } from '@/lib/actions/catalog'
 import { CATALOG_LIMITS as L, CATEGORY_ICONS, slugify, type AdminCategory } from '@/lib/admin/catalog'
+import { imageUrl, type MediaItem } from '@/lib/media'
+import { MediaPicker } from '../media/MediaPicker'
 import { AdminHead, Notice } from '../ui'
 import { ReorderModal } from './ReorderModal'
 
@@ -29,9 +31,11 @@ type Props = {
   suggested: string[]
   /** Todas as tags em uso, com a contagem de cursos. */
   tagUsage: { tag: string; count: number }[]
+  /** Biblioteca de mídia (imagens) para escolher a imagem da categoria. */
+  media: MediaItem[]
 }
 
-export function CategoriesManager({ categories, usage, featured, suggested, tagUsage }: Props) {
+export function CategoriesManager({ categories, usage, featured, suggested, tagUsage, media }: Props) {
   const router = useRouter()
   const { toast } = useApp()
   const [edit, setEdit] = useState<{ cat: AdminCategory; isNew: boolean } | null>(null)
@@ -44,7 +48,7 @@ export function CategoriesManager({ categories, usage, featured, suggested, tagU
   const toggleActive = (c: AdminCategory) =>
     start(async () => {
       setError('')
-      const r = await saveCategoryAction({ category: { id: c.id, name: c.name, desc: c.desc, icon: c.icon, active: !c.active }, isNew: false })
+      const r = await saveCategoryAction({ category: { id: c.id, name: c.name, desc: c.desc, icon: c.icon, active: !c.active, media: c.media }, isNew: false })
       if (!r.ok) return setError(r.error)
       toast(c.active ? 'Categoria desativada: ela some dos filtros do catálogo.' : 'Categoria ativada.', 'ok')
       router.refresh()
@@ -69,7 +73,7 @@ export function CategoriesManager({ categories, usage, featured, suggested, tagU
             <Button variant="quiet" icon="ArrowUpDown" disabled={!categories.length} onClick={() => setReorder(true)}>
               Reordenar
             </Button>
-            <Button icon="Plus" onClick={() => setEdit({ isNew: true, cat: { id: '', name: '', desc: '', icon: 'Layers', order: categories.length, active: true } })}>
+            <Button icon="Plus" onClick={() => setEdit({ isNew: true, cat: { id: '', name: '', desc: '', icon: 'Layers', order: categories.length, active: true, media: null } })}>
               Nova categoria
             </Button>
           </>
@@ -84,7 +88,11 @@ export function CategoriesManager({ categories, usage, featured, suggested, tagU
               <li key={c.id} className={c.active ? '' : 'off'}>
                 <span className="ad-cat-n">{i + 1}</span>
                 <span className="ad-cat-ico">
-                  <Icon name={c.icon as IconName} size={18} />
+                  {(() => {
+                    const file = c.media ? media.find((m) => m.id === c.media && m.kind === 'image') : undefined
+                    // eslint-disable-next-line @next/next/no-img-element -- imagem pública do Storage
+                    return file ? <img src={imageUrl(file.path)} alt="" width={36} height={36} style={{ borderRadius: 10, objectFit: 'cover' }} /> : <Icon name={c.icon as IconName} size={18} />
+                  })()}
                 </span>
                 <span className="ad-cat-t">
                   <b>{c.name}</b>
@@ -133,7 +141,7 @@ export function CategoriesManager({ categories, usage, featured, suggested, tagU
         <TagsPanel suggested={suggested} usage={tagUsage} />
       </section>
 
-      {edit && <CategoryDialog key={edit.cat.id || 'nova'} value={edit} others={categories} onClose={() => setEdit(null)} />}
+      {edit && <CategoryDialog key={edit.cat.id || 'nova'} value={edit} others={categories} media={media} onClose={() => setEdit(null)} />}
 
       <Modal
         open={!!removing}
@@ -193,13 +201,15 @@ export function CategoriesManager({ categories, usage, featured, suggested, tagU
   )
 }
 
-function CategoryDialog({ value, others, onClose }: { value: { cat: AdminCategory; isNew: boolean }; others: AdminCategory[]; onClose: () => void }) {
+function CategoryDialog({ value, others, media, onClose }: { value: { cat: AdminCategory; isNew: boolean }; others: AdminCategory[]; media: MediaItem[]; onClose: () => void }) {
   const router = useRouter()
   const { toast } = useApp()
   const [cat, setCat] = useState(value.cat)
   const [nameError, setNameError] = useState('')
   const [error, setError] = useState('')
   const [pending, start] = useTransition()
+  const [picking, setPicking] = useState(false)
+  const image = cat.media ? media.find((m) => m.id === cat.media && m.kind === 'image') : undefined
 
   const save = () => {
     const name = cat.name.trim()
@@ -209,7 +219,7 @@ function CategoryDialog({ value, others, onClose }: { value: { cat: AdminCategor
     start(async () => {
       setError('')
       const id = cat.id || slugify(name, 'categoria')
-      const r = await saveCategoryAction({ category: { id, name, desc: cat.desc, icon: cat.icon, active: cat.active }, isNew: value.isNew })
+      const r = await saveCategoryAction({ category: { id, name, desc: cat.desc, icon: cat.icon, active: cat.active, media: cat.media }, isNew: value.isNew })
       if (!r.ok) return setError(r.error)
       toast(value.isNew ? 'Categoria criada.' : 'Categoria atualizada.', 'ok')
       onClose()
@@ -249,9 +259,25 @@ function CategoryDialog({ value, others, onClose }: { value: { cat: AdminCategor
           </button>
         ))}
       </div>
-      <p className="ad-help" style={{ marginTop: 10 }}>
-        Imagem no lugar do ícone chega na próxima fase, com a biblioteca de mídia.
+      <p className="ad-label" style={{ marginTop: 14 }}>
+        Imagem (opcional)
       </p>
+      <div className="ad-cat-image">
+        {image && (
+          // eslint-disable-next-line @next/next/no-img-element -- imagem pública do Storage
+          <img src={imageUrl(image.path)} alt="" width={56} height={56} />
+        )}
+        <Button size="sm" variant="quiet" icon="Image" onClick={() => setPicking(true)}>
+          {image ? 'Trocar imagem' : 'Escolher imagem'}
+        </Button>
+        {cat.media && (
+          <Button size="sm" variant="ghost" icon="X" onClick={() => setCat({ ...cat, media: null })}>
+            Remover
+          </Button>
+        )}
+      </div>
+      <p className="ad-help">Aparece no lugar do ícone nos filtros e nas áreas profissionais do catálogo.</p>
+      <MediaPicker open={picking} onClose={() => setPicking(false)} onPick={(m) => (setCat({ ...cat, media: m.id }), setPicking(false))} kind="image" items={media} title="Imagem da categoria" />
       <Toggle label="Categoria ativa" hint="Inativa, ela não aparece nos filtros do catálogo." checked={cat.active} onChange={(active) => setCat({ ...cat, active })} />
       {error && (
         <div style={{ marginTop: 12 }}>

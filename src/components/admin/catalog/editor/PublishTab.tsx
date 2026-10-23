@@ -15,7 +15,7 @@ const STATUSES: { v: CourseStatus; t: string; d: string }[] = [
 ]
 
 export function PublishTab({ draft, set, errors, ctx }: TabProps & { ctx: EditorContext }) {
-  const problems = publishProblems(draft)
+  const problems = publishProblems(draft, false, { requireCover: ctx.requireCover })
   const toggle = (key: 'prerequisites' | 'related', id: string) =>
     set({ [key]: draft[key].includes(id) ? draft[key].filter((x) => x !== id) : [...draft[key], id] } as Partial<AdminCourse>)
   const wantsLive = draft.status === 'publicado' || draft.status === 'agendado'

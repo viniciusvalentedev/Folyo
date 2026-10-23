@@ -1,3 +1,4 @@
+import type { CourseImage } from '@/lib/media'
 import { Art } from '@/components/ui/Art'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { STATUS_INFO, statusText, type CourseStatus } from '@/lib/admin/catalog'
@@ -17,11 +18,11 @@ export function StatusBadge({ status, publishAt }: { status: CourseStatus; publi
   )
 }
 
-/** Miniatura do curso (arte padrão: cor + letra). Imagens próprias chegam na Fase 3. */
-export function CourseThumb({ tone, glyph, size = 44 }: { tone: Tone; glyph: string; size?: number }) {
+/** Miniatura do curso: a imagem escolhida (miniatura ou capa) ou a arte padrão (cor + letra). */
+export function CourseThumb({ tone, glyph, size = 44, image }: { tone: Tone; glyph: string; size?: number; image?: CourseImage | null }) {
   return (
     <span className="ad-cthumb" style={{ width: Math.round(size * 1.6), height: size }} aria-hidden="true">
-      <Art tone={tone} glyph={glyph} ratio="auto" />
+      <Art tone={tone} glyph={glyph} ratio="auto" image={image ?? undefined} />
     </span>
   )
 }

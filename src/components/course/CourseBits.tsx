@@ -9,19 +9,19 @@ import { Icon } from '@/components/ui/Icon'
 import { Progress, StatusPill } from '@/components/ui/indicators'
 import { categoryOf, courseSeed } from '@/lib/domain/catalog'
 import { plural } from '@/lib/format'
-import { siteConfig } from '@/lib/config'
 import type { Course } from '@/lib/types'
 
 /** Capa do curso (arte gerada a partir do tom e do glifo do curso). */
 export function CourseArt({
   course,
+  variant = 'cover',
   ratio,
   className,
   big,
   children,
 }: {
   course: Course
-  /** Reservado para as imagens de capa (miniatura, banner), que chegam com o painel de mídia. */
+  /** Qual imagem usar: capa (padrão), miniatura ou banner. Falta a pedida? Vale a capa; sem capa, a arte padrão. */
   variant?: 'cover' | 'thumb' | 'banner'
   ratio?: string
   className?: string
@@ -29,8 +29,11 @@ export function CourseArt({
   children?: ReactNode
 }) {
   const { catalog } = useApp()
+  const images = course.images
+  const image = variant === 'thumb' ? (images?.thumb ?? images?.cover) : variant === 'banner' ? (images?.banner ?? images?.cover) : images?.cover
   return (
     <Art
+      image={image}
       tone={course.tone}
       glyph={course.glyph}
       seed={courseSeed(catalog, course.id)}
@@ -75,7 +78,7 @@ export function CourseStatus({ cid }: { cid: string }) {
 
 /** Card de curso usado no catálogo, no início e nos objetivos. */
 export function CourseCard({ course, i = 0 }: { course: Course; i?: number }) {
-  const { d, catalog } = useApp()
+  const { d, catalog, config } = useApp()
   const router = useRouter()
   const st = d.courseStats[course.id]
   const href = '/cursos/' + course.id
@@ -84,7 +87,7 @@ export function CourseCard({ course, i = 0 }: { course: Course; i?: number }) {
       <div className="ccard-art">
         <CourseArt course={course} ratio="16 / 9" />
         <div className="ccard-top">
-          {siteConfig.catalog.showPlanBadge &&
+          {config.catalog.showPlanBadge &&
             (course.plan === 'free' ? <span className="plan free">Gratuito</span> : <span className="plan">Pro</span>)}
           <FavButton cid={course.id} />
         </div>

@@ -7,7 +7,7 @@ import { Button, ButtonLink } from '@/components/ui/Button'
 import { Field, Select, Toggle } from '@/components/ui/controls'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { PageHead } from '@/components/ui/PageHead'
-import { siteConfig } from '@/lib/config'
+import { supportEmailOf } from '@/lib/app-config'
 import type { Settings } from '@/lib/types'
 import { fieldErrors, personalDataSchema } from '@/lib/validation'
 
@@ -23,7 +23,8 @@ const SECTIONS: { id: Section; label: string; icon: IconName }[] = [
 ]
 
 export function SettingsView() {
-  const { s, a, toast } = useApp()
+  const { s, a, toast, config } = useApp()
+  const supportEmail = supportEmailOf(config)
   const [section, setSection] = useState<Section>('dados')
   const [name, setName] = useState(s.user.name)
   const [phone, setPhone] = useState(s.user.phone)
@@ -232,13 +233,13 @@ export function SettingsView() {
                 <div>
                   <b>Apagar conta e dados</b>
                   <small>
-                    Por enquanto, peça pelo e-mail {siteConfig.supportEmail}. Apagamos sua conta e todos os seus dados.
+                    Por enquanto, peça pelo e-mail {supportEmail}. Apagamos sua conta e todos os seus dados.
                   </small>
                 </div>
                 <ButtonLink
                   variant="quiet"
                   icon="Mail"
-                  href={`mailto:${siteConfig.supportEmail}?subject=Apagar%20minha%20conta`}
+                  href={`mailto:${supportEmail}?subject=Apagar%20minha%20conta`}
                 >
                   Pedir
                 </ButtonLink>

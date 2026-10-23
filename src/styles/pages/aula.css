@@ -89,3 +89,5 @@
 .class-materials a { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); color: #F1F0F7; text-decoration: none; }
 .class-materials a:hover { background: rgba(255,255,255,.09); }
 .class-materials a span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.player-embed { border: 0; }
+.class-materials small { color: var(--mute-on-dark, rgba(255,255,255,.6)); font-size: 12px; }

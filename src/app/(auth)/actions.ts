@@ -19,7 +19,10 @@ import {
  *
  * Cada ação é tratada como uma porta aberta para a internet: valida tudo de
  * novo com zod, nunca devolve detalhes técnicos e nunca guarda nem registra a
- * senha. As mensagens não revelam se um e-mail tem conta ou não.
+ * senha. As mensagens não revelam se um e-mail tem conta ou não, EXCETO ao criar
+ * conta: ali avisamos que o e-mail já existe (decisão de produto; o CAPTCHA e o
+ * limite por IP seguram quem tentar descobrir e-mails em massa).
+ * Entrar, reenviar confirmação e esqueci a senha continuam com resposta igual.
  *
  * Proteção contra robôs, em camadas:
  *  1. CAPTCHA (Cloudflare Turnstile): o formulário traz um comprovante que o
@@ -44,6 +47,7 @@ export type AuthFormState = {
 const GENERIC = 'Não foi possível concluir agora. Tente de novo em alguns minutos.'
 const TOO_MANY = 'Muitas tentativas seguidas. Espere alguns minutos e tente de novo.'
 const CAPTCHA = 'Não conseguimos confirmar que você é uma pessoa. Espere a verificação terminar e tente de novo.'
+const EMAIL_TAKEN = 'Já existe uma conta com esse e-mail. Tente entrar ou use "Esqueci minha senha".'
 
 /** Traduz os códigos de erro do Supabase em mensagens amigáveis (e seguras). */
 function friendly(code: string | undefined, status?: number) {
@@ -133,12 +137,25 @@ export async function signUpAction(_prev: AuthFormState, formData: FormData): Pr
     password,
     options: { data: { name }, captchaToken: captchaToken(formData) },
   })
-  if (error) return { message: friendly(error.code, error.status), values }
+  if (error) {
+    // Com a confirmação desligada, o Supabase avisa direto que o e-mail já existe.
+    if (error.code === 'user_already_exists' || error.code === 'email_exists') {
+      return { errors: { email: EMAIL_TAKEN }, values }
+    }
+    return { message: friendly(error.code, error.status), values }
+  }
+
+  // Com a confirmação por e-mail ligada, o Supabase NÃO devolve erro quando o e-mail já tem
+  // conta confirmada: devolve um usuário "de mentira" sem nenhuma identidade (identities = [])
+  // e não envia e-mail nenhum. Conferimos isso para avisar a pessoa em vez de dizer que enviamos.
+  // (Conta criada mas ainda não confirmada vem com identidade: o Supabase reenvia o e-mail normalmente.)
+  if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+    return { errors: { email: EMAIL_TAKEN }, values }
+  }
 
   // Se a confirmação por e-mail estiver desligada no Supabase, a pessoa já entra direto.
   if (data.session) redirect('/primeiro-acesso')
 
-  // Mesmo se o e-mail já tiver conta, a resposta é igual: ninguém descobre quem é aluno da Folyo.
   return { sent: { email } }
 }
 

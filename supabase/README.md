@@ -1,7 +1,8 @@
 # Supabase — passo a passo
 
-- **Folyo 2.0 · Fase 2 (cursos, categorias e aulas no banco):** logo abaixo. Faça agora (depois da Fase 1).
-- **Folyo 2.0 · Fase 1 (área do aluno):** depois da Fase 2. Já feita; fica como referência.
+- **Folyo 2.0 · Fase 3 (mídia, vídeo, audiência, relatórios e configurações):** logo abaixo. Faça agora (depois da Fase 2).
+- **Folyo 2.0 · Fase 2 (cursos, categorias e aulas no banco):** já feita; fica como referência.
+- **Folyo 2.0 · Fase 1 (área do aluno):** já feita; fica como referência.
 - **Etapa 4 (painel admin):** já feita; fica como referência.
 - **Etapa 3 (proteção contra robôs):** já feita; fica como referência.
 - **Etapa 2 (dados do aluno):** já feita; fica como referência.
@@ -11,6 +12,62 @@
 > A **secret key** (`sb_secret_...`) **não é usada** nesta etapa: não cole ela no `.env.local`, na Vercel,
 > no GitHub nem em conversas. Ela passa por cima de todas as regras de segurança do banco. Guarde só no
 > gerenciador de senhas.
+
+---
+
+# Folyo 2.0 · Fase 3 — biblioteca de mídia, vídeo (Bunny), audiência, relatórios e configurações
+
+Um SQL novo. **Rode depois do SQL da Fase 2** e uma vez só. Ele **não apaga nada**: cria tabelas, funções e
+buckets novos e acrescenta colunas (vídeo hospedado, imagem dos cursos, arquivo nos materiais).
+
+> Antes de rodar, por segurança: **Supabase → Database → Backups**.
+
+## 1. Rodar o SQL
+
+1. Supabase → **SQL Editor** → **New query**.
+2. Abra `supabase/migrations/20261025000001_folyo2_midia_video_audiencia.sql`, copie tudo, cole e **Run**.
+   Deve aparecer *Success. No rows returned*.
+3. Se aparecer um erro dizendo que algo "already exists", o arquivo já foi rodado.
+
+O que ele cria:
+
+- **Storage:** bucket `catalog-images` (público, só PNG/JPG/WebP até 5 MB: capas, miniaturas, banners e imagens de
+  categoria) e `catalog-files` (privado, só PDF até 20 MB: materiais das aulas). Só a equipe grava; o PDF só abre
+  pela Folyo (`/api/materiais/...`), depois de conferir o login e se o aluno pode ver a aula.
+- **Tabelas/funções:** biblioteca (`media_files`), configurações da plataforma (`app_config`), sessões do player e
+  visualizações por dia (audiência), e as funções `admin_*` de mídia, configurações, audiência ao vivo e relatórios.
+
+## 2. Conferir
+
+1. **Storage**: os dois buckets existem; `catalog-images` aparece como *Public* e `catalog-files` como *Private*.
+2. **Table Editor**: `media_files`, `app_config` e `lesson_sessions` existem com RLS ligado.
+
+## 3. Bunny Stream (só para enviar vídeo; o resto funciona sem)
+
+1. Crie uma conta em bunny.net → **Stream** → **Add Video Library** (região a gosto).
+2. Na biblioteca: **Security** → ligue **Token Authentication** e **Block direct URL access**.
+   Sem isso, quem souber o endereço do vídeo assiste sem login.
+3. Anote três valores: o **número da biblioteca** (Library ID), a **API Key** (Library → API) e a
+   **Token Authentication Key** (Security).
+4. Coloque na **Vercel → Settings → Environment Variables** (e no `.env.local`, para testar no seu computador):
+   `BUNNY_STREAM_LIBRARY_ID`, `BUNNY_STREAM_API_KEY` e `BUNNY_STREAM_TOKEN_KEY`. **Nunca** com prefixo
+   `NEXT_PUBLIC_`, e nunca no GitHub ou em conversas. Refaça o deploy depois de salvar.
+5. Rode `npm install` (entra a biblioteca `tus-js-client`, usada no envio retomável do vídeo).
+
+## 4. Publicar e testar
+
+1. `git add -A`, `git commit -m "Folyo 2.0: Fase 3"` e `git push`.
+2. **Biblioteca de mídia** (`/admin/midia`): envie uma imagem e um PDF; abra o arquivo, renomeie, troque, veja "onde é usado".
+3. **Cursos → editar → Capa e visual**: escolha capa, miniatura e banner, e mova o ponto de foco.
+4. **Módulos e aulas → editar aula**: envie um vídeo (Bunny) ou use link; anexe o PDF; salve o curso.
+5. Entre como aluno, abra a aula: o vídeo toca, o PDF abre, e em **Audiência → Ao vivo** você aparece assistindo.
+6. **Relatórios** (exportar CSV) e **Configurações** (nome, e-mail de suporte, regras de publicação, audiência).
+
+## Limitações conhecidas
+
+- Arquivo enviado e **não confirmado** (aba fechada no meio) fica órfão no Storage; vídeo trocado/removido de uma
+  aula **já salva** continua no Bunny (apague no painel do Bunny quando quiser liberar espaço).
+- YouTube/Vimeo continuam abrindo no site deles (a audiência só mede Bunny e links `.mp4`/`.webm`).
 
 ---
 

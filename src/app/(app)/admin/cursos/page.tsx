@@ -7,7 +7,9 @@ import { ButtonLink } from '@/components/ui/Button'
 import { courseCounts } from '@/lib/admin/catalog'
 import { rankOf } from '@/lib/admin/roles'
 import { allowed } from '@/lib/data/admin'
-import { getFullCatalog } from '@/lib/data/catalog'
+import { getContentStatsOrNull } from '@/lib/data/audience'
+import { getFullCatalog, getMediaLibrary } from '@/lib/data/catalog'
+import { imageUrl } from '@/lib/media'
 
 export const metadata: Metadata = { title: 'Cursos' }
 
@@ -22,7 +24,9 @@ export default function AdminCoursesPage() {
 async function Courses() {
   const ctx = await allowed('conteudo')
   if (!ctx) return <SectionDenied />
-  const catalog = await getFullCatalog()
+  const [catalog, media, stats] = await Promise.all([getFullCatalog(), getMediaLibrary(), getContentStatsOrNull()])
+  const files = new Map(media.map((m) => [m.id, m]))
+  const statOf = new Map((stats?.courses ?? []).map((s) => [s.id, s]))
   const catName = new Map(catalog.categories.map((c) => [c.id, c.name]))
   const rows: CourseListRow[] = catalog.courses.map((c) => {
     const n = courseCounts(c)
@@ -37,6 +41,12 @@ async function Courses() {
       publishAt: c.publishAt,
       tone: c.tone,
       glyph: c.glyph,
+      image: (() => {
+        const ref = c.images.thumb ?? c.images.cover
+        const file = ref ? files.get(ref.media) : undefined
+        return ref && file ? { url: imageUrl(file.path), x: ref.x, y: ref.y, alt: ref.alt } : null
+      })(),
+      stats: stats ? { enrolled: statOf.get(c.id)?.enrolled ?? 0, views: statOf.get(c.id)?.views ?? 0, live: statOf.get(c.id)?.live ?? 0 } : null,
       order: c.order,
       modules: n.modules,
       lessons: n.lessons,

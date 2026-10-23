@@ -241,8 +241,8 @@ export function CourseEditor({
       />
       <div className="ad-ed-body">
         {tab === 'informacoes' && <InfoTab draft={draft} set={set} errors={errors} ctx={ctx} />}
-        {tab === 'visual' && <VisualTab draft={draft} set={set} />}
-        {tab === 'conteudo' && <ContentTab draft={draft} set={set} />}
+        {tab === 'visual' && <VisualTab draft={draft} set={set} media={ctx.media} />}
+        {tab === 'conteudo' && <ContentTab draft={draft} set={set} media={ctx.media} bunny={ctx.bunny} />}
         {tab === 'publicacao' && <PublishTab draft={draft} set={set} errors={errors} ctx={ctx} />}
         {tab === 'previa' && <PreviewTab draft={draft} categories={ctx.categories} />}
       </div>
