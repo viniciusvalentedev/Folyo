@@ -7,7 +7,8 @@ import { AdminHead, Bars, delta, fmtDate, fmtDateTime, fmtNum, fmtPct, Metric, N
 import { Icon } from '@/components/ui/Icon'
 import { AUDIT_LABELS, can, roleChangeText } from '@/lib/admin/roles'
 import { allowed, getOverview } from '@/lib/data/admin'
-import { getCatalog } from '@/lib/data/catalog'
+import { courseCounts } from '@/lib/admin/catalog'
+import { getFullCatalog } from '@/lib/data/catalog'
 
 export const metadata: Metadata = { title: 'Visão geral' }
 
@@ -28,13 +29,16 @@ async function Overview({ searchParams }: { searchParams: PageProps<'/admin'>['s
   const asked = Number(Array.isArray(sp.dias) ? sp.dias[0] : sp.dias)
   const days = (PERIODS as readonly number[]).includes(asked) ? (asked as 7 | 30 | 90) : 30
 
-  const [o, catalog] = await Promise.all([getOverview(days), getCatalog()])
+  const [o, catalog] = await Promise.all([getOverview(days), getFullCatalog()])
   const cur = o.cur
   const prev = o.prev
 
   // Conclusão por curso: quem concluiu TODAS as aulas do curso (pelo catálogo atual).
-  const courses = catalog.courses.map((c) => {
-    const total = c.modules.reduce((n, m) => n + m.lessons.length, 0)
+  const live = catalog.courses.filter((c) => c.status === 'publicado')
+  const courses = catalog.courses
+    .filter((c) => c.status === 'publicado' || c.status === 'arquivado')
+    .map((c) => {
+    const total = courseCounts(c).published
     const enrolled = o.enrolled.find((e) => e.courseId === c.id)?.n ?? 0
     const completed = o.lessonsHist
       .filter((h) => h.courseId === c.id && total > 0 && h.lessons >= total)
@@ -69,7 +73,13 @@ async function Overview({ searchParams }: { searchParams: PageProps<'/admin'>['s
       </div>
 
       <section className="ad-metrics" aria-label="Indicadores">
-        <Metric icon="BookOpen" label="Cursos no catálogo" value={fmtNum(catalog.courses.length)} hint="cadastro de cursos em breve" />
+        <Metric
+          icon="BookOpen"
+          label="Cursos no catálogo"
+          value={fmtNum(live.length)}
+          hint={catalog.courses.length > live.length ? `${fmtNum(catalog.courses.length)} cadastrados` : undefined}
+          href="/admin/cursos"
+        />
         <Metric
           icon="Users"
           label="Usuários cadastrados"

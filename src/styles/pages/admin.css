@@ -392,3 +392,17 @@ a.ad-ucell:hover b { text-decoration: underline; text-underline-offset: 3px; }
 
 /* ---------- Folyo 2.0 ---------- */
 .ad-notice-ok { background: var(--ok-soft, #E6F4EA); color: var(--ok-ink, #17603A); }
+
+/* Paginação com botões (tabelas que ordenam no navegador) */
+.ad-pager button { display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; border: 0; background: none; color: var(--fg); }
+.ad-pager button:hover:not(:disabled) { background: var(--hover); }
+.ad-pager button:disabled { opacity: .35; cursor: not-allowed; }
+/* Texto de ajuda da lista "Acesso" e cartões de arte do curso */
+.ad-access { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 12px; }
+.ad-access li { display: flex; gap: 12px; align-items: flex-start; }
+.ad-access li > .ico { flex: none; margin-top: 2px; color: var(--blue); }
+.ad-access li > span > b { display: block; }
+.ad-access small { display: block; color: var(--mute); font-size: 13.5px; line-height: 1.45; }
+.ad-slot-static { border-radius: 12px; overflow: hidden; }
+.ad-inert { pointer-events: none; user-select: none; }
+.ad-conflict-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }

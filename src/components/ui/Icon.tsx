@@ -119,6 +119,14 @@ import {
   Replace,
   type LucideIcon,
   type LucideProps,
+  Archive,
+  GripVertical,
+  Save,
+  Tag,
+  Film,
+  Star,
+  Image,
+  Upload,
 } from 'lucide-react'
 
 /**
@@ -245,6 +253,14 @@ const ICONS = {
   MessageCircle,
   Mic,
   Replace,
+  Archive,
+  GripVertical,
+  Save,
+  Tag,
+  Film,
+  Star,
+  Image,
+  Upload,
 } satisfies Record<string, LucideIcon>
 
 export type IconName = keyof typeof ICONS

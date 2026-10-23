@@ -12,13 +12,17 @@ Onde estamos:
 - **Etapa 3 — proteção contra robôs** ✅ CAPTCHA (Cloudflare Turnstile) e limites de tentativas e de alterações.
 - **Etapa 4 — painel admin (fundação)** ✅ papéis (aluno / editor / administrador / proprietário), visão geral com
   números reais, lista e ficha dos usuários, suspender e reativar contas, permissões e histórico de auditoria.
-  As demais áreas (cursos, categorias, aulas, mídia...) aparecem como "em breve".
+  Mídia, audiência, relatórios e configurações aparecem como "em breve" (Fase 3).
 - **Folyo 2.0 — Fase 1 (área do aluno)** ✅ novo primeiro acesso (3 passos), Objetivos, Início, Cursos, sala de aula,
   Progresso, **Projetos e portfólio** (trabalhos em PDF ou link), Currículo, Certificados, Perfil, Configurações e
   **perfil público** (`/publico`), seguindo o protótipo Folyo 2.0. Exige rodar um SQL novo (veja
   [`supabase/README.md`](supabase/README.md)).
-- **Próximas fases do 2.0:** Fase 2 — painel com banco (cursos, categorias, aulas, vídeo e materiais);
-  Fase 3 — mídia, audiência, relatórios e configurações do painel. Depois: certificados e PDF de verdade; pagamentos.
+- **Folyo 2.0 — Fase 2 (painel com banco)** ✅ **Cursos, Categorias e Módulos e aulas** no painel, gravados no banco
+  (a equipe cadastra, agenda, publica e despublica; o aluno só vê o que está publicado). Editor de curso com 5 abas
+  (informações, capa e visual, módulos e aulas, publicação e acesso, prévia), vídeo por link e materiais por link,
+  tags, destaques e ordem do catálogo. Exige rodar um SQL novo (veja [`supabase/README.md`](supabase/README.md)).
+- **Próxima fase do 2.0:** Fase 3 — biblioteca de mídia (capas, vídeos e arquivos no Supabase Storage), audiência,
+  relatórios e configurações do painel. Depois: certificados e PDF de verdade; pagamentos.
 
 **Configurar o Supabase pela primeira vez:** siga o passo a passo em [`supabase/README.md`](supabase/README.md).
 
@@ -47,8 +51,8 @@ Outros comandos úteis:
 | `npm run start`     | Roda a versão de produção depois do build               |
 | `npm run check`     | Procura erros de código (lint) e de tipos (TypeScript)  |
 
-> Tudo o que o aluno faz fica salvo na conta dele. Os vídeos das aulas e os certificados ainda são demonstrações
-> (o Início avisa isso ao aluno).
+> Tudo o que o aluno faz fica salvo na conta dele. Os cursos agora vêm do banco: o catálogo começa **vazio** (só com as
+> categorias padrão) até a equipe cadastrar o primeiro curso em `/admin/cursos`. Os certificados ainda são demonstração.
 
 ---
 
@@ -94,12 +98,13 @@ src/
 ├─ lib/
 │  ├─ supabase/              → cliente do Supabase (só servidor) e opções do cookie de sessão
 │  ├─ auth/redirects.ts      → páginas públicas e proteção do ?next= do login
-│  ├─ data/                  → ★ ÚNICO lugar que "busca dados" (catálogo fixo + dados do aluno no Supabase)
+│  ├─ data/                  → ★ ÚNICO lugar que "busca dados" (catálogo e dados do aluno no Supabase)
 │  ├─ actions/               → ações que salvam no banco: student.ts (aulas, currículo…), profile.ts (primeiro acesso e
-│  │                           objetivos), works.ts (trabalhos e PDFs), shared.ts (peças comuns das ações)
+│  │                           objetivos), works.ts (trabalhos e PDFs), admin.ts (usuários), catalog.ts (cursos,
+│  │                           categorias, tags), shared.ts e admin-shared.ts (peças comuns das ações)
 │  ├─ trails.ts              → trilhas, etapas de vida e metas do primeiro acesso (uma lista só, usada por tela e servidor)
 │  ├─ pdf-file.ts            → limites e conferência de PDF (tamanho e assinatura %PDF-)
-│  ├─ mock/                  → catálogo de cursos (ainda fixo no código)
+│  ├─ admin/catalog*.ts      → cadastro de cursos do painel: formato, limites e regras de publicação (navegador e servidor)
 │  ├─ domain/                → regras/cálculos (progresso, tempo estudado, certificados, objetivos)
 │  ├─ validation.ts          → regras de validação dos formulários (zod)
 │  ├─ types.ts               → formato dos dados (guia para criar as tabelas no banco)
@@ -199,6 +204,21 @@ supabase/
 
 ## Painel admin (`/admin`)
 
+- **Cursos, categorias e aulas (Fase 2):** ficam nas tabelas `categories`, `courses`, `course_modules`, `lessons` e
+  `lesson_materials`. Salvar um curso grava curso + módulos + aulas + materiais **numa operação só**
+  (`admin_save_course`), com uma fila por curso. Se outra pessoa editou o mesmo curso enquanto você editava, o banco
+  recusa e o painel avisa ("Carregar a versão nova" ou "Salvar e substituir").
+  - **Regras de publicação** (conferidas na tela e de novo no banco): título, descrições, ao menos uma skill, pelo menos
+    uma aula publicada e **todas as aulas publicadas com vídeo**.
+  - **Quem vê o quê:** aluno lê só cursos publicados (ou agendados cuja data já passou), módulos ativos e aulas
+    publicadas; rascunhos nunca saem do banco para ele. A equipe vê tudo, mas no site do aluno vê o mesmo que o aluno.
+  - **Quem pode:** editor cria, edita, publica, despublica e organiza; **excluir curso é só do administrador** e o banco
+    recusa se algum aluno já começou o curso (despublique em vez de excluir).
+  - **Histórico:** criar, editar, publicar, agendar, despublicar, excluir e reordenar ficam em
+    Administração e permissões › Histórico (filtro "Conteúdo").
+  - **Links:** vídeos e materiais são links `https://`. YouTube e Vimeo abrem no site deles (a Folyo não carrega
+    iframes de terceiros); links diretos `.mp4`/`.webm` tocam na própria aula e contam o tempo assistido.
+
 - **Quem entra:** só quem tem papel na equipe (`private.staff_roles`). Aluno que abrir o endereço vê "sem acesso"
   e nenhum dado do painel chega ao navegador dele.
 - **Quem decide é o banco:** as funções `admin_*` conferem o papel e a hierarquia (ninguém muda o próprio papel;
@@ -225,11 +245,12 @@ supabase/
 | --- | --- | --- |
 | **Login / cadastro** | ✅ Supabase Auth, rotas protegidas, e-mail próprio (Zoho, usefolyo.com), CAPTCHA e limite de tentativas | Excluir/exportar conta (LGPD) |
 | **Banco de dados** | ✅ Perfil, progresso, anotações, tempo assistido, trabalhos (PDF/link), competências e currículo, todos com RLS e limite de alterações por minuto | Certificado emitido pelo servidor |
-| **Painel admin** | ✅ Fundação: papéis, visão geral, usuários (suspender/reativar), permissões e auditoria. Papel e regras ficam no banco; a tela só esconde o que não se pode usar | Cursos, categorias, módulos e aulas, audiência, relatórios, mídia e configurações (hoje "em breve") |
-| **Player de aula** | Sem vídeo ainda: mostra um aviso. O tempo assistido já tem tabela pronta | Fase 2: vídeo (Cloudflare Stream ou Bunny Stream) e materiais da aula |
+| **Painel admin** | ✅ Papéis, visão geral, usuários, permissões, auditoria e (Fase 2) **cursos, categorias, módulos e aulas** no banco. Papel e regras ficam no banco; a tela só esconde o que não se pode usar | Fase 3: audiência, relatórios, biblioteca de mídia e configurações (hoje "em breve") |
+| **Player de aula** | ✅ Vídeo por link: `.mp4`/`.webm` toca na aula (com tempo assistido); YouTube/Vimeo abrem no site deles. Sem vídeo: aviso | Fase 3: envio de vídeo para o Supabase Storage |
+| **Capas e imagens dos cursos** | Arte padrão (cor + letra) | Fase 3: envio de capa, miniatura e banner |
 | **Currículo em PDF e certificados** | Só visual ("Certificados a caminho"). Hoje "aula concluída" é marcada pelo próprio aluno | Certificado emitido pelo servidor (conferindo aulas e trabalho) + código de verificação |
 | **Perfil público** | `/publico` é só a pré-visualização para o próprio aluno (o que ele marcou como público) | Rota pública de verdade (`/u/nome` ou subdomínio) com controle de privacidade |
-| **Objetivos com recomendação** | Trilhas e recomendações calculadas no código (`src/lib/trails.ts`) com o catálogo fixo | Recomendação com o catálogo do banco (Fase 2) |
+| **Objetivos com recomendação** | ✅ Trilhas em `src/lib/trails.ts`; as recomendações usam os cursos do banco (publicados e visíveis) | Refinar com dados de audiência (Fase 3) |
 | **Pagamentos (Plano Pro)** | Só o selo "Pro" | Mercado Pago / Stripe / Pagar.me |
 
 ### Como os dados vão para o banco
@@ -249,7 +270,7 @@ A pasta já está ligada ao repositório `viniciusvalentedev/Folyo`. Para enviar
 
 ```bash
 git add -A
-git commit -m "Folyo 2.0 · Fase 1: área do aluno"
+git commit -m "Folyo 2.0 · Fase 2: cursos, categorias e aulas no painel"
 git push
 ```
 

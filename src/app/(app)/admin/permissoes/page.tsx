@@ -19,7 +19,7 @@ export default function AdminPermissionsPage({ searchParams }: PageProps<'/admin
   )
 }
 
-const KIND_LABELS: Record<AuditKind, string> = { all: 'Todas as ações', permissao: 'Permissões', usuario: 'Usuários' }
+const KIND_LABELS: Record<AuditKind, string> = { all: 'Todas as ações', permissao: 'Permissões', usuario: 'Usuários', conteudo: 'Conteúdo' }
 
 async function Permissions({ searchParams }: { searchParams: PageProps<'/admin/permissoes'>['searchParams'] }) {
   const ctx = await allowed('permissoes')
@@ -185,7 +185,7 @@ async function Permissions({ searchParams }: { searchParams: PageProps<'/admin/p
         ) : (
           <div className="pad">
             <EmptyState icon="History" title="Nada registrado ainda">
-              Mudanças de papel, suspensões e reativações aparecem aqui.
+              Mudanças de papel, suspensões, reativações e alterações em cursos e categorias aparecem aqui.
             </EmptyState>
           </div>
         )}

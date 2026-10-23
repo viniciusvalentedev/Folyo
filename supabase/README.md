@@ -1,6 +1,7 @@
 # Supabase — passo a passo
 
-- **Folyo 2.0 · Fase 1 (área do aluno):** logo abaixo. Faça agora (depois da etapa 4, que já deve estar feita).
+- **Folyo 2.0 · Fase 2 (cursos, categorias e aulas no banco):** logo abaixo. Faça agora (depois da Fase 1).
+- **Folyo 2.0 · Fase 1 (área do aluno):** depois da Fase 2. Já feita; fica como referência.
 - **Etapa 4 (painel admin):** já feita; fica como referência.
 - **Etapa 3 (proteção contra robôs):** já feita; fica como referência.
 - **Etapa 2 (dados do aluno):** já feita; fica como referência.
@@ -10,6 +11,50 @@
 > A **secret key** (`sb_secret_...`) **não é usada** nesta etapa: não cole ela no `.env.local`, na Vercel,
 > no GitHub nem em conversas. Ela passa por cima de todas as regras de segurança do banco. Guarde só no
 > gerenciador de senhas.
+
+---
+
+# Folyo 2.0 · Fase 2 — cursos, categorias, módulos e aulas no banco
+
+Um SQL novo. **Rode depois do SQL da Fase 1** e uma vez só. Ele **não apaga nada** do que já existe; só cria
+tabelas e funções novas (e troca a função do histórico para filtrar por "Conteúdo").
+
+> **Importante:** os cursos de demonstração que estavam no código **saíram**. Depois deste passo o catálogo do
+> aluno fica **vazio** até a equipe cadastrar o primeiro curso em `/admin/cursos`. As 14 categorias padrão já vêm
+> prontas (Marketing, Vendas, Tecnologia, Arquitetura...). Antes de rodar, por segurança:
+> **Supabase → Database → Backups**.
+
+## 1. Rodar o SQL
+
+1. Supabase → **SQL Editor** → **New query**.
+2. Abra `supabase/migrations/20261024000001_folyo2_catalogo.sql`, copie tudo, cole e **Run**.
+   Deve aparecer *Success. No rows returned*.
+3. Se aparecer um erro dizendo que algo "already exists", o arquivo já foi rodado (e nada foi alterado).
+
+O que ele cria: tabelas `categories`, `courses`, `course_modules`, `lessons`, `lesson_materials` e
+`catalog_tags` (com as regras de leitura por papel: aluno só enxerga o que está publicado), as funções `admin_*`
+do cadastro (salvar curso, publicar, despublicar, excluir, categorias, ordem, tags) e o histórico de conteúdo.
+
+## 2. Conferir
+
+1. **Table Editor**: `categories` deve ter 14 linhas; `courses` e `lessons` começam vazias.
+2. **Database → Policies** (ou Table Editor → RLS): as tabelas novas têm RLS ligado (só `select` para usuários logados; nenhuma
+   escrita direta: tudo passa pelas funções `admin_*`).
+
+## 3. Publicar e testar
+
+1. `git add -A`, `git commit -m "Folyo 2.0: Fase 2"` e `git push`. Nenhuma variável nova.
+2. Entre com a conta de **editor, administrador ou proprietário** → **Cursos → Novo curso**.
+3. Preencha título, descrição curta (20+ caracteres) e categoria; em **Módulos e aulas** crie um módulo e uma aula
+   com um **link de vídeo** (`https://...mp4`, ou um link do YouTube) e salve.
+4. Em **Publicação e acesso** confira "Falta para publicar": só libera quando o curso tem descrição completa (40+
+   caracteres), uma skill e todas as aulas publicadas com vídeo. Depois escolha **Publicado** e salve.
+5. Com uma conta de **aluno**: o curso aparece em Explorar cursos; abra a aula, o vídeo toca (YouTube/Vimeo mostram o
+   botão "Assistir no site do vídeo") e a aba **Material** lista os links.
+6. Teste: despublicar (o curso some do catálogo para quem não começou), agendar para daqui a alguns minutos,
+   duplicar, reordenar em **Ordem do catálogo**, e abrir o mesmo curso em duas abas para ver o aviso de conflito.
+7. Com uma conta de **editor**: o menu do curso **não** mostra "Excluir" (é só do administrador). Excluir um curso que
+   um aluno já começou também é recusado pelo banco.
 
 ---
 

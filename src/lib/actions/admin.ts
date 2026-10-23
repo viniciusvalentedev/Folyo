@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { ROLE_KEYS, type Role } from '@/lib/admin/roles'
 import { allow } from '@/lib/security/rate-limit'
+import { ADMIN_RATE, fromDb, TOO_MANY } from './admin-shared'
 import { actionContext, EXPIRED, FAILED, INVALID, OK, type ActionResult } from './shared'
 
 /**
@@ -14,21 +15,6 @@ import { actionContext, EXPIRED, FAILED, INVALID, OK, type ActionResult } from '
  * o papel de quem chamou e as regras de hierarquia. Aluno que chamar recebe
  * "Seu papel não dá acesso a esta ação."
  */
-
-/** Mensagens que o próprio banco escreve (códigos FA...) podem ir para a tela. */
-function fromDb(where: string, userId: string, error: { code?: string; message?: string }): ActionResult {
-  if (error.code === 'FY429') return TOO_MANY
-  if (error.code && /^FA[0-9]{3}$/.test(error.code) && error.message) {
-    // Tentativa barrada pelo banco: fica no log do servidor (Vercel → Logs) para dar para investigar.
-    if (error.code === 'FA403') console.warn('Painel: ação negada', { where, userId })
-    return { ok: false, error: error.message }
-  }
-  console.error('Falha no painel', { where, code: error.code })
-  return FAILED
-}
-
-const TOO_MANY: ActionResult = { ok: false, error: 'Muitas ações seguidas. Espere um minuto e tente de novo.' }
-const ADMIN_RATE = { max: 60, windowMs: 60_000 }
 
 const setRoleSchema = z.object({ userId: z.uuid(), role: z.enum(ROLE_KEYS as [Role, ...Role[]]) })
 

@@ -122,11 +122,22 @@ export function Metric({
   )
 }
 
-export function Notice({ tone = 'info', icon, children }: { tone?: 'info' | 'warn' | 'err'; icon?: IconName; children: ReactNode }) {
+export function Notice({
+  tone = 'info',
+  icon,
+  children,
+  action,
+}: {
+  tone?: 'info' | 'warn' | 'err' | 'ok'
+  icon?: IconName
+  children: ReactNode
+  action?: ReactNode
+}) {
   return (
     <div className={'ad-notice ad-notice-' + tone} role={tone === 'err' ? 'alert' : undefined}>
-      <Icon name={icon || (tone === 'info' ? 'Info' : 'CircleAlert')} size={17} />
+      <Icon name={icon || (tone === 'info' ? 'Info' : tone === 'ok' ? 'CircleCheck' : 'CircleAlert')} size={17} />
       <div>{children}</div>
+      {action}
     </div>
   )
 }

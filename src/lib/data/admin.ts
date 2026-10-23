@@ -198,7 +198,7 @@ const staffSchema = z
 export type StaffMember = z.infer<typeof staffSchema>[number]
 export const getStaff = cache(() => rpc('admin_staff', {}, staffSchema))
 
-export const AUDIT_KINDS = ['all', 'permissao', 'usuario'] as const
+export const AUDIT_KINDS = ['all', 'permissao', 'usuario', 'conteudo'] as const
 export type AuditKind = (typeof AUDIT_KINDS)[number]
 const auditSchema = z
   .array(

@@ -3,7 +3,9 @@
  *
  * Descrevem os dados que a tela usa. O que é do aluno vem do banco (tabelas
  * profiles, course_progress, lesson_completions, lesson_notes, lesson_watch, works
- * e skills); o catálogo ainda é de demonstração até o painel de cursos.
+ * e skills); o catálogo vem das tabelas categories, courses, course_modules, lessons e
+ * lesson_materials (cadastradas no painel). O formato usado pelo painel fica em
+ * src/lib/admin/catalog.ts.
  */
 
 // ---------- Catálogo ----------
@@ -17,6 +19,8 @@ export type Category = {
   name: string
   /** Nome de um ícone do lucide (ver src/components/ui/Icon.tsx). */
   icon: string
+  /** Categoria desativada some dos filtros de Explorar cursos (os cursos continuam). */
+  active?: boolean
 }
 
 export type Lesson = {
@@ -26,7 +30,13 @@ export type Lesson = {
   min: number
   /** Resumo da aula (algumas aulas ainda não têm). */
   desc?: string
+  /** Vídeo por link (https). Sem vídeo, o aluno vê um aviso. */
+  video?: string | null
+  /** Links complementares da aula. */
+  materials?: LessonMaterial[]
 }
+
+export type LessonMaterial = { id: string; label: string; url: string }
 
 export type Module = {
   id: string
@@ -52,6 +62,10 @@ export type Course = {
   plan: Plan
   featured: boolean
   summary: string
+  /** Curso recomendado: sobe na ordenação por relevância. */
+  recommended?: boolean
+  /** Publicado, mas fora do catálogo: só abre por link direto. */
+  hidden?: boolean
   /** Campos opcionais preenchidos pelo painel da equipe. */
   subtitle?: string
   description?: string

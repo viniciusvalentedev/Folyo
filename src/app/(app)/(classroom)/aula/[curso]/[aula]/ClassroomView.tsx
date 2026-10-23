@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MarkPath } from '@/components/brand/Logo'
 import { lessonNumber } from '@/components/course/CourseBits'
 import { useApp } from '@/components/providers/AppState'
@@ -12,32 +12,105 @@ import { EmptyState, Progress, Ring } from '@/components/ui/indicators'
 import { Modal } from '@/components/ui/Modal'
 import { WorksPanel } from '@/components/works/WorksPanel'
 import { findCourse, lessonsOf } from '@/lib/domain/catalog'
+import { isExternalVideo, isHttpsUrl } from '@/lib/admin/catalog'
 import { issuesCertificate } from '@/lib/domain/derive'
 import { plural } from '@/lib/format'
 import { NOTE_MAX } from '@/lib/validation'
 import type { Course, LessonRef } from '@/lib/types'
 
+/** Cartaz da aula (título sobre a arte da marca), usado quando não há vídeo tocando. */
+function Slide({ lesson, n }: { lesson: LessonRef; n: number }) {
+  return (
+    <div className="slide">
+      <p className="slide-k">
+        Módulo {lesson.mi + 1} · Aula {n}
+      </p>
+      <h2 className="slide-t">{lesson.title}</h2>
+      <svg className="slide-art" viewBox="0 0 200 200" aria-hidden="true">
+        <MarkPath x={150} y={90} r={120} fill="rgba(255,255,255,.07)" rotate={-8} />
+        <MarkPath x={182} y={170} r={14} fill="var(--lime)" />
+      </svg>
+    </div>
+  )
+}
+
+/** Quantos segundos assistidos juntar antes de mandar para a fila de gravação. */
+const WATCH_BATCH = 5
+
 /**
- * Espaço do vídeo. O vídeo de cada aula (e o tempo assistido) entra com o painel da equipe,
- * na etapa de mídia; até lá o aluno vê o resumo da aula e os materiais.
+ * Espaço do vídeo. O vídeo é um link https cadastrado pela equipe:
+ *  - YouTube/Vimeo não tocam dentro de outro site (a Folyo não carrega iframes de terceiros),
+ *    então a aula mostra um botão que abre o vídeo no site deles;
+ *  - qualquer outro link (.mp4/.webm) toca aqui, e o tempo assistido é somado em "Progresso";
+ *  - sem vídeo (ou se o link falhar), aparece o aviso de vídeo indisponível.
  */
 function LessonPlayer({ lesson, n }: { lesson: LessonRef; n: number }) {
+  const { a } = useApp()
+  const url = lesson.video ?? null
+  const [failed, setFailed] = useState(false)
+  // Soma o tempo realmente assistido (ignora quem pula a barra de tempo).
+  const track = useRef({ last: 0, pending: 0 })
+
+  const flush = () => {
+    const t = track.current
+    if (t.pending > 0) a.addWatch(lesson.id, t.pending)
+    t.pending = 0
+  }
+
+  if (url && isExternalVideo(url) && isHttpsUrl(url)) {
+    return (
+      <div className="player">
+        <div className="player-stage">
+          <Slide lesson={lesson} n={n} />
+          <p className="player-none" role="status">
+            <Icon name="ExternalLink" size={18} />
+            <span>Esta aula está em um vídeo hospedado fora da Folyo.</span>
+            <a className="btn btn-go btn-sm" href={url} target="_blank" rel="noopener noreferrer">
+              Assistir no site do vídeo
+            </a>
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  if (url && isHttpsUrl(url) && !failed) {
+    return (
+      <div className="player">
+        <video
+          className="player-video"
+          src={url}
+          controls
+          playsInline
+          preload="metadata"
+          controlsList="nodownload"
+          onError={() => setFailed(true)}
+          onPlay={(e) => {
+            track.current.last = e.currentTarget.currentTime
+          }}
+          onTimeUpdate={(e) => {
+            const el = e.currentTarget
+            const t = track.current
+            const delta = el.currentTime - t.last
+            t.last = el.currentTime
+            if (el.paused || delta <= 0 || delta > 2) return
+            t.pending += delta
+            if (t.pending >= WATCH_BATCH) flush()
+          }}
+          onPause={flush}
+          onEnded={flush}
+        />
+      </div>
+    )
+  }
+
   return (
     <div className="player">
       <div className="player-stage">
-        <div className="slide">
-          <p className="slide-k">
-            Módulo {lesson.mi + 1} · Aula {n}
-          </p>
-          <h2 className="slide-t">{lesson.title}</h2>
-          <svg className="slide-art" viewBox="0 0 200 200" aria-hidden="true">
-            <MarkPath x={150} y={90} r={120} fill="rgba(255,255,255,.07)" rotate={-8} />
-            <MarkPath x={182} y={170} r={14} fill="var(--lime)" />
-          </svg>
-        </div>
+        <Slide lesson={lesson} n={n} />
         <p className="player-none" role="status">
-          <Icon name="VideoOff" size={18} />O vídeo desta aula ainda não está disponível. Você pode ler a descrição e os
-          materiais abaixo.
+          <Icon name="VideoOff" size={18} />
+          {failed ? 'Não foi possível carregar o vídeo desta aula agora. Tente de novo mais tarde.' : 'O vídeo desta aula ainda não está disponível. Você pode ler a descrição e os materiais abaixo.'}
         </p>
       </div>
     </div>
@@ -217,12 +290,25 @@ export function ClassroomView({ courseId, lessonId }: { courseId: string; lesson
                 </p>
               </div>
             )}
-            {tab === 'material' && (
-              <p className="muted-on-dark class-empty">
-                <Icon name="Paperclip" size={16} />
-                Esta aula ainda não tem materiais complementares.
-              </p>
-            )}
+            {tab === 'material' &&
+              (lesson.materials?.length ? (
+                <ul className="class-materials">
+                  {lesson.materials.map((m) => (
+                    <li key={m.id}>
+                      <a href={m.url} target="_blank" rel="noopener noreferrer">
+                        <Icon name="Paperclip" size={16} />
+                        <span>{m.label}</span>
+                        <Icon name="ExternalLink" size={14} />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="muted-on-dark class-empty">
+                  <Icon name="Paperclip" size={16} />
+                  Esta aula ainda não tem materiais complementares.
+                </p>
+              ))}
             {tab === 'notas' && <Notes key={lesson.id} lid={lesson.id} />}
             {tab === 'projeto' && (
               <div className="class-project2">

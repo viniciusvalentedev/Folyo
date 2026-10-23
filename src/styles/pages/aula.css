@@ -80,3 +80,12 @@
 .cp2-head { display: grid; gap: 6px; }
 .cp2-head h3 { font-size: 18px; }
 .cp2-exp { font-size: 14px; color: #D7D5E6; }
+
+/* Vídeo por link e materiais da aula (cadastrados no painel) */
+.player-video { display: block; width: 100%; aspect-ratio: 16 / 9; background: #000; }
+.player-none span { flex: 1; min-width: 0; }
+.player-none .btn { flex: none; }
+.class-materials { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-width: 560px; }
+.class-materials a { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); color: #F1F0F7; text-decoration: none; }
+.class-materials a:hover { background: rgba(255,255,255,.09); }
+.class-materials a span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

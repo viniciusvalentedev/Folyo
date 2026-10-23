@@ -1,20 +1,11 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getCatalog, getCourseParams } from '@/lib/data/catalog'
+import { getCatalog } from '@/lib/data/catalog'
 import { isValidSlug } from '@/lib/validation'
 import { CourseView } from './CourseView'
 
-/** Gera no build uma página para cada curso do catálogo. */
-export async function generateStaticParams() {
-  return getCourseParams()
-}
-
-export async function generateMetadata({ params }: PageProps<'/cursos/[slug]'>): Promise<Metadata> {
-  const { slug } = await params
-  const { courses } = await getCatalog()
-  const course = courses.find((c) => c.id === slug)
-  return { title: course?.title ?? 'Curso não encontrado', description: course?.summary }
-}
+// O título do curso vem do banco e depende de quem está logado, então a aba usa um título fixo.
+export const metadata: Metadata = { title: 'Curso' }
 
 export default async function CursoPage({ params }: PageProps<'/cursos/[slug]'>) {
   const { slug } = await params

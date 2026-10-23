@@ -14,7 +14,7 @@ import type {
   WorkEntry,
 } from '@/lib/types'
 import { brDate } from '@/lib/format'
-import { categoryOf, lessonsOf, normalize, sameText } from './catalog'
+import { categoryOf, isListed, lessonsOf, normalize, sameText } from './catalog'
 
 /** Data (ms) da última aula concluída de um curso — usada para ordenar "em andamento". */
 function lastActivity(state: UserState, course: Course) {
@@ -313,6 +313,7 @@ export type CatalogSkill = { name: string; courses: string[]; cats: string[] }
 export function catalogSkills(catalog: Catalog): CatalogSkill[] {
   const map = new Map<string, CatalogSkill>()
   for (const course of catalog.courses) {
+    if (!isListed(course)) continue
     for (const name of uniqueNames(course.skills)) {
       const key = normalize(name)
       const item = map.get(key) ?? { name, courses: [], cats: [] }
@@ -331,6 +332,7 @@ export const skillInCatalog = (catalog: CatalogSkill[], name: string) => catalog
 export function trailWithCourses(trail: Trail | null, catalog: Catalog, skills: CatalogSkill[] = catalogSkills(catalog)) {
   if (!trail) return null
   const courses = catalog.courses
+    .filter((course) => isListed(course))
     .map((course) => ({ course, n: uniqueNames(course.skills).filter((s) => trail.skills.some((t) => sameText(t, s))).length }))
     .filter((x) => x.n > 0)
     .sort((a, b) => b.n - a.n)
@@ -364,7 +366,7 @@ export function recommendCourses(state: UserState, derived: Derived, catalog: Ca
   const out: Recommendation[] = []
   for (const course of catalog.courses) {
     const stats = derived.courseStats[course.id]
-    if (!stats || stats.complete) continue
+    if (!stats || stats.complete || !isListed(course, stats.started)) continue
     const matched = uniqueNames(course.skills).filter((s) => wanted.some((w) => sameText(w, s)))
     if (!matched.length) continue
     const haystack = normalize(
@@ -376,7 +378,7 @@ export function recommendCourses(state: UserState, derived: Derived, catalog: Ca
       matched,
       textHit,
       started: stats.started,
-      score: matched.length * 10 + (textHit ? 3 : 0) + (stats.started ? 2 : 0),
+      score: matched.length * 10 + (textHit ? 3 : 0) + (stats.started ? 2 : 0) + (course.recommended ? 4 : 0),
     })
   }
   return out.sort((a, b) => b.score - a.score)

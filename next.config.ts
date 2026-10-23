@@ -33,7 +33,9 @@ const csp = [
   "img-src 'self' blob: data:",
   "font-src 'self'",
   `connect-src 'self'${SUPABASE_ORIGIN ? ' ' + SUPABASE_ORIGIN : ''}${isDev ? ' ws:' : ''}`,
-  "media-src 'self'",
+  // Vídeos das aulas são links https cadastrados pela equipe (a lista de endereços não é fixa).
+  // "media-src" só vale para <video>/<audio>: não executa nada e não libera scripts, imagens nem iframes.
+  "media-src 'self' https:",
   `frame-src 'self' ${TURNSTILE}`,
   "object-src 'none'",
   "base-uri 'self'",

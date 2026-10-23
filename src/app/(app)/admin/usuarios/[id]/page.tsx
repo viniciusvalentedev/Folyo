@@ -10,7 +10,8 @@ import { Icon } from '@/components/ui/Icon'
 import { EmptyState, Progress } from '@/components/ui/indicators'
 import { assignableRoles, canManage, ROLES } from '@/lib/admin/roles'
 import { allowed, getUserDetail } from '@/lib/data/admin'
-import { getCatalog } from '@/lib/data/catalog'
+import { courseCounts } from '@/lib/admin/catalog'
+import { getFullCatalog } from '@/lib/data/catalog'
 import { findTrail, LIFE_STAGES } from '@/lib/trails'
 import { uuidSchema } from '@/lib/validation'
 
@@ -38,7 +39,7 @@ async function UserPage({ params }: { params: PageProps<'/admin/usuarios/[id]'>[
   const { id } = await params
   // Id com formato estranho nem chega ao banco.
   if (!uuidSchema.safeParse(id).success) return <NotFound />
-  const [u, catalog] = await Promise.all([getUserDetail(id), getCatalog()])
+  const [u, catalog] = await Promise.all([getUserDetail(id), getFullCatalog()])
   if (!u) return <NotFound />
 
   const me = { id: ctx.id, role: ctx.role }
@@ -95,7 +96,7 @@ async function UserPage({ params }: { params: PageProps<'/admin/usuarios/[id]'>[
             <ul className="ad-prog">
               {u.progress.map((p) => {
                 const course = catalog.courses.find((c) => c.id === p.courseId)
-                const total = course ? course.modules.reduce((n, m) => n + m.lessons.length, 0) : 0
+                const total = course ? courseCounts(course).published : 0
                 const pct = total ? Math.min(100, Math.round((p.done / total) * 100)) : 0
                 const title = course?.title ?? `Curso removido (${p.courseId})`
                 return (

@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Wordmark } from '@/components/brand/Logo'
 import { useApp } from '@/components/providers/AppState'
 import { Icon, type IconName } from '@/components/ui/Icon'
-import { normalize } from '@/lib/domain/catalog'
+import { isListed, normalize } from '@/lib/domain/catalog'
 import { catalogSkills } from '@/lib/domain/derive'
 import { formatDayMonth } from '@/lib/format'
 
@@ -65,6 +65,7 @@ function GlobalSearch() {
     if (!term) return []
     const out: Hit[] = []
     catalog.courses.forEach((c) => {
+      if (!isListed(c, d.courseStats[c.id]?.started)) return
       if (normalize(c.title + ' ' + c.skills.join(' ')).includes(term))
         out.push({ kind: 'Curso', label: c.title, to: '/cursos/' + c.id, icon: 'BookOpen' })
     })
@@ -76,7 +77,7 @@ function GlobalSearch() {
       if (normalize(k.name).includes(term)) out.push({ kind: 'Skill', label: k.name, to: '/objetivos', icon: 'Puzzle' })
     })
     return out.slice(0, 8)
-  }, [q, catalog, d.works])
+  }, [q, catalog, d.works, d.courseStats])
 
   const pick = (h: Hit) => {
     setOpen(false)

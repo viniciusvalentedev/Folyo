@@ -19,6 +19,15 @@ export function findLesson(catalog: Catalog, lessonId: string) {
   return null
 }
 
+/**
+ * O curso entra em listas, buscas e recomendações?
+ * Cursos "ocultos" só abrem por link; cursos despublicados saem do catálogo, mas quem já
+ * começou continua vendo (e acessando) o curso.
+ */
+export function isListed(course: Pick<Course, 'hidden' | 'status'>, started = false) {
+  return !course.hidden && (course.status !== 'arquivado' || started)
+}
+
 export function categoryOf(catalog: Catalog, id: string): Category {
   return catalog.categories.find((c) => c.id === id) ?? { id, name: 'Sem categoria', icon: 'Layers' }
 }

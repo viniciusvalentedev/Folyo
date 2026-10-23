@@ -9,7 +9,7 @@ import { Select } from '@/components/ui/controls'
 import { Icon } from '@/components/ui/Icon'
 import { EmptyState } from '@/components/ui/indicators'
 import { SoonBlock } from '@/components/ui/SoonBlock'
-import { categoryOf, normalize } from '@/lib/domain/catalog'
+import { categoryOf, isListed, normalize } from '@/lib/domain/catalog'
 import { recommendCourses } from '@/lib/domain/derive'
 import { plural } from '@/lib/format'
 import type { Course, CourseStatus } from '@/lib/types'
@@ -39,7 +39,9 @@ export function ExploreView() {
     !!q || cat !== 'all' || duration !== 'all' || plan !== 'all' || onlyFav || situation !== 'all'
   const recommended = useMemo(() => recommendCourses(s, d, catalog), [s, d, catalog])
   const recommendedIds = useMemo(() => recommended.map((r) => r.course.id), [recommended])
-  const courses = catalog.courses
+  // Despublicados e ocultos não aparecem no catálogo (quem já começou um despublicado continua vendo).
+  const courses = useMemo(() => catalog.courses.filter((c) => isListed(c, d.courseStats[c.id]?.started)), [catalog.courses, d.courseStats])
+  const categories = useMemo(() => catalog.categories.filter((c) => c.active !== false), [catalog.categories])
 
   const results = useMemo(() => {
     const term = normalize(q.trim())
@@ -74,8 +76,8 @@ export function ExploreView() {
   }
 
   const countByCat = useMemo(
-    () => Object.fromEntries(catalog.categories.map((c) => [c.id, courses.filter((x) => x.cat === c.id).length])),
-    [catalog.categories, courses],
+    () => Object.fromEntries(categories.map((c) => [c.id, courses.filter((x) => x.cat === c.id).length])),
+    [categories, courses],
   )
   const featured = courses.find((c) => c.featured) ?? null
   const forSkills = recommended.map((r) => r.course)
@@ -134,7 +136,7 @@ export function ExploreView() {
           <Icon name="Layers" size={16} />
           Todas
         </button>
-        {catalog.categories.map((c) => (
+        {categories.map((c) => (
           <button
             key={c.id}
             type="button"
@@ -302,7 +304,7 @@ export function ExploreView() {
               <h2>Áreas profissionais</h2>
             </header>
             <div className="area-grid">
-              {catalog.categories
+              {categories
                 .filter((c) => countByCat[c.id])
                 .map((c) => (
                   <button key={c.id} type="button" className="area-tile" onClick={() => setCat(c.id)}>

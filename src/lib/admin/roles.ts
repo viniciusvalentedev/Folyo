@@ -36,8 +36,9 @@ export const can = (role: Role, perm: Perm) => rankOf(role) >= PERMS[perm]
 /** Tabela "o que cada papel pode fazer" (papel mínimo de cada ação). */
 export const ROLE_MATRIX: [string, number][] = [
   ['Ver o painel e a visão geral', 1],
-  ['Criar, editar, publicar e arquivar cursos (em breve)', 1],
-  ['Categorias, tags e destaques (em breve)', 1],
+  ['Criar, editar, publicar e despublicar cursos, módulos e aulas', 1],
+  ['Categorias, tags, destaques e ordem do catálogo', 1],
+  ['Excluir cursos (só os que nenhum aluno começou)', 2],
   ['Biblioteca de mídia (em breve)', 1],
   ['Usuários: consultar, suspender e reativar', 2],
   ['Audiência e relatórios (em breve)', 2],
@@ -68,9 +69,9 @@ export function canManage(actor: { id: string; role: Role }, target: { id: strin
 /** Itens do menu do painel. "soon" = área que ainda vai ser feita. */
 export const ADMIN_NAV = [
   { to: '/admin', label: 'Visão geral', icon: 'LayoutDashboard', perm: 'painel' },
-  { to: '/admin/cursos', label: 'Cursos', icon: 'BookOpen', perm: 'conteudo', soon: true },
-  { to: '/admin/categorias', label: 'Categorias', icon: 'Tags', perm: 'conteudo', soon: true },
-  { to: '/admin/aulas', label: 'Módulos e aulas', icon: 'Layers', perm: 'conteudo', soon: true },
+  { to: '/admin/cursos', label: 'Cursos', icon: 'BookOpen', perm: 'conteudo' },
+  { to: '/admin/categorias', label: 'Categorias', icon: 'Tags', perm: 'conteudo' },
+  { to: '/admin/aulas', label: 'Módulos e aulas', icon: 'Layers', perm: 'conteudo' },
   { to: '/admin/usuarios', label: 'Alunos e usuários', icon: 'Users', perm: 'usuarios' },
   { to: '/admin/audiencia', label: 'Audiência', icon: 'Activity', perm: 'relatorios', soon: true },
   { to: '/admin/relatorios', label: 'Relatórios', icon: 'FileSpreadsheet', perm: 'relatorios', soon: true },
@@ -81,9 +82,6 @@ export const ADMIN_NAV = [
 
 /** O que vai entrar em cada área "em breve" (aparece na própria página). */
 export const SOON: Record<string, string> = {
-  cursos: 'Cadastrar, editar, agendar, publicar e arquivar cursos. Para isso os cursos saem do código e passam a morar no banco.',
-  categorias: 'Criar e organizar as categorias e os destaques do catálogo.',
-  aulas: 'Organizar módulos e aulas de cada curso, com vídeo e materiais.',
   audiencia: 'Quem está assistindo agora e o histórico de visualizações (depende do player de vídeo).',
   relatorios: 'Relatórios com exportação para planilha.',
   midia: 'Enviar e organizar capas, imagens, vídeos e PDFs.',
@@ -96,6 +94,19 @@ export const AUDIT_LABELS: Record<string, { label: string; icon: string }> = {
   'usuario.suspenso': { label: 'Conta suspensa', icon: 'Ban' },
   'usuario.reativado': { label: 'Conta reativada', icon: 'UserCheck' },
   'usuario.cadastrado': { label: 'Novo usuário', icon: 'UserPlus' },
+  'curso.criado': { label: 'Curso criado', icon: 'FilePlus2' },
+  'curso.atualizado': { label: 'Curso atualizado', icon: 'SquarePen' },
+  'curso.publicado': { label: 'Curso publicado', icon: 'Send' },
+  'curso.agendado': { label: 'Publicação agendada', icon: 'Calendar' },
+  'curso.rascunho': { label: 'Curso voltou a rascunho', icon: 'Undo2' },
+  'curso.arquivado': { label: 'Curso despublicado', icon: 'EyeOff' },
+  'curso.excluido': { label: 'Curso excluído', icon: 'Trash2' },
+  'categoria.criada': { label: 'Categoria criada', icon: 'Tags' },
+  'categoria.atualizada': { label: 'Categoria atualizada', icon: 'Tags' },
+  'categoria.excluida': { label: 'Categoria excluída', icon: 'Trash2' },
+  'categorias.reordenadas': { label: 'Categorias reordenadas', icon: 'ArrowUpDown' },
+  'catalogo.reordenado': { label: 'Catálogo reordenado', icon: 'ArrowUpDown' },
+  'catalogo.atualizado': { label: 'Catálogo atualizado', icon: 'Layers' },
 }
 
 /** "aluno → editor" vira "Aluno → Editor de conteúdo". */
