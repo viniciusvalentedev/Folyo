@@ -4,6 +4,7 @@ import { useActionState } from 'react'
 import { ButtonLink } from '@/components/ui/Button'
 import { Field } from '@/components/ui/controls'
 import { Icon } from '@/components/ui/Icon'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { updatePasswordAction, type AuthFormState } from '../actions'
 import { FormAlert, SubmitButton } from '../AuthShell'
 
@@ -39,11 +40,9 @@ export function ResetPasswordView({ email }: { email: string }) {
       {/* Ajuda o gerenciador de senhas a salvar a senha na conta certa. */}
       <input type="email" name="username" value={email} autoComplete="username" readOnly hidden />
       <Field label="Senha nova" id="rp-pw" error={errors.password} hint="Pelo menos 8 caracteres.">
-        <input
+        <PasswordInput
           id="rp-pw"
           name="password"
-          type="password"
-          className="inp"
           maxLength={72}
           autoComplete="new-password"
           autoFocus
@@ -51,11 +50,9 @@ export function ResetPasswordView({ email }: { email: string }) {
         />
       </Field>
       <Field label="Repita a senha nova" id="rp-confirm" error={errors.confirm}>
-        <input
+        <PasswordInput
           id="rp-confirm"
           name="confirm"
-          type="password"
-          className="inp"
           maxLength={72}
           autoComplete="new-password"
           aria-invalid={!!errors.confirm}

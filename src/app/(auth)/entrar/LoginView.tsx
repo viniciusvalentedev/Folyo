@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { useActionState, useEffect, useRef, useState } from 'react'
 import { Field, Seg } from '@/components/ui/controls'
 import { Icon } from '@/components/ui/Icon'
+import { PasswordInput } from '@/components/ui/PasswordInput'
 import { resendConfirmationAction, signInAction, signUpAction, type AuthFormState } from '../actions'
 import { FormAlert, SubmitButton } from '../AuthShell'
 import { Captcha, captchaEnabled } from '../Captcha'
@@ -129,11 +130,9 @@ export function LoginView() {
         />
       </Field>
       <Field label="Senha" id="lg-pw" error={errors.password} hint={creating ? 'Pelo menos 8 caracteres.' : undefined}>
-        <input
+        <PasswordInput
           id="lg-pw"
           name="password"
-          type="password"
-          className="inp"
           maxLength={72}
           autoComplete={creating ? 'new-password' : 'current-password'}
           aria-invalid={!!errors.password}

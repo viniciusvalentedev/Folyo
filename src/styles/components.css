@@ -235,3 +235,10 @@
 body:has(.modal-scrim) .toasts { bottom: auto; top: calc(16px + env(safe-area-inset-top, 0px)); }
 .toasts { pointer-events: none; }
 .toast { pointer-events: auto; }
+
+/* Campo de senha com o olho de mostrar/esconder */
+.pw-wrap { position: relative; display: block; }
+.pw-wrap .inp { padding-right: 46px; }
+.pw-eye { position: absolute; top: 50%; right: 6px; transform: translateY(-50%); display: grid; place-items: center; width: 34px; height: 34px; border: 0; border-radius: 8px; background: none; color: var(--mute); cursor: pointer; transition: color var(--t), background var(--t); }
+.pw-eye:hover { color: var(--fg); background: var(--hover); }
+.pw-eye:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
