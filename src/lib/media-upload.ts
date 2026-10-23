@@ -24,6 +24,42 @@ export type MediaWant = 'image' | 'file'
 const OFFLINE = 'Sem conexão com a internet. Confira a rede e tente de novo.'
 const MIN_COVER_SIDE = 320
 
+/**
+ * Cada passo do envio tem um prazo. Sem isso, um passo que nunca responde deixa a tela em
+ * "Enviando…" para sempre, sem dizer o que houve. Com o prazo, a pessoa vê em qual passo parou.
+ */
+type Step = 'prepare' | 'send' | 'confirm'
+const STEP_LIMIT_MS: Record<Step, number> = { prepare: 20_000, send: 90_000, confirm: 30_000 }
+const STEP_TIMEOUT: Record<Step, string> = {
+  prepare: 'O servidor não respondeu ao preparar o envio. Tente de novo.',
+  send: 'O envio do arquivo demorou demais e foi interrompido. Confira a conexão e tente de novo.',
+  confirm: 'O arquivo foi enviado, mas a confirmação demorou demais. Tente de novo.',
+}
+
+class StepTimeout extends Error {
+  step: Step
+  constructor(step: Step) {
+    super(step)
+    this.step = step
+  }
+}
+
+function withTimeout<T>(promise: Promise<T>, step: Step): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new StepTimeout(step)), STEP_LIMIT_MS[step])
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      },
+    )
+  })
+}
+
 function dimensions(file: File): Promise<{ width: number; height: number } | null> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file)
@@ -72,21 +108,29 @@ type Sent = { ok: true; item: MediaItem } | { ok: false; error: string }
  */
 export async function uploadLocalFile(local: LocalFile, opts: { replace?: MediaItem } = {}): Promise<Sent> {
   try {
-    const ticket = await prepareMediaUploadAction({ ext: local.ext, size: local.file.size, replaceId: opts.replace?.id })
+    const ticket = await withTimeout(prepareMediaUploadAction({ ext: local.ext, size: local.file.size, replaceId: opts.replace?.id }), 'prepare')
     if (!ticket.ok) return ticket
     const mime = local.ext === 'pdf' ? 'application/pdf' : IMAGE_MIME[local.ext]
-    const res = await fetch(ticket.uploadUrl, {
-      method: 'PUT',
-      headers: { 'content-type': mime, apikey: ticket.apiKey },
-      body: local.file,
-      credentials: 'omit',
-      referrerPolicy: 'no-referrer',
+    const abort = new AbortController()
+    const res = await withTimeout(
+      fetch(ticket.uploadUrl, {
+        method: 'PUT',
+        headers: { 'content-type': mime, apikey: ticket.apiKey },
+        body: local.file,
+        credentials: 'omit',
+        referrerPolicy: 'no-referrer',
+        signal: abort.signal,
+      }),
+      'send',
+    ).catch((error) => {
+      if (error instanceof StepTimeout) abort.abort()
+      throw error
     })
     if (!res.ok) return { ok: false, error: res.status === 413 ? 'O arquivo é maior que o limite.' : 'Não foi possível enviar o arquivo. Tente de novo.' }
 
     const payload = { mediaId: ticket.mediaId, version: ticket.version, ext: local.ext, width: local.width, height: local.height }
     const name = cleanMediaName(local.file.name, local.ext === 'pdf' ? 'documento.pdf' : 'imagem')
-    const done = opts.replace ? await confirmReplaceMediaAction(payload) : await confirmMediaUploadAction({ ...payload, name })
+    const done = await withTimeout(opts.replace ? confirmReplaceMediaAction(payload) : confirmMediaUploadAction({ ...payload, name }), 'confirm')
     if (!done.ok) return done
     const now = new Date().toISOString()
     return {
@@ -105,7 +149,11 @@ export async function uploadLocalFile(local: LocalFile, opts: { replace?: MediaI
         updatedAt: now,
       },
     }
-  } catch {
+  } catch (error) {
+    if (error instanceof StepTimeout) {
+      console.error('Envio de mídia parou no passo', error.step)
+      return { ok: false, error: STEP_TIMEOUT[error.step] }
+    }
     return { ok: false, error: OFFLINE }
   }
 }

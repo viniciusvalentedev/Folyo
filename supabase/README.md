@@ -338,8 +338,11 @@ O que esse SQL faz:
 
 **Authentication → URL Configuration**
 
-- **Site URL:** `https://folyo-six.vercel.app`
-- **Redirect URLs:** adicione `http://localhost:3000/**` e `https://folyo-six.vercel.app/**`
+- **Site URL:** `https://usefolyo.com` (o domínio próprio). Os e-mails de confirmar conta e criar senha nova usam
+  o Site URL para montar o link (`{{ .SiteURL }}` nos modelos em `supabase/templates/`); se ele ficar com o
+  endereço da Vercel, o link do e-mail leva para `folyo-six.vercel.app`.
+- **Redirect URLs:** adicione `http://localhost:3000/**`, `https://usefolyo.com/**`, `https://www.usefolyo.com/**`
+  e `https://folyo-six.vercel.app/**`
 
 **Authentication → Sign In / Providers → Email**
 
@@ -395,8 +398,8 @@ npm run dev
 4. Em **Table Editor → profiles** aparece a sua linha com o objetivo e a meta que você escolheu.
 5. Teste também: **Sair**, entrar de novo, **Esqueci minha senha**.
 
-> **Testando no computador:** os links dos e-mails apontam para o site da Vercel (é o *Site URL*).
-> Para abrir no seu computador, troque `https://folyo-six.vercel.app` por `http://localhost:3000` no
+> **Testando no computador:** os links dos e-mails apontam para o site publicado (é o *Site URL*).
+> Para abrir no seu computador, troque `https://usefolyo.com` por `http://localhost:3000` no
 > endereço do link antes de abrir. O resto do link fica igual.
 
 ### E-mails
