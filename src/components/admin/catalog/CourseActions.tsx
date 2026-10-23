@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition, type CSSProperties } from 'react'
 import { useApp } from '@/components/providers/AppState'
 import { Button, IconButton } from '@/components/ui/Button'
 import { Icon, type IconName } from '@/components/ui/Icon'
@@ -34,18 +34,47 @@ export function CourseActions({
   const { toast } = useApp()
   const router = useRouter()
   const [menu, setMenu] = useState(false)
+  const [menuStyle, setMenuStyle] = useState<CSSProperties>({})
   const [confirm, setConfirm] = useState<Pending>(null)
   const [error, setError] = useState('')
   const [pending, start] = useTransition()
   const box = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    if (!menu) return
     const close = (e: PointerEvent) => {
       if (box.current && !box.current.contains(e.target as Node)) setMenu(false)
     }
+    const hide = () => setMenu(false)
+    const esc = (e: KeyboardEvent) => e.key === 'Escape' && setMenu(false)
     document.addEventListener('pointerdown', close)
-    return () => document.removeEventListener('pointerdown', close)
-  }, [])
+    document.addEventListener('keydown', esc)
+    // O menu é "fixed" (para não ser cortado pela tabela); se a tela mexer, ele fecha.
+    window.addEventListener('scroll', hide, true)
+    window.addEventListener('resize', hide)
+    return () => {
+      document.removeEventListener('pointerdown', close)
+      document.removeEventListener('keydown', esc)
+      window.removeEventListener('scroll', hide, true)
+      window.removeEventListener('resize', hide)
+    }
+  }, [menu])
+
+  /** Abre o menu colado no botão, para baixo, ou para cima se não couber embaixo. */
+  const toggleMenu = () => {
+    if (menu) return setMenu(false)
+    const rect = box.current?.getBoundingClientRect()
+    if (rect) {
+      const right = Math.max(8, window.innerWidth - rect.right)
+      const below = window.innerHeight - rect.bottom
+      setMenuStyle(
+        below >= 340 || below >= rect.top
+          ? { position: 'fixed', top: rect.bottom + 4, right, maxHeight: Math.max(160, below - 12), overflowY: 'auto' }
+          : { position: 'fixed', top: 'auto', bottom: window.innerHeight - rect.top + 4, right, maxHeight: Math.max(160, rect.top - 12), overflowY: 'auto' },
+      )
+    }
+    setMenu(true)
+  }
 
   const done = (message: string) => {
     toast(message, 'ok')
@@ -104,14 +133,14 @@ export function CourseActions({
   return (
     <div className="ad-actions" ref={box} onClick={(e) => e.stopPropagation()}>
       {compact ? (
-        <IconButton icon="Ellipsis" label={`Ações de ${course.title}`} aria-expanded={menu} onClick={() => setMenu(!menu)} />
+        <IconButton icon="Ellipsis" label={`Ações de ${course.title}`} aria-expanded={menu} onClick={toggleMenu} />
       ) : (
-        <Button variant="quiet" iconRight="ChevronDown" aria-expanded={menu} onClick={() => setMenu(!menu)}>
+        <Button variant="quiet" iconRight="ChevronDown" aria-expanded={menu} onClick={toggleMenu}>
           Ações
         </Button>
       )}
       {menu && (
-        <div className="ad-pop ad-menu" role="menu">
+        <div className="ad-pop ad-menu" role="menu" style={menuStyle}>
           {items.map(
             (item) =>
               item && (

@@ -22,12 +22,9 @@ import { ContentTab } from './editor/ContentTab'
 import { InfoTab } from './editor/InfoTab'
 import { PreviewTab } from './editor/PreviewTab'
 import { PublishTab } from './editor/PublishTab'
-import type { EditorContext } from './editor/types'
+import { type EditorContext, type EditorTab } from './editor/types'
 import { VisualTab } from './editor/VisualTab'
 import { StatusBadge } from './parts'
-
-export type EditorTab = 'informacoes' | 'visual' | 'conteudo' | 'publicacao' | 'previa'
-export const EDITOR_TABS: EditorTab[] = ['informacoes', 'visual', 'conteudo', 'publicacao', 'previa']
 
 const TAB_LIST: { value: EditorTab; label: string; icon: 'Pencil' | 'Palette' | 'Layers' | 'Send' | 'Eye' }[] = [
   { value: 'informacoes', label: 'Informações', icon: 'Pencil' },

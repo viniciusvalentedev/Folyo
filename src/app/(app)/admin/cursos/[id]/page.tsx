@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
-import { CourseEditor, EDITOR_TABS, type EditorTab } from '@/components/admin/catalog/CourseEditor'
+import { CourseEditor } from '@/components/admin/catalog/CourseEditor'
+import { EDITOR_TABS, type EditorTab } from '@/components/admin/catalog/editor/types'
 import { SectionDenied, SectionLoading } from '@/components/admin/sections'
 import { DEFAULT_SKILLS, ID_PATTERN } from '@/lib/admin/catalog'
 import { rankOf } from '@/lib/admin/roles'
@@ -28,7 +29,7 @@ async function EditCourse({ params, searchParams }: PageProps<'/admin/cursos/[id
   const course = catalog.courses.find((c) => c.id === id)
   if (!course) notFound()
   const aba = typeof query.aba === 'string' ? query.aba : ''
-  const initialTab: EditorTab = (EDITOR_TABS as string[]).includes(aba) ? (aba as EditorTab) : 'informacoes'
+  const initialTab: EditorTab = (EDITOR_TABS as readonly string[]).includes(aba) ? (aba as EditorTab) : 'informacoes'
 
   return (
     // A chave muda quando o curso muda no banco ("Carregar a versão nova"): o editor recomeça dos dados novos.

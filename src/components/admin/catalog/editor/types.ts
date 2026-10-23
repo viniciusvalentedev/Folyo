@@ -14,3 +14,7 @@ export type EditorContext = {
   tags: string[]
   skills: string[]
 }
+
+/** Abas do editor. Fica aqui (e não no editor) porque a página, que roda no servidor, também precisa da lista. */
+export type EditorTab = 'informacoes' | 'visual' | 'conteudo' | 'publicacao' | 'previa'
+export const EDITOR_TABS: readonly EditorTab[] = ['informacoes', 'visual', 'conteudo', 'publicacao', 'previa']
