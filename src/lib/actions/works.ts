@@ -94,27 +94,34 @@ async function cleanOrphans(ctx: ActionContext, referenced: Set<string>) {
 async function inspectPdf(ctx: ActionContext, path: string): Promise<{ ok: true; size: number } | { ok: false; error: string }> {
   const { data, error } = await ctx.supabase.storage.from(BUCKET).createSignedUrl(path, 60)
   if (error || !data) return FILE_MISSING
-  let res: Response
-  try {
-    res = await fetch(data.signedUrl, { headers: { Range: 'bytes=0-4' }, cache: 'no-store' })
-  } catch {
-    return FILE_MISSING
-  }
-  if (res.status !== 200 && res.status !== 206) return FILE_MISSING
-
-  const range = /\/(\d+)$/.exec(res.headers.get('content-range') ?? '')
-  const size = Number(range ? range[1] : res.headers.get('content-length'))
-
-  // Lê só os primeiros bytes (se o servidor ignorar o "Range", não baixamos o arquivo inteiro).
-  const reader = res.body?.getReader()
-  if (!reader) return FILE_MISSING
+  // Prazo de 10 s para o pedido inteiro (sem ele, um Storage que não responde deixava o envio travado).
+  const abort = new AbortController()
+  const timer = setTimeout(() => abort.abort(), 10_000)
+  let size = NaN
   const chunks: number[] = []
-  while (chunks.length < 5) {
-    const { done, value } = await reader.read()
-    if (done) break
-    for (const b of value) chunks.push(b)
+  try {
+    const res = await fetch(data.signedUrl, { headers: { Range: 'bytes=0-4' }, cache: 'no-store', signal: abort.signal })
+    if (res.status !== 200 && res.status !== 206) return FILE_MISSING
+
+    const range = /\/(\d+)$/.exec(res.headers.get('content-range') ?? '')
+    size = Number(range ? range[1] : res.headers.get('content-length'))
+
+    // Lê só os primeiros bytes (se o servidor ignorar o "Range", não baixamos o arquivo inteiro).
+    const reader = res.body?.getReader()
+    if (!reader) return FILE_MISSING
+    while (chunks.length < 5) {
+      const { done, value } = await reader.read()
+      if (done) break
+      for (const b of value) chunks.push(b)
+    }
+    // Já temos o começo: corta o resto do download sem esperar o cancelamento (ele podia travar).
+    abort.abort()
+  } catch {
+    console.error('Falha ao ler o começo do PDF enviado')
+    return FILE_MISSING
+  } finally {
+    clearTimeout(timer)
   }
-  await reader.cancel().catch(() => {})
 
   if (String.fromCharCode(...chunks.slice(0, 5)) !== '%PDF-') return NOT_A_PDF
   if (!Number.isInteger(size) || size < 5 || size > MAX_PDF_BYTES) {

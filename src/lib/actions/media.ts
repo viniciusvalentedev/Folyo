@@ -51,25 +51,33 @@ async function removeObject(ctx: ActionContext, bucket: string, path: string | n
 async function readHead(ctx: ActionContext, bucket: string, path: string): Promise<{ ok: true; head: Uint8Array; size: number } | Fail> {
   const { data, error } = await ctx.supabase.storage.from(bucket).createSignedUrl(path, 60)
   if (error || !data) return FILE_MISSING
-  let res: Response
+  // Prazo de 10 s para o pedido inteiro: sem ele, um Storage que não responde (ou não corta o
+  // download) deixava o envio da imagem "Enviando…" para sempre.
+  const abort = new AbortController()
+  const timer = setTimeout(() => abort.abort(), 10_000)
   try {
-    res = await fetch(data.signedUrl, { headers: { Range: 'bytes=0-15' }, cache: 'no-store' })
+    const res = await fetch(data.signedUrl, { headers: { Range: 'bytes=0-15' }, cache: 'no-store', signal: abort.signal })
+    if (res.status !== 200 && res.status !== 206) return FILE_MISSING
+    const range = /\/(\d+)$/.exec(res.headers.get('content-range') ?? '')
+    const size = Number(range ? range[1] : res.headers.get('content-length'))
+    const reader = res.body?.getReader()
+    if (!reader) return FILE_MISSING
+    const bytes: number[] = []
+    while (bytes.length < 16) {
+      const { done, value } = await reader.read()
+      if (done) break
+      for (const b of value) bytes.push(b)
+    }
+    // Já temos o começo: corta o resto do download sem ficar esperando o cancelamento
+    // (esperar por ele podia travar quando o servidor ignora o "Range" e manda o arquivo inteiro).
+    abort.abort()
+    return { ok: true, head: Uint8Array.from(bytes.slice(0, 16)), size: Number.isFinite(size) ? size : 0 }
   } catch {
+    console.error('Falha ao ler o começo do arquivo enviado', { bucket })
     return FILE_MISSING
+  } finally {
+    clearTimeout(timer)
   }
-  if (res.status !== 200 && res.status !== 206) return FILE_MISSING
-  const range = /\/(\d+)$/.exec(res.headers.get('content-range') ?? '')
-  const size = Number(range ? range[1] : res.headers.get('content-length'))
-  const reader = res.body?.getReader()
-  if (!reader) return FILE_MISSING
-  const bytes: number[] = []
-  while (bytes.length < 16) {
-    const { done, value } = await reader.read()
-    if (done) break
-    for (const b of value) bytes.push(b)
-  }
-  await reader.cancel().catch(() => {})
-  return { ok: true, head: Uint8Array.from(bytes.slice(0, 16)), size: Number.isFinite(size) ? size : 0 }
 }
 
 /** O conteúdo é mesmo do tipo da extensão? */
