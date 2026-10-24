@@ -327,8 +327,9 @@
 }
 @media (max-width: 960px) {
   .ad-app, .ad-app.collapsed { grid-template-columns: minmax(0, 1fr); }
-  .ad-side { position: fixed; left: 0; top: 0; bottom: 0; z-index: 80; width: 272px; transform: translateX(-100%); transition: transform var(--t) var(--ease); }
-  .ad-side.open { transform: none; box-shadow: 0 0 60px rgba(0,0,0,.5); }
+  /* Fechado, o menu fica invisível E fora do alcance do Tab (visibility), senão o teclado entraria em links escondidos. */
+  .ad-side { position: fixed; left: 0; top: 0; bottom: 0; z-index: 80; width: 272px; transform: translateX(-100%); visibility: hidden; transition: transform var(--t) var(--ease), visibility 0s linear var(--t); }
+  .ad-side.open { transform: none; visibility: visible; transition-delay: 0s; box-shadow: 0 0 60px rgba(0,0,0,.5); }
   .ad-app.collapsed .ad-nav span, .ad-app.collapsed .ad-brand-tag { display: initial; }
   .ad-app.collapsed .ad-nav { justify-content: flex-start; padding: 10px 12px; }
   .ad-side-x { display: inline-grid !important; color: #fff; }

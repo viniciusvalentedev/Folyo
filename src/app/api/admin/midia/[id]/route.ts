@@ -1,5 +1,7 @@
 import { allowed } from '@/lib/data/admin'
-import { pdfNotFound, pdfUnauthorized, streamPdf } from '@/lib/data/pdf-stream'
+import { pdfNotFound, pdfTooMany, pdfUnauthorized, streamPdf } from '@/lib/data/pdf-stream'
+import { getSessionUser } from '@/lib/data/user'
+import { API_LIMITS, allow } from '@/lib/security/rate-limit'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { uuidSchema } from '@/lib/validation'
 
@@ -8,6 +10,8 @@ export async function GET(request: Request, ctx: RouteContext<'/api/admin/midia/
   const { id } = await ctx.params
   if (!uuidSchema.safeParse(id).success) return pdfNotFound()
   if (!(await allowed('conteudo'))) return pdfUnauthorized()
+  const user = await getSessionUser()
+  if (user && !allow('download:' + user.id, API_LIMITS.download)) return pdfTooMany()
 
   const supabase = await createSupabaseServerClient()
   const { data: file } = await supabase.from('media_files').select('path, name, kind').eq('id', id).maybeSingle()

@@ -1,5 +1,6 @@
-import { streamPdf, pdfNotFound, pdfUnauthorized } from '@/lib/data/pdf-stream'
+import { streamPdf, pdfNotFound, pdfTooMany, pdfUnauthorized } from '@/lib/data/pdf-stream'
 import { getSessionUser } from '@/lib/data/user'
+import { API_LIMITS, allow } from '@/lib/security/rate-limit'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { isValidSlug } from '@/lib/validation'
 
@@ -14,6 +15,7 @@ export async function GET(request: Request, ctx: RouteContext<'/api/materiais/[i
   if (!isValidSlug(id)) return pdfNotFound()
   const user = await getSessionUser()
   if (!user) return pdfUnauthorized()
+  if (!allow('download:' + user.id, API_LIMITS.download)) return pdfTooMany()
 
   const supabase = await createSupabaseServerClient()
   const { data: material } = await supabase.from('lesson_materials').select('media_id').eq('id', id).maybeSingle()

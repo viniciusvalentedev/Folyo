@@ -10,6 +10,12 @@ export const pdfNotFound = () =>
     headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
   })
 
+export const pdfTooMany = () =>
+  new Response('Muitos pedidos seguidos. Espere um minuto e tente de novo.', {
+    status: 429,
+    headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', 'Retry-After': '60' },
+  })
+
 export const pdfUnauthorized = () => new Response('Faça login para abrir o arquivo.', { status: 401, headers: { 'Cache-Control': 'no-store' } })
 
 /**

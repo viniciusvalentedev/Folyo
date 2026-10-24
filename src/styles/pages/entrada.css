@@ -40,3 +40,14 @@
 /* ---------- Folyo 2.0 ---------- */
 .login-alert { margin: 0; }
 .login-form .seg { justify-self: start; }
+
+/* ---------- Verificação em duas etapas (MFA) ---------- */
+.mfa-setup { display: grid; gap: 12px; justify-items: start; }
+.mfa-qr { width: 200px; height: 200px; border-radius: 14px; border: 1px solid var(--line); background: #fff; padding: 8px; }
+.mfa-manual { font-size: 13.5px; color: var(--mute); }
+.mfa-manual summary { cursor: pointer; font-weight: 500; color: var(--link); }
+.mfa-manual p { margin: 8px 0 6px; }
+.mfa-secret { display: block; padding: 10px 12px; border-radius: 10px; background: var(--card-2); border: 1px solid var(--line); font-family: var(--font-jetbrains-mono, ui-monospace), ui-monospace, monospace; font-size: 13px; letter-spacing: .08em; overflow-wrap: anywhere; user-select: all; color: var(--fg); }
+.inp.mfa-code { font-family: var(--font-jetbrains-mono, ui-monospace), ui-monospace, monospace; font-size: 22px; letter-spacing: .3em; text-align: center; }
+.mfa-signout { display: flex; justify-content: center; margin-top: 4px; }
+.mfa-wrap { width: 100%; max-width: 380px; display: grid; gap: 14px; }

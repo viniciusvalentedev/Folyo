@@ -3,6 +3,8 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body { background: var(--ink); color: #F3F2F8; }
+/* Teclado: o item focado não fica escondido atrás da barra do topo nem da barra do celular. */
+html { scroll-padding-top: 88px; scroll-padding-bottom: 96px; }
 body { margin: 0; font: 400 15px/1.55 var(--f-ui); -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 60; background: var(--ink); }
 #root { min-height: 100%; }

@@ -1,0 +1,22 @@
+/* Páginas legais (/privacidade e /termos): leitura em papel claro, aberta a qualquer pessoa. */
+.legal { min-height: 100vh; display: flex; flex-direction: column; background: var(--paper); color: var(--ink); }
+.legal a { color: var(--blue); text-underline-offset: 3px; }
+.legal-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 18px max(20px, env(safe-area-inset-right, 0px)) 18px max(20px, env(safe-area-inset-left, 0px)); border-bottom: 1px solid var(--line); }
+.legal-bar nav { display: flex; gap: 20px; font-size: 14.5px; font-weight: 500; }
+.legal-bar nav a { color: var(--mute); text-decoration: none; }
+.legal-bar nav a:hover { color: var(--ink); text-decoration: underline; }
+.legal-doc { flex: 1; width: 100%; max-width: 760px; margin-inline: auto; padding: 48px 20px 72px; line-height: 1.65; font-size: 16px; }
+.legal-doc h1 { font-size: clamp(30px, 5vw, 42px); line-height: 1.1; letter-spacing: -0.03em; margin-bottom: 14px; }
+.legal-doc h2 { font-size: 21px; margin: 38px 0 10px; scroll-margin-top: 24px; }
+.legal-doc h3 { font-size: 16px; margin: 20px 0 6px; }
+.legal-doc p, .legal-doc li { color: #2A2840; }
+.legal-doc p { margin: 10px 0; max-width: 68ch; }
+.legal-doc ul { margin: 8px 0; padding-left: 22px; display: grid; gap: 6px; max-width: 68ch; }
+.legal-lead { font-size: 18px; color: var(--mute) !important; }
+.legal-date { font-size: 13.5px; color: var(--mute) !important; margin-bottom: 18px !important; }
+.legal-doc .alert { margin: 18px 0 0; }
+.legal-table-wrap { overflow-x: auto; margin: 12px 0; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.legal-table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+.legal-table th, .legal-table td { text-align: left; padding: 12px 14px; vertical-align: top; border-top: 1px solid var(--line); }
+.legal-table thead th { border-top: 0; color: var(--mute); font-weight: 600; font-size: 13px; }
+.legal-foot { padding: 24px 20px 40px; text-align: center; font-size: 14.5px; border-top: 1px solid var(--line); }

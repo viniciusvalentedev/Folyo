@@ -1,4 +1,5 @@
 import { getSessionUser } from '@/lib/data/user'
+import { API_LIMITS, allow } from '@/lib/security/rate-limit'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import { uuidSchema } from '@/lib/validation'
 
@@ -25,6 +26,12 @@ export async function GET(request: Request, ctx: RouteContext<'/api/trabalhos/[i
 
   const user = await getSessionUser()
   if (!user) return new Response('Faça login para abrir o arquivo.', { status: 401, headers: { 'Cache-Control': 'no-store' } })
+  if (!allow('download:' + user.id, API_LIMITS.download)) {
+    return new Response('Muitos pedidos seguidos. Espere um minuto e tente de novo.', {
+      status: 429,
+      headers: { 'Cache-Control': 'no-store', 'Retry-After': '60' },
+    })
+  }
 
   const supabase = await createSupabaseServerClient()
   const { data: work } = await supabase

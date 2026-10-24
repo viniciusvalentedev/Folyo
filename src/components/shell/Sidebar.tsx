@@ -8,6 +8,7 @@ import { Mark, Wordmark } from '@/components/brand/Logo'
 import { useApp } from '@/components/providers/AppState'
 import { Icon } from '@/components/ui/Icon'
 import { Avatar } from '@/components/ui/indicators'
+import { useMenuFocus } from '@/lib/a11y'
 import { NAV_GROUPS, isActive } from './nav'
 
 function NavLinks({ compact, path }: { compact?: boolean; path: string | null }) {
@@ -82,6 +83,7 @@ function UserMenu() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  useMenuFocus(ref, open, () => setOpen(false))
 
   useEffect(() => {
     if (!open) return

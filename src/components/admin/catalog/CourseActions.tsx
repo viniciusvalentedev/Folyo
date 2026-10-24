@@ -7,6 +7,7 @@ import { Button, IconButton } from '@/components/ui/Button'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { Modal } from '@/components/ui/Modal'
 import { deleteCourseAction, duplicateCourseAction, setCourseStatusAction } from '@/lib/actions/catalog'
+import { useMenuFocus } from '@/lib/a11y'
 import type { CourseStatus } from '@/lib/admin/catalog'
 import { Notice } from '../ui'
 
@@ -39,6 +40,7 @@ export function CourseActions({
   const [error, setError] = useState('')
   const [pending, start] = useTransition()
   const box = useRef<HTMLDivElement>(null)
+  useMenuFocus(box, menu, () => setMenu(false))
 
   useEffect(() => {
     if (!menu) return
@@ -133,9 +135,9 @@ export function CourseActions({
   return (
     <div className="ad-actions" ref={box} onClick={(e) => e.stopPropagation()}>
       {compact ? (
-        <IconButton icon="Ellipsis" label={`Ações de ${course.title}`} aria-expanded={menu} onClick={toggleMenu} />
+        <IconButton icon="Ellipsis" label={`Ações de ${course.title}`} aria-expanded={menu} aria-haspopup="menu" onClick={toggleMenu} />
       ) : (
-        <Button variant="quiet" iconRight="ChevronDown" aria-expanded={menu} onClick={toggleMenu}>
+        <Button variant="quiet" iconRight="ChevronDown" aria-expanded={menu} aria-haspopup="menu" onClick={toggleMenu}>
           Ações
         </Button>
       )}

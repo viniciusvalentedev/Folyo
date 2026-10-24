@@ -89,6 +89,28 @@ export const emailLinkSchema = z.object({
   type: z.enum(['email', 'signup', 'recovery', 'email_change']),
 })
 
+/**
+ * Código de 6 números do aplicativo autenticador. Aceita espaço ou traço no meio
+ * (muitos aplicativos mostram "123 456").
+ */
+export const mfaCodeSchema = z.object({
+  code: z
+    .string({ error: 'Digite os 6 números que aparecem no aplicativo.' })
+    .max(20, 'Digite os 6 números que aparecem no aplicativo.')
+    .transform((v) => v.replace(/[\s-]/g, ''))
+    .pipe(z.string().regex(/^\d{6}$/, 'Digite os 6 números que aparecem no aplicativo.')),
+})
+
+/** Confirmação de exclusão da conta: a pessoa precisa digitar a palavra (sem diferenciar maiúsculas). */
+export const DELETE_ACCOUNT_WORD = 'EXCLUIR'
+export const deleteAccountSchema = z.object({
+  confirm: z
+    .string()
+    .max(40)
+    .transform((v) => v.trim().toUpperCase())
+    .pipe(z.literal(DELETE_ACCOUNT_WORD)),
+})
+
 /** Transforma os erros do zod em { campo: mensagem } para mostrar no formulário. */
 export function fieldErrors(error: z.ZodError) {
   const out: Record<string, string> = {}

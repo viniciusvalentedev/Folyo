@@ -3,7 +3,15 @@
 import { redirect } from 'next/navigation'
 import { safeNext } from '@/lib/auth/redirects'
 import { getAccount, getSessionUser } from '@/lib/data/user'
-import { AUTH_LIMITS, allow, clientIp, hit, limited, reset } from '@/lib/security/rate-limit'
+import {
+  AUTH_LIMITS,
+  allow,
+  allowShared,
+  clientIp,
+  hitShared,
+  limitedShared,
+  resetShared,
+} from '@/lib/security/rate-limit'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import {
   emailLinkSchema,
@@ -105,17 +113,24 @@ export async function signInAction(_prev: AuthFormState, formData: FormData): Pr
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values }
 
   const { ip, supabase } = await authClient()
-  if (!allow('signin:' + ip, AUTH_LIMITS.signIn)) return { message: TOO_MANY, values }
-  // Senha errada demais para este e-mail (de qualquer IP): espera antes de tentar de novo.
+  if (!(await allowShared('signin:' + ip, AUTH_LIMITS.signIn))) return { message: TOO_MANY, values }
+  // Senha errada demais para este e-mail (de qualquer IP) ou vinda deste IP (para qualquer e-mail):
+  // espera antes de tentar de novo.
   const account = 'signin-fail:' + parsed.data.email.toLowerCase()
-  if (limited(account, AUTH_LIMITS.signInFailures)) return { message: TOO_MANY, values }
+  const fromIp = 'signin-ipfail:' + ip
+  if ((await limitedShared(account, AUTH_LIMITS.signInFailures)) || (await limitedShared(fromIp, AUTH_LIMITS.signInIpFailures))) {
+    return { message: TOO_MANY, values }
+  }
   const { error } = await supabase.auth.signInWithPassword({ ...parsed.data, options: { captchaToken: captchaToken(formData) } })
   if (error) {
     // Só conta senha errada (CAPTCHA recusado ou limite do Supabase não contam).
-    if (error.code === 'invalid_credentials') hit(account, AUTH_LIMITS.signInFailures)
+    if (error.code === 'invalid_credentials') {
+      await hitShared(account, AUTH_LIMITS.signInFailures)
+      await hitShared(fromIp, AUTH_LIMITS.signInIpFailures)
+    }
     return { message: friendly(error.code, error.status), values }
   }
-  reset(account)
+  await resetShared(account, AUTH_LIMITS.signInFailures)
 
   redirect(safeNext(formData.get('next')))
 }
@@ -131,12 +146,17 @@ export async function signUpAction(_prev: AuthFormState, formData: FormData): Pr
 
   const { name, email, password } = parsed.data
   const { ip, supabase } = await authClient()
-  if (!allow('signup:' + ip, AUTH_LIMITS.signUp)) return { message: TOO_MANY, values }
+  if (!(await allowShared('signup:' + ip, AUTH_LIMITS.signUp))) return { message: TOO_MANY, values }
+  // Cada cadastro dispara um e-mail de confirmação: limita por endereço, de qualquer IP.
+  const target = 'signup-to:' + email.toLowerCase()
+  if (await limitedShared(target, AUTH_LIMITS.signUpTarget)) return { message: TOO_MANY, values }
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: { data: { name }, captchaToken: captchaToken(formData) },
   })
+  // Só conta o que passou pelo CAPTCHA (senão qualquer um bloquearia o cadastro de outra pessoa).
+  if (error?.code !== 'captcha_failed') await hitShared(target, AUTH_LIMITS.signUpTarget)
   if (error) {
     // Com a confirmação desligada, o Supabase avisa direto que o e-mail já existe.
     if (error.code === 'user_already_exists' || error.code === 'email_exists') {
@@ -165,10 +185,10 @@ export async function resendConfirmationAction(_prev: AuthFormState, formData: F
 
   const done = { sent: parsed.data, message: 'Pronto! Se o e-mail ainda não foi confirmado, um novo link está a caminho.' }
   const { ip, supabase } = await authClient()
-  if (!allow('email:' + ip, AUTH_LIMITS.email)) return { sent: parsed.data, message: TOO_MANY }
+  if (!(await allowShared('email:' + ip, AUTH_LIMITS.email))) return { sent: parsed.data, message: TOO_MANY }
   const target = 'to:' + parsed.data.email.toLowerCase()
   // Esse endereço já recebeu e-mails demais: responde igual, sem mandar outro.
-  if (limited(target, AUTH_LIMITS.emailTarget)) return done
+  if (await limitedShared(target, AUTH_LIMITS.emailTarget)) return done
 
   const { error } = await supabase.auth.resend({
     type: 'signup',
@@ -177,7 +197,7 @@ export async function resendConfirmationAction(_prev: AuthFormState, formData: F
   })
   if (isRateLimit(error?.code)) return { sent: parsed.data, message: TOO_MANY }
   if (error?.code === 'captcha_failed') return { sent: parsed.data, message: CAPTCHA }
-  hit(target, AUTH_LIMITS.emailTarget)
+  await hitShared(target, AUTH_LIMITS.emailTarget)
   return done
 }
 
@@ -187,17 +207,17 @@ export async function requestPasswordResetAction(_prev: AuthFormState, formData:
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values }
 
   const { ip, supabase } = await authClient()
-  if (!allow('email:' + ip, AUTH_LIMITS.email)) return { message: TOO_MANY, values }
+  if (!(await allowShared('email:' + ip, AUTH_LIMITS.email))) return { message: TOO_MANY, values }
   const target = 'to:' + parsed.data.email.toLowerCase()
   // Esse endereço já recebeu e-mails demais: responde igual, sem mandar outro.
-  if (limited(target, AUTH_LIMITS.emailTarget)) return { sent: parsed.data }
+  if (await limitedShared(target, AUTH_LIMITS.emailTarget)) return { sent: parsed.data }
 
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
     captchaToken: captchaToken(formData),
   })
   if (isRateLimit(error?.code)) return { message: TOO_MANY, values }
   if (error?.code === 'captcha_failed') return { message: CAPTCHA, values }
-  hit(target, AUTH_LIMITS.emailTarget)
+  await hitShared(target, AUTH_LIMITS.emailTarget)
   // Resposta igual exista ou não a conta.
   return { sent: parsed.data }
 }
@@ -206,6 +226,8 @@ export async function requestPasswordResetAction(_prev: AuthFormState, formData:
 export async function verifyEmailLinkAction(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const parsed = emailLinkSchema.safeParse({ token_hash: formData.get('token_hash'), type: formData.get('type') })
   if (!parsed.success) return { message: 'Este link não é válido. Peça um novo.' }
+  const ip = await clientIp()
+  if (ip && !(await allowShared('verify:' + ip, AUTH_LIMITS.verifyLink))) return { message: TOO_MANY }
 
   const supabase = await createSupabaseServerClient()
   const { error } = await supabase.auth.verifyOtp({ token_hash: parsed.data.token_hash, type: parsed.data.type })

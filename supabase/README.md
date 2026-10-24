@@ -1,6 +1,9 @@
 # Supabase — passo a passo
 
-- **Folyo 2.0 · Fase 3 (mídia, vídeo, audiência, relatórios e configurações):** logo abaixo. Faça agora (depois da Fase 2).
+- **Limite de pedidos (rate limit):** logo abaixo. Opcional, sem SQL.
+- **LGPD (baixar dados e excluir conta):** logo abaixo. Faça agora (depois de publicar o código novo).
+- **Verificação em duas etapas (MFA) do painel:** logo abaixo. Faça na ordem descrita lá.
+- **Folyo 2.0 · Fase 3 (mídia, vídeo, audiência, relatórios e configurações):** já feita; fica como referência.
 - **Folyo 2.0 · Fase 2 (cursos, categorias e aulas no banco):** já feita; fica como referência.
 - **Folyo 2.0 · Fase 1 (área do aluno):** já feita; fica como referência.
 - **Etapa 4 (painel admin):** já feita; fica como referência.
@@ -12,6 +15,181 @@
 > A **secret key** (`sb_secret_...`) **não é usada** nesta etapa: não cole ela no `.env.local`, na Vercel,
 > no GitHub nem em conversas. Ela passa por cima de todas as regras de segurança do banco. Guarde só no
 > gerenciador de senhas.
+
+---
+
+# Limite de pedidos (rate limit)
+
+Sem SQL. O código já limita tudo; esta seção explica onde e como deixar o limite mais firme.
+
+## O que já está limitado
+
+| Onde | Limite | Chave |
+| --- | --- | --- |
+| **Qualquer página ou ação** (proxy) | leitura 2400/min, envio 600/min | IP |
+| **Enviar formulário de entrada** (`/entrar`, `/esqueci-senha`, `/redefinir-senha`, `/seguranca/mfa`, `/auth/confirmar`) | 40/min | IP |
+| **Entrar** | 30 tentativas/5 min; 10 senhas erradas/15 min por e-mail; 25 senhas erradas/15 min por IP | IP e e-mail |
+| **Criar conta** | 20/15 min por IP; 5/15 min por e-mail | IP e e-mail |
+| **Reenviar confirmação / esqueci a senha** | 10/15 min por IP; 3/15 min por e-mail | IP e e-mail |
+| **Link do e-mail** | 20/15 min | IP |
+| **Trocar senha** | 10/15 min | conta |
+| **Código do autenticador (MFA)** | 8 erros/10 min; cadastro 10/15 min | conta |
+| **Baixar dados / excluir conta** | 5/15 min cada | conta |
+| **Abrir/baixar PDF** (`/api/...`) | 120/min | conta |
+| **Painel** (ações e Audiência ao vivo) | já tinham limite próprio | conta |
+| **Dados do aluno** (banco) | 120 alterações/min e 3000/hora | conta (no banco) |
+| **CAPTCHA e Supabase Auth** | camadas de baixo, independentes do site | |
+
+Os números ficam em `src/lib/security/rate-limit.ts` (`AUTH_LIMITS`, `API_LIMITS`) e em `src/proxy.ts` (`LIMITS`).
+São folgados de propósito: uma sala de aula inteira pode sair pelo mesmo IP.
+
+## Por que ligar a Upstash (recomendado antes de abrir ao público)
+
+Na Vercel, cada servidor que está de pé tem a **própria contagem em memória**. Quem espalha os pedidos passa do
+limite. Com a Upstash (Redis), a contagem das telas de entrada vale **para todos os servidores**. Ela é só um
+reforço: se a Upstash cair, os pedidos **não** são barrados (o limite em memória e o CAPTCHA continuam).
+As chaves vão para o Redis como hash (nunca o e-mail ou o IP em texto).
+
+1. **upstash.com → Create database** (Redis, plano grátis basta, região perto da Vercel).
+2. Aba **REST API**: copie `UPSTASH_REDIS_REST_URL` e `UPSTASH_REDIS_REST_TOKEN`.
+3. **Vercel → Settings → Environment Variables:** crie as duas (Production e Preview) e faça um **Redeploy**.
+   (A integração "Upstash Redis" do Marketplace da Vercel cria `KV_REST_API_URL` e `KV_REST_API_TOKEN`, que também valem.)
+4. Conferir: errar a senha mais de 10 vezes para o mesmo e-mail bloqueia o login em qualquer aparelho.
+
+## Reforço fora do código (opcional)
+
+**Vercel → Firewall → Rules:** uma regra de *rate limit* para `POST` em `/entrar` (por exemplo, 20 por minuto por IP,
+ação "Deny") barra o excesso antes de chegar no site. Depende do plano da Vercel.
+
+## Limitações conhecidas
+
+- Atrás de uma rede compartilhada (faculdade), muita gente no mesmo IP divide o limite. Se isso virar problema, suba
+  `signIn` e `signUp` em `AUTH_LIMITS`.
+- Sem a Upstash, o limite é por servidor (não é exato).
+- Fora da Vercel (no seu computador) o limite por IP do proxy fica desligado de propósito (não há IP confiável) e as telas de entrada usam um único “IP” local.
+
+---
+
+# LGPD — baixar os meus dados e excluir a minha conta
+
+Direitos do titular (Lei 13.709/2018, art. 18). Um SQL novo, **independente do MFA** (pode rodar antes ou depois).
+Ele **não apaga nada**: cria duas funções e ajusta o limite de pedidos para não atrapalhar a exclusão.
+
+- `public.export_my_data()` devolve em JSON tudo o que a Folyo guarda sobre a conta de quem chama.
+- `public.delete_my_account()` apaga a conta de login; o banco apaga o resto em cascata (perfil, progresso, anotações,
+  competências, trabalhos, tempo assistido, visualizações, papel na equipe, suspensão).
+- As duas só valem para a **própria** conta (o id vem do token) e não existem para visitantes sem login.
+
+## 1. Publicar e rodar o SQL
+
+1. Publique o código novo (`git push`): a tela **Configurações → Conta** passa a chamar as funções.
+2. **Supabase → SQL Editor:** cole e rode `supabase/migrations/20261027000001_lgpd_conta.sql`.
+
+## 2. Testar (com uma conta de teste, nunca a sua)
+
+1. Crie uma conta, preencha algo (uma anotação, uma competência) e envie um PDF em Trabalhos.
+2. **Configurações → Conta → Baixar meus dados:** o arquivo `folyo-meus-dados-AAAA-MM-DD.json` deve trazer o que você preencheu.
+3. **Excluir minha conta:** digite `EXCLUIR`. Você volta para a tela de entrada com o aviso de conta excluída.
+4. Conferir: **Authentication → Users** (a conta sumiu) e **Storage → student-works** (a pasta dela sumiu).
+5. Entrar com o mesmo e-mail e senha deve falhar.
+
+## O que não é apagado (e está dito na Política de Privacidade)
+
+- **Histórico do painel** (`private.admin_audit`): registro de segurança que só cresce de propósito. Pode guardar nome e
+  e-mail de quem foi alvo de uma ação da equipe (ex.: suspensão). Se um dia precisar apagar por pedido judicial, só pelo
+  SQL Editor, desligando o gatilho de propósito.
+- **Cópias de segurança do Supabase:** o plano deles define por quanto tempo duram.
+- Os e-mails já enviados pelo Zoho e logs da Vercel/Supabase seguem o prazo desses serviços.
+
+## Regras importantes
+
+- **Proprietário** não exclui a própria conta pelo site: outro proprietário precisa tirar a função dele no painel
+  antes (e o banco ainda recusa a saída do último proprietário ativo).
+- A exclusão pede a palavra `EXCLUIR`, mas **não pede a senha de novo**: o CAPTCHA do Supabase impede conferir a senha
+  no servidor sem o widget. Se quiser reforçar, o caminho é um link de confirmação por e-mail (futuro).
+- Conta **suspensa** não chega às Configurações (vai para /conta-suspensa): quem for suspenso pede por e-mail.
+
+## Como desfazer o SQL
+
+```sql
+drop function if exists public.export_my_data();
+drop function if exists public.delete_my_account();
+```
+
+(O ajuste do limite de pedidos pode ficar: só deixa de contar alterações de contas que já não existem.)
+
+---
+
+# Verificação em duas etapas (MFA) do painel
+
+A equipe (editor, administrador, proprietário) passa a precisar de um segundo passo além da senha: o código de 6
+números de um aplicativo autenticador (Google Authenticator, Microsoft Authenticator, 1Password, Authy…). Alunos não
+são afetados.
+
+**Como funciona:** o Supabase marca cada sessão com um nível (`aal1` = só a senha, `aal2` = senha + código). O SQL
+abaixo faz `private.actor_rank()` tratar sessão `aal1` como aluno. Como todas as funções `admin_*`, a leitura de
+rascunhos pela equipe e o Storage da equipe perguntam o papel por essa função, o banco recusa o painel inteiro sem o
+código, inclusive para quem falar direto com a API. O site só mostra a tela certa (`/seguranca/mfa`).
+
+## 1. Conferir no Supabase (uma vez)
+
+**Authentication → Sign In / Providers → Multi-Factor Authentication**: **TOTP** com *Enroll* e *Verify* ligados
+(costuma vir ligado).
+
+## 2. Publicar o código e cadastrar o autenticador (ANTES do SQL)
+
+1. `git add -A`, `git commit -m "Segurança: MFA obrigatório no painel"` e `git push`. Espere a Vercel terminar.
+2. Entre na Folyo com a conta de proprietário e abra `/admin`. Você será levado para **Verificação em duas etapas**.
+3. Clique em **Configurar aplicativo autenticador**, leia o QR code com o aplicativo e digite o código de 6 números.
+   Você entra no painel. (Guarde também a chave em texto que aparece em "Não consegue ler o QR code?" num gerenciador
+   de senhas: é o seu plano B se perder o celular.)
+4. Cada pessoa nova da equipe faz o mesmo no primeiro acesso ao painel. Faça logo depois de receber o papel: até
+   cadastrar o autenticador, qualquer pessoa que tivesse a senha da conta poderia cadastrar o dela.
+
+## 3. Rodar o SQL (SÓ DEPOIS do passo 2)
+
+1. **SQL Editor** → **New query**.
+2. Cole `supabase/migrations/20261026000001_mfa_painel.sql` inteiro e **Run**. Deve aparecer *Success*.
+   Não apaga nem altera dados. Se rodar de novo, não muda nada.
+
+## 4. Testar
+
+1. Saia e entre de novo. Abra `/admin`: pede o código; digite o do aplicativo; entra.
+2. Com uma conta de aluno, `/admin` continua mostrando "sem acesso".
+3. Com a conta da equipe **sem** digitar o código, tente abrir `/admin/cursos`: é levado para a tela do código.
+4. Segurança extra: com a sessão ainda sem o código, tente cadastrar um segundo autenticador. O site recusa e o
+   Supabase também deve recusar. Se o Supabase deixar, me avise.
+
+## Perdi o celular / quero trocar de aparelho
+
+Quem tem acesso ao Supabase remove o autenticador da conta: **Authentication → Users →** (a conta) **→ Delete
+factor** (ou, no SQL Editor, `delete from auth.mfa_factors where user_id = (select id from auth.users where email = lower('EMAIL'));`).
+Depois a pessoa entra, abre `/admin` e cadastra o aplicativo de novo. Para trocar de aparelho com o celular antigo
+em mãos, o caminho é o mesmo.
+
+## Como desfazer (se ficar sem acesso)
+
+No SQL Editor, volte a regra anterior (sem a linha do `aal`):
+
+```sql
+create or replace function private.actor_rank()
+returns int language sql stable security definer set search_path = '' as $$
+  select case
+    when auth.uid() is null then 0
+    when exists (select 1 from private.suspensions s where s.user_id = auth.uid()) then 0
+    else coalesce((select private.role_rank(r.role) from private.staff_roles r where r.user_id = auth.uid()), 0)
+  end
+$$;
+```
+
+Para ligar de novo, rode outra vez `20261026000001_mfa_painel.sql`.
+
+## Limitações conhecidas
+
+- O cadastro, a troca e a remoção do autenticador **não aparecem** no histórico do painel (o Supabase não deixa
+  criar gatilhos nas tabelas dele). Quem consulta isso é o painel do Supabase (Authentication → Users).
+- Os limites de tentativas de código são por servidor da Vercel, como os de login; o Supabase tem o dele também.
+- Sem códigos de recuperação: o plano B é a remoção do autenticador pelo proprietário, descrita acima.
 
 ---
 

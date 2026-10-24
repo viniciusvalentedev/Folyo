@@ -17,6 +17,7 @@ import {
   setFeaturedAction,
 } from '@/lib/actions/catalog'
 import { CATALOG_LIMITS as L, CATEGORY_ICONS, slugify, type AdminCategory } from '@/lib/admin/catalog'
+import { handleGroupKeys } from '@/lib/a11y'
 import { imageUrl, type MediaItem } from '@/lib/media'
 import { MediaPicker } from '../media/MediaPicker'
 import { AdminHead, Notice } from '../ui'
@@ -252,9 +253,14 @@ function CategoryDialog({ value, others, media, onClose }: { value: { cat: Admin
         </Field>
       </div>
       <p className="ad-label">Ícone</p>
-      <div className="ad-icon-grid" role="radiogroup" aria-label="Ícone">
-        {CATEGORY_ICONS.map((name) => (
-          <button key={name} type="button" role="radio" aria-checked={cat.icon === name} aria-label={name} className={cat.icon === name ? 'on' : ''} onClick={() => setCat({ ...cat, icon: name })}>
+      <div
+        className="ad-icon-grid"
+        role="radiogroup"
+        aria-label="Ícone"
+        onKeyDown={(e) => handleGroupKeys(e, '[role="radio"]', { select: true, vertical: true })}
+      >
+        {CATEGORY_ICONS.map((name, i) => (
+          <button key={name} type="button" role="radio" aria-checked={cat.icon === name} aria-label={name} tabIndex={((CATEGORY_ICONS as readonly string[]).includes(cat.icon) ? cat.icon === name : i === 0) ? 0 : -1} className={cat.icon === name ? 'on' : ''} onClick={() => setCat({ ...cat, icon: name })}>
             <Icon name={name} size={18} />
           </button>
         ))}

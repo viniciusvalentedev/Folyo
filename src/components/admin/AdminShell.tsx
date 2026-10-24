@@ -10,6 +10,7 @@ import { IconButton } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import { Avatar } from '@/components/ui/indicators'
 import { ADMIN_NAV, can, ROLES, type Role } from '@/lib/admin/roles'
+import { RouteFocus, useFocusTrap, useMenuFocus } from '@/lib/a11y'
 
 const COLLAPSE_KEY = 'folyo-admin-recolhido'
 
@@ -84,6 +85,7 @@ function UserMenu({ role }: { role: Role }) {
   const { s } = useApp()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  useMenuFocus(ref, open, () => setOpen(false))
   useEffect(() => {
     if (!open) return
     const onDown = (e: PointerEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false)
@@ -133,6 +135,8 @@ function UserMenu({ role }: { role: Role }) {
 export function AdminShell({ role, children }: { role: Role; children: ReactNode }) {
   const [collapsed, setCollapsed] = useCollapsed()
   const [drawer, setDrawer] = useState(false)
+  // Celular: o menu lateral vira gaveta; com ela aberta o foco fica dentro, Esc fecha e o foco volta.
+  const side = useFocusTrap<HTMLElement>(drawer, () => setDrawer(false))
 
   return (
     <div className={'ad-app' + (collapsed ? ' collapsed' : '')}>
@@ -147,7 +151,7 @@ export function AdminShell({ role, children }: { role: Role; children: ReactNode
         Pular para o conteúdo
       </a>
       {drawer && <div className="ad-scrim" onClick={() => setDrawer(false)} />}
-      <aside className={'ad-side' + (drawer ? ' open' : '')} aria-label="Navegação do painel" onClick={(e) => {
+      <aside ref={side} className={'ad-side' + (drawer ? ' open' : '')} aria-label="Navegação do painel" onClick={(e) => {
         // Fecha o menu do celular ao escolher uma página.
         if ((e.target as HTMLElement).closest('a')) setDrawer(false)
       }}>
@@ -190,6 +194,9 @@ export function AdminShell({ role, children }: { role: Role; children: ReactNode
         <main id="ad-main" tabIndex={-1} className="ad-main">
           {children}
         </main>
+        <Suspense fallback={null}>
+          <RouteFocus target="ad-main" />
+        </Suspense>
       </div>
     </div>
   )

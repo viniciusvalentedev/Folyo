@@ -1,15 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { signOutAction } from '@/app/(auth)/actions'
 import { useApp } from '@/components/providers/AppState'
-import { Button, ButtonLink } from '@/components/ui/Button'
+import { Button } from '@/components/ui/Button'
 import { Field, Select, Toggle } from '@/components/ui/controls'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { PageHead } from '@/components/ui/PageHead'
 import { supportEmailOf } from '@/lib/app-config'
 import type { Settings } from '@/lib/types'
 import { fieldErrors, personalDataSchema } from '@/lib/validation'
+import { AccountSection } from './AccountSection'
 
 type Section = 'dados' | 'privacidade' | 'notificacoes' | 'aprendizagem' | 'preferencias' | 'conta'
 
@@ -206,46 +206,7 @@ export function SettingsView() {
             </section>
           )}
 
-          {section === 'conta' && (
-            <section className="set-sec">
-              <h2>Conta</h2>
-              <div className="set-row">
-                <div>
-                  <b>Trocar senha</b>
-                  <small>Escolha uma senha nova para entrar na Folyo.</small>
-                </div>
-                <ButtonLink variant="quiet" icon="Lock" href="/redefinir-senha">
-                  Trocar senha
-                </ButtonLink>
-              </div>
-              <div className="set-row">
-                <div>
-                  <b>Sair da conta</b>
-                  <small>Sai só deste aparelho. Você pode entrar de novo quando quiser.</small>
-                </div>
-                <form action={signOutAction}>
-                  <Button type="submit" variant="quiet" icon="LogOut">
-                    Sair
-                  </Button>
-                </form>
-              </div>
-              <div className="set-row">
-                <div>
-                  <b>Apagar conta e dados</b>
-                  <small>
-                    Por enquanto, peça pelo e-mail {supportEmail}. Apagamos sua conta e todos os seus dados.
-                  </small>
-                </div>
-                <ButtonLink
-                  variant="quiet"
-                  icon="Mail"
-                  href={`mailto:${supportEmail}?subject=Apagar%20minha%20conta`}
-                >
-                  Pedir
-                </ButtonLink>
-              </div>
-            </section>
-          )}
+          {section === 'conta' && <AccountSection supportEmail={supportEmail} />}
         </div>
       </div>
     </div>

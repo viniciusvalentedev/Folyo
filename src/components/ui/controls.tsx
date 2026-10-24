@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { handleGroupKeys } from '@/lib/a11y'
 import { Icon, type IconName } from './Icon'
 
 type Option<T extends string> = T | { value: T; label: ReactNode; icon?: IconName; count?: number }
@@ -22,16 +23,24 @@ export function Seg<T extends string>({
   size?: 'sm'
 }) {
   return (
-    <div className={'seg' + (size ? ' seg-' + size : '')} role="radiogroup" aria-label={label}>
-      {options.map((o) => {
+    <div
+      className={'seg' + (size ? ' seg-' + size : '')}
+      role="radiogroup"
+      aria-label={label}
+      onKeyDown={(e) => handleGroupKeys(e, '[role="radio"]', { select: true, vertical: true })}
+    >
+      {options.map((o, i) => {
         const v = optValue(o)
         const obj = typeof o === 'string' ? null : o
+        // "Roving tabindex": Tab entra no grupo uma vez só (na opção escolhida); as setas percorrem.
+        const stop = options.some((x) => optValue(x) === value) ? value === v : i === 0
         return (
           <button
             key={v}
             type="button"
             role="radio"
             aria-checked={value === v}
+            tabIndex={stop ? 0 : -1}
             className={value === v ? 'on' : ''}
             onClick={() => onChange(v)}
           >
@@ -58,13 +67,19 @@ export function Tabs<T extends string>({
   label: string
 }) {
   return (
-    <div className="tabs" role="tablist" aria-label={label}>
-      {tabs.map((t) => (
+    <div
+      className="tabs"
+      role="tablist"
+      aria-label={label}
+      onKeyDown={(e) => handleGroupKeys(e, '[role="tab"]', { select: false, vertical: false })}
+    >
+      {tabs.map((t, i) => (
         <button
           key={t.value}
           role="tab"
           type="button"
           aria-selected={value === t.value}
+          tabIndex={(tabs.some((x) => x.value === value) ? value === t.value : i === 0) ? 0 : -1}
           className={value === t.value ? 'on' : ''}
           onClick={() => onChange(t.value)}
         >

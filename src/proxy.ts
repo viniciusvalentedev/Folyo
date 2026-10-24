@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { HOME_PATH, isGuestOnlyPath, isPublicPath } from '@/lib/auth/redirects'
 import { createLimiter, type Rule } from '@/lib/security/limiter'
+import { sharedAllow } from '@/lib/security/shared-limit'
 import { authCookieOptions, supabaseEnv } from '@/lib/supabase/config'
 
 /**
@@ -30,7 +31,13 @@ const LIMITS = {
   read: { max: 2400, windowMs: 60_000 },
   /** Enviar algo (Server Actions, formulários). */
   write: { max: 600, windowMs: 60_000 },
+  /** Enviar formulário das telas de entrada (entrar, cadastro, senha, MFA, link do e-mail): bem mais baixo. */
+  auth: { max: 40, windowMs: 60_000 },
 } satisfies Record<string, Rule>
+
+/** Telas em que um POST é uma tentativa de entrar, criar conta, trocar senha ou digitar o código MFA. */
+const AUTH_POST_PATHS = ['/entrar', '/esqueci-senha', '/redefinir-senha', '/seguranca/mfa', '/auth/confirmar']
+const isAuthPost = (pathname: string) => AUTH_POST_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))
 
 /** IP real só na Vercel (ela reescreve o x-forwarded-for). Fora dela: sem limite por IP. */
 function requestIp(request: NextRequest) {
@@ -54,6 +61,11 @@ export async function proxy(request: NextRequest) {
   }
   const ip = requestIp(request)
   if (ip && !limiter.allow((reading ? 'r:' : 'w:') + ip, reading ? LIMITS.read : LIMITS.write)) return tooMany()
+  // Tentativas nas telas de entrada: limite próprio por IP, também compartilhado entre servidores
+  // quando a Upstash está ligada (sem ela, só memória). As ações ainda limitam por e-mail e por conta.
+  if (ip && !reading && isAuthPost(request.nextUrl.pathname)) {
+    if (!limiter.allow('a:' + ip, LIMITS.auth) || !(await sharedAllow('proxy-auth:' + ip, LIMITS.auth))) return tooMany()
+  }
 
   let response = NextResponse.next({ request })
   const { url, key } = supabaseEnv()

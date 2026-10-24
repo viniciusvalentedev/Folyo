@@ -8,6 +8,7 @@ import { useApp } from '@/components/providers/AppState'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { isListed, normalize } from '@/lib/domain/catalog'
 import { catalogSkills } from '@/lib/domain/derive'
+import { useMenuFocus } from '@/lib/a11y'
 import { formatDayMonth } from '@/lib/format'
 
 /** Fecha um popover ao clicar fora ou apertar Esc. */
@@ -50,6 +51,15 @@ function GlobalSearch() {
         e.preventDefault()
         input.current?.focus()
         setOpen(true)
+        return
+      }
+      // "/" também abre a busca, a não ser que a pessoa esteja digitando em algum campo.
+      const el = e.target as HTMLElement | null
+      const typing = !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))
+      if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey && !typing) {
+        e.preventDefault()
+        input.current?.focus()
+        setOpen(true)
       }
     }
     document.addEventListener('mousedown', onDown)
@@ -79,6 +89,8 @@ function GlobalSearch() {
     return out.slice(0, 8)
   }, [q, catalog, d.works, d.courseStats])
 
+  const showList = open && !!q.trim()
+
   const pick = (h: Hit) => {
     setOpen(false)
     setQ('')
@@ -91,10 +103,15 @@ function GlobalSearch() {
       <input
         ref={input}
         type="search"
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={showList}
+        aria-controls="gsearch-list"
+        aria-activedescendant={showList && hits[sel] ? `gsearch-opt-${sel}` : undefined}
         placeholder="Buscar cursos, projetos e skills"
         value={q}
         maxLength={80}
-        aria-label="Buscar na plataforma"
+        aria-label="Buscar na plataforma (atalhos: / ou Ctrl K)"
         onFocus={() => setOpen(true)}
         onChange={(e) => {
           setQ(e.target.value)
@@ -115,17 +132,26 @@ function GlobalSearch() {
             setOpen(false)
             e.currentTarget.blur()
           }
+          // Tab segue para o próximo item da página; a lista só fecha.
+          if (e.key === 'Tab') setOpen(false)
         }}
       />
       <kbd className="hide-mobile">Ctrl K</kbd>
-      {open && q.trim() && (
-        <div className="gsearch-pop" role="listbox">
+      {showList && (
+        <span className="sr-only" role="status">
+          {hits.length ? `${hits.length} resultados. Use as setas para cima e para baixo e Enter para abrir.` : 'Nenhum resultado.'}
+        </span>
+      )}
+      {showList && (
+        <div className="gsearch-pop" role="listbox" id="gsearch-list" aria-label="Resultados da busca">
           {hits.length ? (
             hits.map((h, i) => (
               <button
                 key={h.kind + h.label}
+                id={`gsearch-opt-${i}`}
                 type="button"
                 role="option"
+                tabIndex={-1}
                 aria-selected={i === sel}
                 className={i === sel ? 'on' : ''}
                 onMouseEnter={() => setSel(i)}
@@ -152,6 +178,7 @@ function Notifications() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const ref = useDismiss(open, () => setOpen(false))
+  useMenuFocus(ref, open, () => setOpen(false), '.notif-pop button:not(:disabled)')
   const unread = s.notifications.filter((n) => !n.read).length
   return (
     <div className="notif" ref={ref}>
@@ -160,6 +187,7 @@ function Notifications() {
         className="icon-btn"
         aria-label={`Notificações${unread ? `, ${unread} não lidas` : ''}`}
         aria-expanded={open}
+        aria-haspopup="true"
         onClick={() => setOpen(!open)}
       >
         <Icon name="Bell" size={19} />

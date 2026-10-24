@@ -25,6 +25,22 @@ Onde estamos:
   Stream** (envio direto do navegador, player com token), **Audiência** (ao vivo e histórico), **Relatórios**
   (5 relatórios + CSV) e **Configurações** (6 abas). Exige um SQL novo e, para o vídeo, as variáveis `BUNNY_STREAM_*`
   (veja [`supabase/README.md`](supabase/README.md)).
+- **Segurança do painel — verificação em duas etapas (MFA)** ✅ a equipe (editor, administrador, proprietário) só usa o
+  painel depois de digitar o código de um aplicativo autenticador. Quem decide é o banco: sem o código, a sessão vale
+  como aluno. Exige um SQL novo, **rodado por último** (veja [`supabase/README.md`](supabase/README.md)).
+- **Navegação por teclado** ✅ o site todo funciona só com o teclado: Tab/Shift+Tab percorrem, Enter e Espaço ativam,
+  **Esc** fecha menus, janelas e a gaveta do celular (e devolve o foco), **setas** movem entre abas e opções e dentro
+  dos menus (Home/End vão ao primeiro/último). Atalhos: **/** ou **Ctrl K** (⌘K) abrem a busca; o primeiro Tab de cada
+  página oferece "Pular para o conteúdo"; ao trocar de página o foco vai para o conteúdo. Os ajudantes ficam em
+  `src/lib/a11y.tsx`. Ao criar um menu, aba ou gaveta novos, use-os (`useMenuFocus`, `handleGroupKeys`, `useFocusTrap`).
+- **Limite de pedidos (rate limit)** ✅ todas as rotas passam pelo `src/proxy.ts` (limite por IP); entrar, cadastro,
+  senha, MFA, link do e-mail, exportar/excluir conta e downloads de PDF têm limites próprios. Opcional: Redis da
+  Upstash para a contagem valer entre todos os servidores da Vercel (veja [`supabase/README.md`](supabase/README.md)).
+- **LGPD — direitos do titular, privacidade e termos** ✅ em **Configurações → Conta** o aluno **baixa todos os seus
+  dados** (arquivo JSON) e **exclui a própria conta** (digitando EXCLUIR; apaga os dados e os PDFs). Páginas públicas
+  `/privacidade` e `/termos`, com links no login. Exige um SQL novo (veja [`supabase/README.md`](supabase/README.md)).
+  **Antes de abrir ao público:** preencha `src/lib/legal.ts` (CNPJ/CPF, endereço, encarregado, foro) e mande os dois
+  textos para um advogado; só então troque `reviewed` para `true` (some o aviso "versão em revisão").
 - **Próxima fase do 2.0:** certificados e PDF de verdade; pagamentos.
 
 **Configurar o Supabase pela primeira vez:** siga o passo a passo em [`supabase/README.md`](supabase/README.md).
@@ -69,7 +85,11 @@ src/
 │  │  ├─ entrar/             → /entrar  (entrar e criar conta)
 │  │  ├─ esqueci-senha/      → /esqueci-senha
 │  │  ├─ auth/confirmar/     → /auth/confirmar  (página aberta pelo link do e-mail)
-│  │  └─ redefinir-senha/    → /redefinir-senha  (escolher senha nova)
+│  │  ├─ redefinir-senha/    → /redefinir-senha  (escolher senha nova)
+│  │  └─ seguranca/mfa/      → /seguranca/mfa  (verificação em duas etapas da equipe: cadastrar o autenticador e digitar o código)
+│  ├─ (legal)/               ← páginas abertas a todos (sem login)
+│  │  ├─ privacidade/        → /privacidade  (Política de Privacidade, LGPD)
+│  │  └─ termos/             → /termos  (Termos de Uso)
 │  ├─ (app)/                 ← área do aluno (tudo "depois do login")
 │  │  ├─ layout.tsx          → carrega o catálogo e os dados do aluno
 │  │  ├─ primeiro-acesso/    → /primeiro-acesso (primeiro acesso em 3 passos)
@@ -246,7 +266,7 @@ supabase/
 
 | Item | Situação hoje | Próxima etapa |
 | --- | --- | --- |
-| **Login / cadastro** | ✅ Supabase Auth, rotas protegidas, e-mail próprio (Zoho, usefolyo.com), CAPTCHA e limite de tentativas | Excluir/exportar conta (LGPD) |
+| **Login / cadastro** | ✅ Supabase Auth, rotas protegidas, e-mail próprio (Zoho, usefolyo.com), CAPTCHA e limite de tentativas | Revisão jurídica dos textos de Privacidade e Termos |
 | **Banco de dados** | ✅ Perfil, progresso, anotações, tempo assistido, trabalhos (PDF/link), competências e currículo, todos com RLS e limite de alterações por minuto | Certificado emitido pelo servidor |
 | **Painel admin** | ✅ Papéis, visão geral, usuários, permissões, auditoria e (Fase 2) **cursos, categorias, módulos e aulas** no banco. Papel e regras ficam no banco; a tela só esconde o que não se pode usar | Certificado emitido pelo servidor |
 | **Player de aula** | ✅ Vídeo hospedado no Bunny Stream (player com token) ou link `.mp4`/`.webm`, ambos medidos na audiência; YouTube/Vimeo abrem no site deles. Sem vídeo: aviso | Legendas e capítulos |

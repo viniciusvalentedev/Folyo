@@ -2,6 +2,7 @@ import 'server-only'
 import { cache } from 'react'
 import { z } from 'zod'
 import { can, ROLE_KEYS, type Perm, type Role } from '@/lib/admin/roles'
+import { getAal } from '@/lib/data/mfa'
 import { getAccount, getSessionUser } from '@/lib/data/user'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 
@@ -17,13 +18,37 @@ import { createSupabaseServerClient } from '@/lib/supabase/server'
 
 export type StaffContext = { id: string; email: string; role: Role }
 
-/** Quem está logado e qual o papel (null se não estiver logado). */
-export const staffContext = cache(async (): Promise<StaffContext | null> => {
+/** Quem está logado e qual o papel, sem olhar o 2º fator (null se não estiver logado ou estiver suspenso). */
+const baseContext = cache(async (): Promise<StaffContext | null> => {
   const user = await getSessionUser()
   if (!user) return null
   const account = await getAccount()
   if (account.suspended) return null
   return { id: user.id, email: user.email, role: account.role }
+})
+
+/**
+ * Situação de quem abriu o painel:
+ *  - denied: sem papel na equipe (ou conta suspensa);
+ *  - mfa: tem papel, mas esta sessão ainda não passou pelo aplicativo autenticador (aal2);
+ *  - ok: pode usar o painel.
+ * O banco exige a mesma coisa (private.actor_rank trata sessão sem aal2 como aluno); aqui só
+ * escolhemos a tela certa.
+ */
+export type AdminAccess = { status: 'denied' } | { status: 'mfa'; ctx: StaffContext } | { status: 'ok'; ctx: StaffContext }
+
+export const adminAccess = cache(async (): Promise<AdminAccess> => {
+  const ctx = await baseContext()
+  if (!ctx || !can(ctx.role, 'painel')) return { status: 'denied' }
+  return (await getAal()) === 'aal2' ? { status: 'ok', ctx } : { status: 'mfa', ctx }
+})
+
+/** Quem está logado e qual o papel (null se não estiver logado). Equipe sem o 2º fator nesta sessão vale como ninguém. */
+export const staffContext = cache(async (): Promise<StaffContext | null> => {
+  const ctx = await baseContext()
+  if (!ctx) return null
+  if (ctx.role !== 'aluno' && (await getAal()) !== 'aal2') return null
+  return ctx
 })
 
 /** O papel dá acesso a esta área? */

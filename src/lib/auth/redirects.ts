@@ -4,7 +4,7 @@
  */
 
 /** Páginas que qualquer pessoa pode abrir sem login. */
-const PUBLIC_PATHS = ['/entrar', '/esqueci-senha', '/auth/confirmar']
+const PUBLIC_PATHS = ['/entrar', '/esqueci-senha', '/auth/confirmar', '/privacidade', '/termos']
 
 /** Páginas que não fazem sentido para quem já está logado. */
 const GUEST_ONLY_PATHS = ['/entrar', '/esqueci-senha']

@@ -49,6 +49,7 @@ function CheckEmail({ email, onBack }: { email: string; onBack: () => void }) {
 export function LoginView() {
   const params = useSearchParams()
   const next = params.get('next') ?? ''
+  const deleted = params.get('conta') === 'excluida'
   const [mode, setMode] = useState<Mode>(params.get('modo') === 'criar' ? 'criar' : 'entrar')
   const [loginState, login, loginPending] = useActionState(signInAction, initial)
   const [signupState, signup, signupPending] = useActionState(signUpAction, initial)
@@ -99,6 +100,13 @@ export function LoginView() {
           {creating ? 'Leva menos de um minuto. Depois, você escolhe seu objetivo.' : 'Bom te ver de novo.'}
         </p>
       </div>
+
+      {deleted && !creating && (
+        <p className="alert alert-info" role="status">
+          <Icon name="Check" size={16} />
+          <span>Sua conta e seus dados foram excluídos. Obrigado por ter passado por aqui.</span>
+        </p>
+      )}
 
       {!creating && next && <input type="hidden" name="next" value={next} />}
 
@@ -156,12 +164,17 @@ export function LoginView() {
         {creating ? 'Criar conta' : 'Entrar'}
       </SubmitButton>
 
-      {creating && (
-        <p className="muted small">
-          Ao criar a conta, você concorda em usar a Folyo de forma respeitosa. Seus dados ficam protegidos e você pode
-          pedir para apagá-los quando quiser.
-        </p>
-      )}
+      <p className="muted small">
+        {creating ? 'Ao criar a conta, você concorda com os ' : 'Ao entrar, você concorda com os '}
+        <Link href="/termos" target="_blank">
+          Termos de Uso
+        </Link>{' '}
+        e com a{' '}
+        <Link href="/privacidade" target="_blank">
+          Política de Privacidade
+        </Link>
+        .{creating && ' Você pode baixar ou apagar seus dados quando quiser.'}
+      </p>
     </form>
   )
 }
