@@ -1,0 +1,39 @@
+name: CI
+
+# Roda a cada push e a cada pull request: confere o código, os tipos, os testes e se o site compila.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Tipos (TypeScript)
+        run: npm run typecheck
+      - name: Testes
+        run: npm run test
+      - name: Build
+        run: npm run build
+        env:
+          # Valores de mentira, só para o build não reclamar. Nenhuma chave real entra no CI.
+          NEXT_PUBLIC_SUPABASE_URL: https://exemplo.supabase.co
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_apenas_para_build
+          NEXT_TELEMETRY_DISABLED: '1'

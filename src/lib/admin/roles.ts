@@ -17,7 +17,8 @@ export const ROLES = {
 export type Role = keyof typeof ROLES
 export const ROLE_KEYS = Object.keys(ROLES) as Role[]
 
-export const isRole = (value: unknown): value is Role => typeof value === 'string' && value in ROLES
+export const isRole = (value: unknown): value is Role =>
+  typeof value === 'string' && Object.prototype.hasOwnProperty.call(ROLES, value)
 export const rankOf = (role: Role) => ROLES[role].rank
 
 /** Permissões do painel e o papel mínimo de cada uma (igual ao protótipo). */
