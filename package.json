@@ -24,13 +24,13 @@
     "zod": "4.6.7"
   },
   "devDependencies": {
-    "@types/node": "^20",
+    "@types/node": "22.20.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "typescript": "^5",
-    "vitest": "3.2.4"
+    "vitest": "5.0.5"
   },
   "engines": {
     "node": ">=20.9.0"
