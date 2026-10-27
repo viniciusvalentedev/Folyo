@@ -50,7 +50,23 @@ export function LoginView() {
   const params = useSearchParams()
   const next = params.get('next') ?? ''
   const deleted = params.get('conta') === 'excluida'
-  const [mode, setMode] = useState<Mode>(params.get('modo') === 'criar' ? 'criar' : 'entrar')
+  // A aba aberta acompanha o endereço: "/entrar" abre "Entrar" e "/entrar?modo=criar" abre "Criar conta".
+  // Se o endereço mudar com a tela já aberta (ex.: voltar para a landing e clicar no outro botão), a aba muda junto.
+  const modeFromUrl: Mode = params.get('modo') === 'criar' ? 'criar' : 'entrar'
+  const [mode, setModeState] = useState<Mode>(modeFromUrl)
+  const [seenUrlMode, setSeenUrlMode] = useState<Mode>(modeFromUrl)
+  if (seenUrlMode !== modeFromUrl) {
+    setSeenUrlMode(modeFromUrl)
+    setModeState(modeFromUrl)
+  }
+  /** Troca a aba e atualiza o endereço (sem criar entrada no histórico), para o endereço sempre dizer onde a pessoa está. */
+  const setMode = (value: Mode) => {
+    setModeState(value)
+    const url = new URL(window.location.href)
+    if (value === 'criar') url.searchParams.set('modo', 'criar')
+    else url.searchParams.delete('modo')
+    window.history.replaceState(null, '', url)
+  }
   const [loginState, login, loginPending] = useActionState(signInAction, initial)
   const [signupState, signup, signupPending] = useActionState(signUpAction, initial)
   const [showSent, setShowSent] = useState(true)
@@ -85,6 +101,10 @@ export function LoginView() {
       onSubmit={() => setShowSent(true)}
       noValidate
     >
+      <Link href="/" className="backlink login-back">
+        <Icon name="ArrowLeft" size={16} />
+        Conhecer a Folyo
+      </Link>
       <Seg
         label="Entrar ou criar conta"
         value={mode}

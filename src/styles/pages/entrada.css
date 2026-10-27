@@ -40,6 +40,7 @@
 /* ---------- Folyo 2.0 ---------- */
 .login-alert { margin: 0; }
 .login-form .seg { justify-self: start; }
+.login-back { justify-self: start; margin: 0 0 -6px; }
 
 /* ---------- Verificação em duas etapas (MFA) ---------- */
 .mfa-setup { display: grid; gap: 12px; justify-items: start; }
