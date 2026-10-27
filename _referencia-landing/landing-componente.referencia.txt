@@ -1,0 +1,1322 @@
+ARQUIVO DE REFERÊNCIA (somente leitura). NÃO é código do projeto: não importe, não copie para src/.
+Origem: código compilado do artefato da Folyo, apenas a tela pública (landing), formatado para leitura.
+Os nomes das funções/variáveis são abreviados pelo compilador (b.default.createElement = React.createElement,
+w = <Icon name size/>, Ut = <Link to=...>, Ra = <Wordmark/>, Ea = <MarkPath/>, vc() = movimento reduzido ligado).
+Use este arquivo como FONTE DA VERDADE para: estrutura do HTML, nomes de classe, textos, ordem das seções,
+valores de animação (--d, delays) e comportamento (rolagem, revelar ao rolar, barra fixa do celular).
+
+=== DADOS usados pela landing (copiados do artefato) ===
+// Faixa de skills que corre na horizontal (hero):
+xo=["Marketing","Vendas","Comunicação","Tecnologia","Gestão","Design","Idiomas","Carreira"]
+// Cores por skill (a faixa usa .edge no pontinho; as bolhas do bloco "Suas skills ganham forma" usam .edge e .ink):
+var si={Vendas:{edge:"#C9E23F",core:"#93AC14",ink:"#0B0B12"},Marketing:{edge:"#DD33CF",core:"#8E1F95",ink:"#FFFFFF"},Comunicação:{edge:"#5047E6",core:"#2D24C8",ink:"#FFFFFF"},Tecnologia:{edge:"#ABA6FF",core:"#6A61E2",ink:"#0B0B12"},Gestão:{edge:"#F07FE6",core:"#C23DB5",ink:"#0B0B12"},Design:{edge:"#E2F07E",core:"#B5CC2E",ink:"#0B0B12"},Idiomas:{edge:"#E9E8FC",core:"#ABA6FF",ink:"#0B0B12"},Carreira:{edge:"#9B3BB0",core:"#5A1470",ink:"#FFFFFF"}}
+// Lista "Para quem é" (a landing usa só title e icon):
+on=[{id:"ensino-medio",title:"Estou no ensino médio",desc:"Quero começar a me preparar para o futuro.",icon:"BookOpen",headline:"Estudante do ensino médio"},{id:"terminei-escola",title:"Terminei a escola",desc:"Já me formei no ensino médio e não faço faculdade.",icon:"Flag",headline:"Ensino médio completo"},{id:"faculdade",title:"Estou na faculdade",desc:"Quero desenvolver habilidades para minha carreira.",icon:"GraduationCap",headline:"Estudante universitário"},{id:"formado",title:"Já me formei na faculdade",desc:"Quero avançar profissionalmente e explorar novas oportunidades.",icon:"Briefcase",headline:"Graduação concluída"}]
+// Link do Instagram do rodapé:
+t7 = "https://www.instagram.com/use.folyo/"
+// Título do curso gratuito:
+Ao = { title: "Descomplicando Processos Seletivos", slug: "descomplicando-processos-seletivos" }
+
+=== COMPONENTES da landing ===
+function a7(t) {
+  (0, b.useEffect)(() => {
+    let a = t.current;
+    if (!a || vc() || typeof IntersectionObserver > "u") return;
+    let e = [...a.querySelectorAll(".lp-reveal")].filter(
+        (i) => i.getBoundingClientRect().top > window.innerHeight * 0.9,
+      ),
+      r = new IntersectionObserver(
+        (i) =>
+          i.forEach((n) => {
+            n.isIntersecting &&
+              (n.target.classList.add("is-in"), r.unobserve(n.target));
+          }),
+        { rootMargin: "0px 0px -8% 0px", threshold: 0.12 },
+      );
+    e.forEach((i) => {
+      (i.classList.add("is-armed"), r.observe(i));
+    });
+    let o = setTimeout(
+      () =>
+        e.forEach((i) => {
+          i.getBoundingClientRect().top < window.innerHeight &&
+            i.classList.add("is-in");
+        }),
+      2500,
+    );
+    return () => {
+      (r.disconnect(), clearTimeout(o));
+    };
+  }, []);
+}
+function q5({ text: t, from: a = 0, className: e = "" }) {
+  return t
+    .split(" ")
+    .map((r, o) =>
+      b.default.createElement(
+        b.default.Fragment,
+        { key: o },
+        o > 0 && " ",
+        b.default.createElement(
+          "span",
+          { className: "lp-w " + e },
+          b.default.createElement(
+            "span",
+            { style: { "--d": `${a + o * 70}ms` } },
+            r,
+          ),
+        ),
+      ),
+    );
+}
+function e7({
+  size: t = 200,
+  tone: a = "violet",
+  rotate: e = 0,
+  className: r = "",
+}) {
+  let o = "lpf-" + a + "-" + r.replace(/\W/g, ""),
+    [i, n] = Ol[a] || Ol.violet;
+  return b.default.createElement(
+    "svg",
+    {
+      className: "lp-f " + r,
+      viewBox: "0 0 200 200",
+      width: t,
+      height: t,
+      "aria-hidden": "true",
+    },
+    b.default.createElement(
+      "defs",
+      null,
+      b.default.createElement(
+        "linearGradient",
+        { id: o, x1: "0", y1: "0", x2: "0", y2: "1" },
+        b.default.createElement("stop", { offset: "0", stopColor: i }),
+        b.default.createElement("stop", { offset: "1", stopColor: n }),
+      ),
+    ),
+    b.default.createElement(Ea, {
+      x: 100,
+      y: 100,
+      r: 96,
+      fill: `url(#${o})`,
+      rotate: e,
+    }),
+  );
+}
+var U5 = (t) =>
+  document
+    .getElementById(t)
+    ?.scrollIntoView({ behavior: vc() ? "auto" : "smooth", block: "start" });
+function r7() {
+  let [t, a] = (0, b.useState)(!1);
+  (0, b.useEffect)(() => {
+    let r = () => a(window.scrollY > 12);
+    return (
+      r(),
+      window.addEventListener("scroll", r, { passive: !0 }),
+      () => window.removeEventListener("scroll", r)
+    );
+  }, []);
+  let e = (r) => (o) => {
+    (o.preventDefault(), U5(r));
+  };
+  return b.default.createElement(
+    "header",
+    { className: "lp-head" + (t ? " solid" : "") },
+    b.default.createElement(
+      "div",
+      { className: "lp-head-in" },
+      b.default.createElement(
+        "a",
+        {
+          href: "#/",
+          className: "lp-logo",
+          "aria-label": "Folyo, início",
+          onClick: (r) => {
+            (r.preventDefault(),
+              window.scrollTo({ top: 0, behavior: vc() ? "auto" : "smooth" }));
+          },
+        },
+        b.default.createElement(Ra, { height: 30, tone: "violet" }),
+      ),
+      b.default.createElement(
+        "nav",
+        { className: "lp-anchors", "aria-label": "Seções da página" },
+        b.default.createElement(
+          "a",
+          { href: "#o-que-e", onClick: e("o-que-e") },
+          "O que é",
+        ),
+        b.default.createElement(
+          "a",
+          { href: "#curso-gratis", onClick: e("curso-gratis") },
+          "Curso grátis",
+        ),
+        b.default.createElement(
+          "a",
+          { href: "#por-que", onClick: e("por-que") },
+          "Por que a Folyo?",
+        ),
+        b.default.createElement(
+          "a",
+          { href: "#duvidas", onClick: e("duvidas") },
+          "Dúvidas",
+        ),
+      ),
+      b.default.createElement(
+        "nav",
+        { className: "lp-auth", "aria-label": "Acesso" },
+        b.default.createElement(td, { className: "on-dark" }),
+        b.default.createElement(
+          Ut,
+          { to: "/entrar", className: "btn btn-sm btn-ghost-on-dark lp-btn" },
+          "Entrar",
+        ),
+        b.default.createElement(
+          Ut,
+          {
+            to: "/criar-conta",
+            className: "btn btn-sm btn-primary lp-btn lp-btn-glow",
+          },
+          b.default.createElement(
+            "span",
+            null,
+            "Criar conta",
+            b.default.createElement(
+              "span",
+              { className: "lp-wide" },
+              " grátis",
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+var o7 = [
+  {
+    k: "Assista às aulas",
+    icon: "Play",
+    text: "Vídeos curtos e diretos, no celular ou no computador. Você marca cada aula concluída.",
+  },
+  {
+    k: "Faça um projeto real",
+    icon: "Paperclip",
+    text: "Coloque em prática o que aprendeu e envie o seu trabalho em PDF ou link.",
+  },
+  {
+    k: "Ganhe certificado e currículo",
+    icon: "Award",
+    text: "O certificado sai em seu nome e entra, com o projeto, no currículo que a Folyo monta para você.",
+  },
+];
+function i7({ i: t }) {
+  return t === 0
+    ? b.default.createElement(
+        "div",
+        { className: "lp-sa lp-sa-learn", "aria-hidden": "true" },
+        b.default.createElement(
+          "span",
+          { className: "lp-sa-play" },
+          b.default.createElement(w, { name: "Play", size: 16 }),
+        ),
+        [0, 1, 2].map((a) =>
+          b.default.createElement(
+            "span",
+            {
+              key: a,
+              className: "lp-sa-row" + (a < 2 ? " done" : ""),
+              style: { "--i": a },
+            },
+            b.default.createElement(
+              "i",
+              null,
+              b.default.createElement(w, { name: "Check", size: 12 }),
+            ),
+            b.default.createElement("em", null),
+          ),
+        ),
+      )
+    : t === 1
+      ? b.default.createElement(
+          "div",
+          { className: "lp-sa lp-sa-make", "aria-hidden": "true" },
+          b.default.createElement(
+            "span",
+            { className: "lp-sa-drop" },
+            b.default.createElement(w, { name: "FileUp", size: 22 }),
+            b.default.createElement("small", null, "PDF ou link"),
+          ),
+        )
+      : b.default.createElement(
+          "div",
+          { className: "lp-sa lp-sa-win", "aria-hidden": "true" },
+          b.default.createElement(
+            "span",
+            { className: "lp-sa-cert" },
+            b.default.createElement(
+              "svg",
+              { viewBox: "0 0 40 40", width: "34", height: "34" },
+              b.default.createElement(Ea, {
+                x: 20,
+                y: 20,
+                r: 17,
+                fill: "#DD33CF",
+              }),
+            ),
+            b.default.createElement("em", null),
+            b.default.createElement("em", { className: "s" }),
+          ),
+        );
+}
+function n7() {
+  return b.default.createElement(
+    "section",
+    { className: "lp-hero", "aria-labelledby": "lp-title" },
+    b.default.createElement("div", {
+      className: "lp-hero-glow",
+      "aria-hidden": "true",
+    }),
+    b.default.createElement(
+      "div",
+      { className: "lp-hero-in" },
+      b.default.createElement(
+        "div",
+        { className: "lp-hero-text" },
+        b.default.createElement(
+          "p",
+          { className: "lp-kicker lp-in", style: { "--d": "0ms" } },
+          b.default.createElement("span", { className: "lp-dot" }),
+          "Aprenda. Crie. Conquiste.",
+        ),
+        b.default.createElement(
+          "h1",
+          { id: "lp-title", className: "lp-title" },
+          b.default.createElement(
+            "span",
+            { className: "lp-line lp-line-1" },
+            b.default.createElement(q5, { text: "Seu próximo", from: 80 }),
+            " ",
+            b.default.createElement(
+              "span",
+              { className: "lp-hlwrap" },
+              b.default.createElement(
+                "span",
+                { className: "lp-w lp-hl" },
+                b.default.createElement(
+                  "span",
+                  { style: { "--d": "240ms" } },
+                  "projeto",
+                ),
+              ),
+              b.default.createElement(
+                "svg",
+                {
+                  className: "lp-swoosh",
+                  viewBox: "0 0 300 24",
+                  preserveAspectRatio: "none",
+                  "aria-hidden": "true",
+                },
+                b.default.createElement("path", {
+                  d: "M4 16 C 70 4, 160 4, 296 12",
+                  pathLength: "1",
+                }),
+              ),
+            ),
+          ),
+          b.default.createElement(
+            "span",
+            { className: "lp-line" },
+            b.default.createElement(q5, { text: "começa aqui.", from: 340 }),
+          ),
+        ),
+        b.default.createElement(
+          "p",
+          { className: "lp-lead lp-in", style: { "--d": "560ms" } },
+          "A Folyo é uma plataforma de ",
+          b.default.createElement(
+            "b",
+            null,
+            "cursos online curtos e práticos",
+          ),
+          ". Você assiste às aulas, faz um projeto de verdade e sai com ",
+          b.default.createElement("b", null, "certificado e currículo"),
+          " prontos para mostrar.",
+        ),
+        b.default.createElement(
+          "div",
+          { className: "lp-ctas lp-in", style: { "--d": "680ms" } },
+          b.default.createElement(
+            Ut,
+            {
+              to: "/curso-gratis",
+              className: "btn btn-lg btn-go lp-btn lp-btn-free",
+            },
+            b.default.createElement(w, { name: "Sparkles", size: 17 }),
+            b.default.createElement("span", null, "Acessar curso grátis"),
+          ),
+          b.default.createElement(
+            "button",
+            {
+              type: "button",
+              className: "btn btn-lg btn-quiet-dark lp-btn",
+              onClick: () => U5("o-que-e"),
+            },
+            "O que é a Folyo?",
+            b.default.createElement(w, { name: "ArrowDown", size: 17 }),
+          ),
+        ),
+        b.default.createElement(
+          "ul",
+          { className: "lp-checks lp-in", style: { "--d": "780ms" } },
+          b.default.createElement(
+            "li",
+            null,
+            b.default.createElement(w, { name: "CircleCheck", size: 16 }),
+            "Criar conta é grátis",
+          ),
+          b.default.createElement(
+            "li",
+            null,
+            b.default.createElement(w, { name: "CircleCheck", size: 16 }),
+            "Curso gratuito para começar",
+          ),
+          b.default.createElement(
+            "li",
+            null,
+            b.default.createElement(w, { name: "CircleCheck", size: 16 }),
+            "Estude pelo celular ou computador",
+          ),
+        ),
+      ),
+      b.default.createElement(
+        "div",
+        { id: "como-funciona", className: "lp-journey-wrap" },
+        b.default.createElement(
+          "p",
+          { className: "lp-journey-t lp-in", style: { "--d": "860ms" } },
+          "Como funciona, em 3 passos",
+        ),
+        b.default.createElement(
+          "ol",
+          { className: "lp-journey" },
+          o7.map((t, a) =>
+            b.default.createElement(
+              "li",
+              {
+                key: t.k,
+                className: "lp-jstep lp-in",
+                style: { "--d": `${960 + a * 160}ms` },
+              },
+              b.default.createElement(i7, { i: a }),
+              b.default.createElement(
+                "div",
+                { className: "lp-jstep-t" },
+                b.default.createElement(
+                  "span",
+                  { className: "lp-jn", "aria-hidden": "true" },
+                  a + 1,
+                ),
+                b.default.createElement(
+                  "div",
+                  null,
+                  b.default.createElement("h3", null, t.k),
+                  b.default.createElement("p", null, t.text),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+    b.default.createElement(
+      "div",
+      { className: "lp-ticker", "aria-hidden": "true" },
+      b.default.createElement(
+        "div",
+        { className: "lp-ticker-track" },
+        [0, 1].map((t) =>
+          b.default.createElement(
+            "div",
+            { key: t, className: "lp-ticker-run" },
+            xo.map((a) =>
+              b.default.createElement(
+                "span",
+                { key: a },
+                a,
+                b.default.createElement(
+                  "svg",
+                  { viewBox: "0 0 24 24", width: "14", height: "14" },
+                  b.default.createElement(Ea, {
+                    x: 12,
+                    y: 12,
+                    r: 10,
+                    fill: si[a] ? si[a].edge : "#C9E23F",
+                  }),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+function l7() {
+  return b.default.createElement(
+    "section",
+    {
+      id: "o-que-e",
+      className: "lp-sec lp-paper",
+      "aria-labelledby": "lp-what",
+    },
+    b.default.createElement(
+      "div",
+      { className: "lp-wrap" },
+      b.default.createElement(
+        "div",
+        { className: "lp-sec-head lp-reveal" },
+        b.default.createElement(
+          "p",
+          { className: "eyebrow" },
+          "Para quem nunca ouviu falar",
+        ),
+        b.default.createElement(
+          "h2",
+          { id: "lp-what", className: "lp-h2" },
+          "O que é a Folyo?",
+        ),
+        b.default.createElement(
+          "p",
+          { className: "lp-sub lp-sub-big" },
+          "É um lugar para ",
+          b.default.createElement("b", null, "aprender fazendo"),
+          ". Em vez de só assistir, você termina cada curso com um projeto pronto e um certificado no seu nome. Tudo vai para o seu currículo, para você mostrar o que sabe fazer em entrevistas e processos seletivos.",
+        ),
+      ),
+      b.default.createElement(
+        "div",
+        { className: "lp-ba" },
+        b.default.createElement(
+          "div",
+          { className: "lp-ba-card lp-ba-before lp-reveal" },
+          b.default.createElement(
+            "span",
+            { className: "lp-ba-tag" },
+            "Só estudar",
+          ),
+          b.default.createElement(
+            "div",
+            { className: "lp-ba-cv", "aria-hidden": "true" },
+            b.default.createElement("span", { className: "lp-ba-name" }),
+            b.default.createElement("span", { className: "lp-ba-l" }),
+            b.default.createElement("span", { className: "lp-ba-l s" }),
+            b.default.createElement(
+              "span",
+              { className: "lp-ba-empty" },
+              "Experiência prática: ",
+              b.default.createElement("em", null, "nada para mostrar"),
+            ),
+          ),
+          b.default.createElement(
+            "p",
+            null,
+            "Você aprende, mas não tem como provar.",
+          ),
+        ),
+        b.default.createElement(
+          "div",
+          { className: "lp-ba-arrow", "aria-hidden": "true" },
+          b.default.createElement(w, { name: "ArrowRight", size: 22 }),
+        ),
+        b.default.createElement(
+          "div",
+          {
+            className: "lp-ba-card lp-ba-after lp-reveal",
+            style: { "--d": "140ms" },
+          },
+          b.default.createElement(
+            "span",
+            { className: "lp-ba-tag on" },
+            "Com a Folyo",
+          ),
+          b.default.createElement(
+            "div",
+            { className: "lp-ba-cv", "aria-hidden": "true" },
+            b.default.createElement("span", { className: "lp-ba-name" }),
+            b.default.createElement("span", { className: "lp-ba-l" }),
+            b.default.createElement(
+              "span",
+              { className: "lp-ba-row r1" },
+              b.default.createElement(w, { name: "Award", size: 15 }),
+              "Certificado em seu nome",
+            ),
+            b.default.createElement(
+              "span",
+              { className: "lp-ba-row r2" },
+              b.default.createElement(w, { name: "Paperclip", size: 15 }),
+              "Projeto prático no portfólio",
+            ),
+            b.default.createElement(
+              "span",
+              { className: "lp-ba-row r3" },
+              b.default.createElement(w, { name: "Puzzle", size: 15 }),
+              "Skills que você desenvolveu",
+            ),
+          ),
+          b.default.createElement(
+            "p",
+            null,
+            "Você aprende e sai com provas do que sabe fazer.",
+          ),
+        ),
+      ),
+      b.default.createElement(
+        "div",
+        { className: "lp-who lp-reveal" },
+        b.default.createElement(
+          "p",
+          { className: "lp-who-t" },
+          b.default.createElement("b", null, "Para quem é."),
+          " Para quem quer se preparar para o mercado de trabalho, em qualquer momento:",
+        ),
+        b.default.createElement(
+          "ul",
+          null,
+          on.map((t) =>
+            b.default.createElement(
+              "li",
+              { key: t.id },
+              b.default.createElement(w, { name: t.icon, size: 16 }),
+              t.title,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+function d7() {
+  let t = ft(),
+    a = Jl(),
+    e = a ? pe(a) : [],
+    r = e.reduce((n, l) => n + (+l.min || 0), 0),
+    o = t && t.mode !== "local" && !t.catalogLoaded,
+    i = [
+      "Entender como funcionam os processos seletivos",
+      "Organizar a sua preparação",
+      "Apresentar suas habilidades com mais estratégia e confiança",
+    ];
+  return b.default.createElement(
+    "section",
+    {
+      id: "curso-gratis",
+      className: "lp-sec lp-free",
+      "aria-labelledby": "lp-free-t",
+    },
+    b.default.createElement("div", {
+      className: "lp-free-bg",
+      "aria-hidden": "true",
+    }),
+    b.default.createElement(
+      "div",
+      { className: "lp-wrap lp-free-grid" },
+      b.default.createElement(
+        "div",
+        { className: "lp-free-text lp-reveal" },
+        b.default.createElement(
+          "span",
+          { className: "lp-badge" },
+          b.default.createElement(w, { name: "Sparkles", size: 14 }),
+          "Curso gratuito",
+        ),
+        b.default.createElement(
+          "h2",
+          { id: "lp-free-t", className: "lp-free-title" },
+          a ? a.title : Ao.title,
+        ),
+        b.default.createElement(
+          "p",
+          { className: "lp-free-lead" },
+          "Prepare-se melhor para as oportunidades que podem transformar sua trajetória.",
+        ),
+        b.default.createElement(
+          "p",
+          { className: "lp-free-desc" },
+          (a && (a.summary || a.subtitle)) ||
+            "Aprenda a entender os processos seletivos, organizar sua preparação e apresentar suas habilidades com mais estratégia e confiança.",
+        ),
+        a &&
+          b.default.createElement(
+            "ul",
+            { className: "lp-facts" },
+            b.default.createElement(
+              "li",
+              null,
+              b.default.createElement(w, { name: "Play", size: 15 }),
+              bt(e.length, "aula", "aulas"),
+            ),
+            r > 0 &&
+              b.default.createElement(
+                "li",
+                null,
+                b.default.createElement(w, { name: "Clock", size: 15 }),
+                Co(r),
+              ),
+            a.certificate &&
+              a.certificate.enabled !== !1 &&
+              b.default.createElement(
+                "li",
+                null,
+                b.default.createElement(w, { name: "Award", size: 15 }),
+                "Com certificado",
+              ),
+            a.project &&
+              a.project.title &&
+              b.default.createElement(
+                "li",
+                null,
+                b.default.createElement(w, { name: "Paperclip", size: 15 }),
+                "Projeto final",
+              ),
+          ),
+        b.default.createElement(
+          "div",
+          { className: "lp-free-cta" },
+          b.default.createElement(
+            Ut,
+            {
+              to: "/curso-gratis",
+              className: "btn btn-lg btn-go lp-btn lp-btn-free",
+            },
+            b.default.createElement(
+              "span",
+              null,
+              "Quero acessar o curso grátis",
+            ),
+            b.default.createElement(w, { name: "ArrowRight", size: 17 }),
+          ),
+          b.default.createElement(
+            "small",
+            null,
+            "Sem custo. Você só precisa de uma conta na Folyo.",
+          ),
+        ),
+      ),
+      b.default.createElement(
+        "div",
+        { className: "lp-free-card lp-reveal", style: { "--d": "140ms" } },
+        a
+          ? b.default.createElement(
+              b.default.Fragment,
+              null,
+              b.default.createElement(
+                "header",
+                null,
+                b.default.createElement(
+                  "p",
+                  { className: "eyebrow" },
+                  "Conteúdo do curso",
+                ),
+                b.default.createElement(
+                  "span",
+                  { className: "plan free" },
+                  "Gratuito",
+                ),
+              ),
+              b.default.createElement(
+                "ol",
+                { className: "lp-lessons" },
+                e
+                  .slice(0, 6)
+                  .map((n, l) =>
+                    b.default.createElement(
+                      "li",
+                      { key: n.id },
+                      b.default.createElement(
+                        "span",
+                        { className: "lp-ln" },
+                        l + 1,
+                      ),
+                      b.default.createElement(
+                        "span",
+                        { className: "lp-lt" },
+                        n.title,
+                      ),
+                      +n.min > 0 &&
+                        b.default.createElement("small", null, Co(+n.min)),
+                    ),
+                  ),
+              ),
+              e.length > 6 &&
+                b.default.createElement(
+                  "p",
+                  { className: "lp-more" },
+                  "e mais ",
+                  bt(e.length - 6, "aula", "aulas"),
+                ),
+            )
+          : b.default.createElement(
+              b.default.Fragment,
+              null,
+              b.default.createElement(
+                "header",
+                null,
+                b.default.createElement(
+                  "p",
+                  { className: "eyebrow" },
+                  "O que você vai aprender",
+                ),
+                b.default.createElement(
+                  "span",
+                  { className: "plan free" },
+                  "Gratuito",
+                ),
+              ),
+              o
+                ? b.default.createElement(
+                    "div",
+                    { className: "lp-learn-skel", "aria-busy": "true" },
+                    b.default.createElement("span", { className: "skel" }),
+                    b.default.createElement("span", { className: "skel" }),
+                    b.default.createElement("span", { className: "skel" }),
+                  )
+                : b.default.createElement(
+                    "ul",
+                    { className: "lp-learn" },
+                    i.map((n, l) =>
+                      b.default.createElement(
+                        "li",
+                        { key: n, style: { "--i": l } },
+                        b.default.createElement(w, {
+                          name: "CircleCheck",
+                          size: 18,
+                        }),
+                        n,
+                      ),
+                    ),
+                  ),
+            ),
+        b.default.createElement(
+          "svg",
+          {
+            className: "lp-free-card-f",
+            viewBox: "0 0 100 100",
+            "aria-hidden": "true",
+          },
+          b.default.createElement(Ea, {
+            x: 50,
+            y: 50,
+            r: 46,
+            fill: "rgba(201,226,63,.16)",
+            rotate: 12,
+          }),
+        ),
+      ),
+    ),
+  );
+}
+function s7() {
+  ft();
+  let t = Jl(),
+    a = Ot.filter((o) => !t || o.id !== t.id).slice(0, 12),
+    { selecting: e } = Qe();
+  if (
+    ((0, b.useEffect)(() => {
+      if (e) {
+        let o = setTimeout(
+          () =>
+            document
+              .getElementById("cursos")
+              ?.scrollIntoView({
+                behavior: vc() ? "auto" : "smooth",
+                block: "start",
+              }),
+          120,
+        );
+        return () => clearTimeout(o);
+      }
+    }, []),
+    !a.length)
+  )
+    return null;
+  let r = a.some((o) => ir(o, null));
+  return b.default.createElement(
+    "section",
+    {
+      id: "cursos",
+      className: "lp-sec lp-paper lp-shop",
+      "aria-labelledby": "lp-shop-t",
+    },
+    b.default.createElement(
+      "div",
+      { className: "lp-wrap" },
+      b.default.createElement(
+        "div",
+        { className: "lp-sec-head lp-shop-head lp-reveal" },
+        b.default.createElement(
+          "div",
+          null,
+          b.default.createElement("p", { className: "eyebrow" }, "Cursos"),
+          b.default.createElement(
+            "h2",
+            { id: "lp-shop-t", className: "lp-h2" },
+            "Escolha seu próximo curso.",
+          ),
+        ),
+        r && b.default.createElement(oc, null),
+      ),
+      b.default.createElement(
+        "div",
+        { className: "grid-cards lp-shop-grid" },
+        a.map((o, i) =>
+          b.default.createElement(So, {
+            key: o.id,
+            course: o,
+            i,
+            publicMode: !0,
+          }),
+        ),
+      ),
+    ),
+    b.default.createElement(rc, { publicMode: !0 }),
+  );
+}
+function c7() {
+  return b.default.createElement(
+    "section",
+    { id: "por-que", className: "lp-sec lp-ink", "aria-labelledby": "lp-why" },
+    b.default.createElement(
+      "div",
+      { className: "lp-wrap" },
+      b.default.createElement(
+        "div",
+        { className: "lp-sec-head lp-reveal" },
+        b.default.createElement(
+          "p",
+          { className: "eyebrow" },
+          "Por que a Folyo?",
+        ),
+        b.default.createElement(
+          "h2",
+          { id: "lp-why", className: "lp-h2" },
+          "O que você aprende fica registrado a seu favor.",
+        ),
+      ),
+      b.default.createElement(
+        "div",
+        { className: "lp-bento" },
+        b.default.createElement(
+          "article",
+          { className: "lp-tile lp-tile-cv lp-reveal" },
+          b.default.createElement(
+            "div",
+            { className: "lp-tile-t" },
+            b.default.createElement(w, { name: "FileUser", size: 22 }),
+            b.default.createElement(
+              "h3",
+              null,
+              "Um currículo que se monta enquanto você estuda",
+            ),
+            b.default.createElement(
+              "p",
+              null,
+              "Certificados e projetos entram no seu currículo da Folyo com um clique. Você escolhe o que mostrar e em que ordem.",
+            ),
+          ),
+          b.default.createElement(
+            "div",
+            { className: "lp-cv", "aria-hidden": "true" },
+            b.default.createElement("span", { className: "lp-cv-h" }),
+            b.default.createElement("span", { className: "lp-cv-l" }),
+            b.default.createElement("span", { className: "lp-cv-l s" }),
+            b.default.createElement(
+              "span",
+              { className: "lp-cv-item a" },
+              b.default.createElement(w, { name: "Award", size: 14 }),
+              b.default.createElement("em", null),
+            ),
+            b.default.createElement(
+              "span",
+              { className: "lp-cv-item b" },
+              b.default.createElement(w, { name: "Paperclip", size: 14 }),
+              b.default.createElement("em", null),
+            ),
+          ),
+        ),
+        b.default.createElement(
+          "article",
+          {
+            className: "lp-tile lp-tile-skills lp-reveal",
+            style: { "--d": "90ms" },
+          },
+          b.default.createElement(
+            "div",
+            { className: "lp-blobs", "aria-hidden": "true" },
+            [
+              ["Comunicação", 40, 38, 40],
+              ["Carreira", 72, 66, 30],
+              ["Vendas", 26, 76, 22],
+              ["Marketing", 82, 18, 14],
+            ].map(([a, e, r, o], i) =>
+              b.default.createElement(
+                "span",
+                {
+                  key: a,
+                  className: "lp-blob",
+                  style: {
+                    left: e + "%",
+                    top: r + "%",
+                    "--r": o + "%",
+                    background: si[a].edge,
+                    color: si[a].ink,
+                    "--bd": `${-i * 1.7}s`,
+                  },
+                },
+                o > 20 ? a : "",
+              ),
+            ),
+          ),
+          b.default.createElement(
+            "div",
+            { className: "lp-tile-t" },
+            b.default.createElement("h3", null, "Suas skills ganham forma"),
+            b.default.createElement(
+              "p",
+              null,
+              "Cada aula concluída alimenta o gráfico das suas skills. Você enxerga onde está evoluindo.",
+            ),
+          ),
+        ),
+        b.default.createElement(
+          "article",
+          {
+            className: "lp-tile lp-tile-goal lp-reveal",
+            style: { "--d": "60ms" },
+          },
+          b.default.createElement(
+            "div",
+            { className: "lp-tile-t" },
+            b.default.createElement(w, { name: "Route", size: 22 }),
+            b.default.createElement("h3", null, "Um objetivo, um caminho"),
+            b.default.createElement(
+              "p",
+              null,
+              "Escolha aonde quer chegar, como conseguir o primeiro estágio ou construir carreira em Marketing, e veja os cursos que levam até lá.",
+            ),
+          ),
+          b.default.createElement(
+            "div",
+            { className: "lp-route", "aria-hidden": "true" },
+            b.default.createElement("i", null),
+            b.default.createElement("i", null),
+            b.default.createElement("i", null),
+            b.default.createElement("span", null),
+          ),
+        ),
+        b.default.createElement(
+          "article",
+          {
+            className: "lp-tile lp-tile-resume lp-reveal",
+            style: { "--d": "150ms" },
+          },
+          b.default.createElement(
+            "div",
+            { className: "lp-tile-t" },
+            b.default.createElement(w, { name: "History", size: 22 }),
+            b.default.createElement("h3", null, "Retome de onde parou"),
+            b.default.createElement(
+              "p",
+              null,
+              "A Folyo guarda a última aula de cada curso e mostra o seu ritmo de estudo por semana.",
+            ),
+          ),
+          b.default.createElement(
+            "div",
+            { className: "lp-resume", "aria-hidden": "true" },
+            b.default.createElement(
+              "span",
+              { className: "lp-resume-play" },
+              b.default.createElement(w, { name: "Play", size: 14 }),
+            ),
+            b.default.createElement(
+              "span",
+              { className: "lp-resume-bar" },
+              b.default.createElement("span", null),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+var u7 = [
+  [
+    "O que é a Folyo?",
+    "Uma plataforma de cursos online curtos e práticos. Cada curso tem aulas em vídeo e, na maioria deles, um projeto para você colocar em prática. No final, você recebe um certificado em seu nome.",
+  ],
+  [
+    "Preciso pagar para começar?",
+    "Não. Criar a conta é grátis e o curso Descomplicando Processos Seletivos é gratuito. Os cursos pagos mostram o preço antes da compra.",
+  ],
+  [
+    "Como são as aulas?",
+    "São vídeos curtos, organizados em módulos. Você assiste pelo navegador, no celular ou no computador, e marca cada aula como concluída. A Folyo guarda de onde você parou.",
+  ],
+  [
+    "O que é o projeto do curso?",
+    "É um trabalho prático para aplicar o que você aprendeu. Você envia em PDF ou link e ele fica guardado no seu portfólio da Folyo.",
+  ],
+  [
+    "Como recebo o certificado?",
+    "Quando você conclui as aulas e envia o projeto (nos cursos que têm projeto), o certificado é emitido em seu nome e pode entrar no seu currículo da Folyo.",
+  ],
+  [
+    "Preciso ter experiência?",
+    "Não necessariamente. Cada curso informa o nível na página dele, como Iniciante, para você escolher o que faz sentido agora.",
+  ],
+];
+function h7() {
+  return b.default.createElement(
+    "section",
+    {
+      id: "duvidas",
+      className: "lp-sec lp-paper lp-faq",
+      "aria-labelledby": "lp-faq-t",
+    },
+    b.default.createElement(
+      "div",
+      { className: "lp-wrap lp-faq-grid" },
+      b.default.createElement(
+        "div",
+        { className: "lp-sec-head lp-reveal" },
+        b.default.createElement("p", { className: "eyebrow" }, "Dúvidas"),
+        b.default.createElement(
+          "h2",
+          { id: "lp-faq-t", className: "lp-h2" },
+          "Perguntas frequentes",
+        ),
+        b.default.createElement(
+          "p",
+          { className: "lp-sub" },
+          "Tudo o que você precisa saber antes de criar sua conta.",
+        ),
+      ),
+      b.default.createElement(
+        "div",
+        { className: "lp-faq-list lp-reveal", style: { "--d": "100ms" } },
+        u7.map(([t, a], e) =>
+          b.default.createElement(
+            "details",
+            { key: t, className: "lp-qa", open: e === 0 },
+            b.default.createElement(
+              "summary",
+              null,
+              b.default.createElement("span", null, t),
+              b.default.createElement(w, { name: "Plus", size: 18 }),
+            ),
+            b.default.createElement("p", null, a),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+function p7() {
+  let { selecting: t } = Qe(),
+    [a, e] = (0, b.useState)(!1);
+  return (
+    (0, b.useEffect)(() => {
+      let r = () => {
+        let o = document.querySelector(".lp-hero"),
+          i = document.querySelector(".lp-final"),
+          n = o ? o.getBoundingClientRect().bottom < 0 : window.scrollY > 700,
+          l = i ? i.getBoundingClientRect().top < window.innerHeight : !1;
+        e(n && !l);
+      };
+      return (
+        r(),
+        window.addEventListener("scroll", r, { passive: !0 }),
+        window.addEventListener("resize", r),
+        () => {
+          (window.removeEventListener("scroll", r),
+            window.removeEventListener("resize", r));
+        }
+      );
+    }, []),
+    t
+      ? null
+      : b.default.createElement(
+          "div",
+          { className: "lp-sticky" + (a ? " on" : ""), "aria-hidden": !a },
+          b.default.createElement(
+            Ut,
+            {
+              to: "/curso-gratis",
+              className: "btn btn-go lp-btn",
+              tabIndex: a ? 0 : -1,
+            },
+            b.default.createElement(w, { name: "Sparkles", size: 16 }),
+            "Curso grátis",
+          ),
+          b.default.createElement(
+            Ut,
+            {
+              to: "/criar-conta",
+              className: "btn btn-primary lp-btn",
+              tabIndex: a ? 0 : -1,
+            },
+            "Criar conta grátis",
+          ),
+        )
+  );
+}
+function g7() {
+  return b.default.createElement(
+    "section",
+    { className: "lp-final", "aria-labelledby": "lp-final-t" },
+    b.default.createElement(e7, {
+      size: 620,
+      tone: "violet",
+      rotate: 10,
+      className: "lp-final-f",
+    }),
+    b.default.createElement(
+      "div",
+      { className: "lp-wrap lp-final-in lp-reveal" },
+      b.default.createElement(
+        "h2",
+        { id: "lp-final-t", className: "lp-final-title" },
+        "O próximo passo ",
+        b.default.createElement("span", null, "começa com você."),
+      ),
+      b.default.createElement(
+        "p",
+        null,
+        "Conheça a Folyo, explore novas possibilidades e comece sua jornada.",
+      ),
+      b.default.createElement(
+        "div",
+        { className: "lp-final-ctas" },
+        b.default.createElement(
+          Ut,
+          {
+            to: "/criar-conta",
+            className: "btn btn-lg btn-primary lp-btn lp-btn-glow",
+          },
+          b.default.createElement("span", null, "Criar minha conta grátis"),
+          b.default.createElement(w, { name: "ArrowRight", size: 17 }),
+        ),
+        b.default.createElement(
+          Ut,
+          { to: "/entrar", className: "lp-textlink" },
+          "Já tenho conta",
+        ),
+      ),
+    ),
+  );
+}
+function m7() {
+  let t = ft(),
+    a =
+      (t && t.config && t.config.tagline) ||
+      "Cursos práticos, projetos reais e um currículo que mostra o que você sabe fazer.";
+  return b.default.createElement(
+    "footer",
+    { className: "lp-foot" },
+    b.default.createElement(
+      "div",
+      { className: "lp-wrap lp-foot-in" },
+      b.default.createElement(
+        "div",
+        { className: "lp-foot-brand" },
+        b.default.createElement(Ra, { height: 34, tone: "violet" }),
+        b.default.createElement(
+          "p",
+          { className: "lp-foot-slogan" },
+          "Aprenda. Crie. Conquiste.",
+        ),
+        b.default.createElement("p", { className: "lp-foot-tag" }, a),
+      ),
+      b.default.createElement(
+        "nav",
+        { className: "lp-foot-nav", "aria-label": "Rodapé" },
+        b.default.createElement(
+          "div",
+          null,
+          b.default.createElement("p", { className: "eyebrow" }, "Plataforma"),
+          b.default.createElement(Ut, { to: "/criar-conta" }, "Criar conta"),
+          b.default.createElement(Ut, { to: "/entrar" }, "Entrar"),
+          b.default.createElement(
+            Ut,
+            { to: "/curso-gratis" },
+            "Curso gratuito",
+          ),
+        ),
+        b.default.createElement(
+          "div",
+          null,
+          b.default.createElement("p", { className: "eyebrow" }, "Acompanhe"),
+          b.default.createElement(
+            "a",
+            { href: t7, target: "_blank", rel: "noopener noreferrer" },
+            b.default.createElement(w, { name: "Instagram", size: 16 }),
+            "@use.folyo",
+            b.default.createElement(w, { name: "ArrowUpRight", size: 14 }),
+          ),
+        ),
+      ),
+    ),
+    b.default.createElement(
+      "div",
+      { className: "lp-wrap lp-foot-base" },
+      b.default.createElement(
+        "small",
+        null,
+        "© ",
+        new Date().getFullYear(),
+        " Folyo",
+      ),
+    ),
+  );
+}
+function vh() {
+  let t = (0, b.useRef)(null);
+  return (
+    a7(t),
+    (0, b.useEffect)(() => {
+      Cn();
+    }, []),
+    b.default.createElement(
+      "div",
+      { className: "lp", ref: t },
+      b.default.createElement(
+        "a",
+        {
+          href: "#lp-main",
+          className: "skip",
+          onClick: (a) => {
+            (a.preventDefault(), document.getElementById("lp-main")?.focus());
+          },
+        },
+        "Pular para o conteúdo",
+      ),
+      b.default.createElement(r7, null),
+      b.default.createElement(
+        "main",
+        { id: "lp-main", tabIndex: -1 },
+        b.default.createElement(n7, null),
+        b.default.createElement(l7, null),
+        b.default.createElement(d7, null),
+        b.default.createElement(s7, null),
+        b.default.createElement(c7, null),
+        b.default.createElement(h7, null),
+        b.default.createElement(g7, null),
+      ),
+      b.default.createElement(m7, null),
+      b.default.createElement(p7, null),
+    )
+  );
+}

@@ -93,7 +93,8 @@ export async function proxy(request: NextRequest) {
   const signedIn = Boolean(claims?.sub)
   const { pathname, search } = request.nextUrl
 
-  if (pathname === '/') return redirectKeepingCookies(request, signedIn ? HOME_PATH : '/entrar', response)
+  // Na página inicial: quem está logado vai para o início; quem não está vê a página pública (landing).
+  if (pathname === '/' && signedIn) return redirectKeepingCookies(request, HOME_PATH, response)
 
   if (!signedIn && !isPublicPath(pathname)) {
     return redirectKeepingCookies(request, '/entrar', response, pathname + search)
