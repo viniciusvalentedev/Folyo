@@ -1,11 +1,14 @@
 import type { Metadata } from 'next'
 import { CONFIG_LIMITS, DEFAULT_CONFIG, supportEmailOf } from '@/lib/app-config'
 import { getPublicConfig } from '@/lib/data/config'
+import { publicRobots } from '@/lib/seo'
 import { ControllerInfo, LegalHead, Section } from '../LegalParts'
 
 export const metadata: Metadata = {
   title: 'Política de Privacidade',
   description: 'Quais dados a Folyo guarda, para que usamos, com quem compartilhamos e como você exerce seus direitos.',
+  alternates: { canonical: '/privacidade' },
+  robots: publicRobots(),
 }
 
 /** Política de Privacidade (LGPD, Lei 13.709/2018). Texto em revisão: veja src/lib/legal.ts. */

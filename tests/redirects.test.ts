@@ -47,6 +47,15 @@ describe('páginas públicas', () => {
     }
   })
 
+  it('robots, sitemap e imagem de compartilhamento são públicos (o Google não tem login)', () => {
+    for (const p of ['/robots.txt', '/sitemap.xml', '/opengraph-image', '/opengraph-image-1a2b3c']) {
+      expect(isPublicPath(p)).toBe(true)
+    }
+    for (const p of ['/robots.txt/x', '/sitemap.xml.bak', '/opengraph-image/../admin', '/admin/sitemap.xml']) {
+      expect(isPublicPath(p)).toBe(false)
+    }
+  })
+
   it('área do aluno e painel exigem login', () => {
     for (const p of ['/inicio', '/cursos', '/admin', '/admin/usuarios', '/api/trabalhos/x/arquivo', '/redefinir-senha']) {
       expect(isPublicPath(p)).toBe(false)

@@ -3,11 +3,14 @@ import Link from 'next/link'
 import { supportEmailOf } from '@/lib/app-config'
 import { getPublicConfig } from '@/lib/data/config'
 import { LEGAL } from '@/lib/legal'
+import { publicRobots } from '@/lib/seo'
 import { ControllerInfo, LegalHead, Section } from '../LegalParts'
 
 export const metadata: Metadata = {
   title: 'Termos de Uso',
   description: 'As regras para usar a Folyo: conta, conteúdo, uso permitido e encerramento.',
+  alternates: { canonical: '/termos' },
+  robots: publicRobots(),
 }
 
 /** Termos de Uso. Texto em revisão: veja src/lib/legal.ts. */

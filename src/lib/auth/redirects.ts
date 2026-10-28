@@ -11,7 +11,13 @@ const GUEST_ONLY_PATHS = ['/entrar', '/esqueci-senha']
 
 const matches = (path: string, list: string[]) => list.some((p) => path === p || path.startsWith(p + '/'))
 
-export const isPublicPath = (path: string) => path === '/' || matches(path, PUBLIC_PATHS)
+/**
+ * Arquivos que o Google e os apps de mensagem precisam abrir sem login:
+ * /robots.txt, /sitemap.xml e a imagem de compartilhamento (/opengraph-image, com ou sem sufixo).
+ */
+const PUBLIC_FILES = /^\/(robots\.txt|sitemap\.xml|opengraph-image(-[\w-]+)?)$/
+
+export const isPublicPath = (path: string) => path === '/' || matches(path, PUBLIC_PATHS) || PUBLIC_FILES.test(path)
 export const isGuestOnlyPath = (path: string) => matches(path, GUEST_ONLY_PATHS)
 
 /** Para onde vai quem acabou de entrar, se não houver outro destino. */

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import { getPublicConfig } from '@/lib/data/config'
+import { SITE_NAME, SITE_URL } from '@/lib/seo'
 
 import '@/styles/tokens.css'
 import '@/styles/base.css'
@@ -59,10 +60,16 @@ const mono = localFont({
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getPublicConfig()
   return {
+    // Base dos endereços de imagem de compartilhamento e dos links canônicos.
+    metadataBase: new URL(SITE_URL),
+    applicationName: SITE_NAME,
     title: { default: config.name, template: `%s · ${config.name}` },
     description: config.tagline,
-    // Versão de demonstração: não queremos que o Google indexe ainda.
+    // Padrão do site: NÃO indexar. Só a landing, os Termos e a Privacidade ligam a indexação
+    // (publicRobots em src/lib/seo.ts), e só na produção. Telas de login e área do aluno ficam fechadas.
     robots: { index: false, follow: false },
+    openGraph: { type: 'website', siteName: SITE_NAME, locale: 'pt_BR' },
+    twitter: { card: 'summary_large_image' },
   }
 }
 
