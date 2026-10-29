@@ -43,35 +43,86 @@ export const SKILL_TONES: Record<string, { edge: string; core: string; ink: stri
   Carreira: { edge: '#9B3BB0', core: '#5A1470', ink: '#FFFFFF' },
 }
 
-/** "Como funciona, em 3 passos". */
+/** Os 3 passos do hero: Aprenda. Crie. Mostre. */
 export const JOURNEY_STEPS = [
+  { k: 'Aprenda.', text: 'Aulas curtas, direto ao ponto.' },
+  { k: 'Crie.', text: 'Um projeto real com o que aprendeu.' },
+  { k: 'Mostre.', text: 'Algo concreto no seu portfólio.' },
+] as const
+
+/** Aulas do mini-cartão "Aprenda" (as duas primeiras aparecem concluídas). */
+export const HERO_LESSONS = ['Fundamentos', 'Na prática', 'Projeto'] as const
+
+/** Os 4 passos da história da Marina (exemplo ilustrativo). */
+export const STORY_STEPS = [
+  { k: 'Antes', t: 'Sabe, mas não tem como mostrar' },
+  { k: 'Aprende', t: 'Faz um curso de marketing na Folyo' },
+  { k: 'Cria', t: 'Desenvolve um projeto para a Aurora Café' },
+  { k: 'Mostra', t: 'Leva o projeto pronto para o portfólio' },
+] as const
+
+/** Módulos do curso de marketing da Marina: [nome, concluído?]. */
+export const STORY_MODULES = [
+  ['Marca e público', true],
+  ['Concorrência', true],
+  ['Posicionamento', true],
+  ['Campanhas', false],
+] as const
+
+/** Etapas do projeto da Marina (a última mostra as peças visuais). */
+export const STORY_BLOCKS = [
+  'Análise da marca',
+  'Público prioritário',
+  'Concorrentes',
+  'Posicionamento',
+  'Campanha',
+  'Peças visuais',
+] as const
+
+/** Comparação em diagrama: só conhecimento x conhecimento aplicado. */
+export const COMPARE_ROWS = [
   {
-    k: 'Assista às aulas',
-    text: 'Vídeos curtos e diretos, no celular ou no computador. Você marca cada aula concluída.',
+    k: 'Só conhecimento',
+    cls: 'a',
+    nodes: [
+      ['BookOpen', 'Curso concluído'],
+      ['Award', 'Certificado'],
+      ['MessageCircle', 'Habilidade declarada'],
+    ],
   },
   {
-    k: 'Faça um projeto real',
-    text: 'Coloque em prática o que aprendeu e envie o seu trabalho em PDF ou link.',
-  },
-  {
-    k: 'Ganhe certificado e currículo',
-    text: 'O certificado sai em seu nome e entra, com o projeto, no currículo que a Folyo monta para você.',
+    k: 'Conhecimento aplicado',
+    cls: 'b',
+    nodes: [
+      ['BookOpen', 'Curso concluído'],
+      ['FolderKanban', 'Projeto desenvolvido'],
+      ['BadgeCheck', 'Habilidade demonstrada'],
+    ],
   },
 ] as const
 
-/** "Para quem é." */
-export const AUDIENCE = [
-  { id: 'ensino-medio', title: 'Estou no ensino médio', icon: 'BookOpen' },
-  { id: 'terminei-escola', title: 'Terminei a escola', icon: 'Flag' },
-  { id: 'faculdade', title: 'Estou na faculdade', icon: 'GraduationCap' },
-  { id: 'formado', title: 'Já me formei na faculdade', icon: 'Briefcase' },
+/** "Para quem busca" (chips da seção de comparação). */
+export const COMPARE_FOR = [
+  ['Briefcase', 'Primeiro emprego'],
+  ['GraduationCap', 'Estágio'],
+  ['Compass', 'Sem experiência formal'],
+  ['Award', 'Certificados, mas currículo fraco'],
+  ['Lightbulb', 'Sabe fazer, mas não comprova'],
+  ['FolderKanban', 'Quer um portfólio'],
 ] as const
 
-/** O que o curso gratuito ensina (cartão escuro da faixa azul). */
+/** Chips do curso gratuito (cartão azul). */
+export const FREE_COURSE_CHIPS = [
+  ['Sparkles', 'Gratuito'],
+  ['Play', 'Aulas em vídeo'],
+  ['Smartphone', 'Celular ou computador'],
+] as const
+
+/** O que o curso gratuito ensina (cartão escuro da faixa azul): [ícone, texto]. */
 export const FREE_COURSE_LEARN = [
-  'Entender como funcionam os processos seletivos',
-  'Organizar a sua preparação',
-  'Apresentar suas habilidades com mais estratégia e confiança',
+  ['Search', 'Entender os processos seletivos'],
+  ['ListChecks', 'Organizar sua preparação'],
+  ['MessageCircle', 'Apresentar suas habilidades com confiança'],
 ] as const
 
 /** Bolhas do cartão "Suas skills ganham forma": [skill, left %, top %, raio %]. */
@@ -86,26 +137,32 @@ export const SKILL_BLOBS = [
 export const FAQ = [
   [
     'O que é a Folyo?',
-    'Uma plataforma de cursos online curtos e práticos. Cada curso tem aulas em vídeo e, na maioria deles, um projeto para você colocar em prática. No final, você recebe um certificado em seu nome.',
+    'Uma plataforma de cursos práticos: você aprende uma habilidade e cria um projeto que mostra o que sabe.',
   ],
   [
-    'Preciso pagar para começar?',
-    'Não. Criar a conta é grátis e o curso Descomplicando Processos Seletivos é gratuito. Os cursos pagos mostram o preço antes da compra.',
+    'Como funcionam os cursos?',
+    'Aulas em vídeo curtas, organizadas em módulos, e um projeto prático. Você estuda pelo celular ou computador.',
+  ],
+  ['O que são os projetos?', 'Trabalhos em que você aplica o que aprendeu. Você envia em PDF ou link.'],
+  [
+    'Como posso usar os projetos?',
+    'Eles ficam no seu portfólio da Folyo, podem entrar no seu currículo e servem para mostrar em entrevistas.',
   ],
   [
-    'Como são as aulas?',
-    'São vídeos curtos, organizados em módulos. Você assiste pelo navegador, no celular ou no computador, e marca cada aula como concluída. A Folyo guarda de onde você parou.',
+    'Qual a diferença para outros cursos online?',
+    'Você não só aprende a habilidade: aplica o que aprendeu e sai com um projeto que demonstra isso.',
   ],
   [
-    'O que é o projeto do curso?',
-    'É um trabalho prático para aplicar o que você aprendeu. Você envia em PDF ou link e ele fica guardado no seu portfólio da Folyo.',
+    'Os cursos oferecem certificado?',
+    'Sim. Ao concluir as aulas e enviar o projeto (quando o curso tiver), o certificado sai em seu nome.',
+  ],
+  ['Existem cursos gratuitos?', 'Sim. Criar a conta é grátis e o curso Descomplicando Processos Seletivos é gratuito.'],
+  [
+    'Preciso ter experiência para começar?',
+    'Não. Cada curso mostra o nível na página dele, e a Folyo foi pensada para quem está construindo a própria experiência.',
   ],
   [
-    'Como recebo o certificado?',
-    'Quando você conclui as aulas e envia o projeto (nos cursos que têm projeto), o certificado é emitido em seu nome e pode entrar no seu currículo da Folyo.',
-  ],
-  [
-    'Preciso ter experiência?',
-    'Não necessariamente. Cada curso informa o nível na página dele, como Iniciante, para você escolher o que faz sentido agora.',
+    'Isso garante um estágio ou emprego?',
+    'Nenhum curso garante uma vaga. O projeto ajuda você a mostrar, com clareza, o que sabe fazer.',
   ],
 ] as const

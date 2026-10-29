@@ -11,6 +11,9 @@ const reducedMotion = () =>
   typeof matchMedia !== 'undefined' &&
   (matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('calm'))
 
+/** Assinatura vazia para `useSyncExternalStore` (valores que só mudam entre servidor e navegador). */
+const noSubscribe = () => () => {}
+
 /** Rola suavemente até a seção (sem animação para quem prefere movimento reduzido). */
 const scrollToId = (id: string) =>
   document.getElementById(id)?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' })
@@ -132,13 +135,89 @@ export function LandingHeader() {
   )
 }
 
-/** Botão "O que é a Folyo?" do hero: rola até a seção. */
+/** Botão "Ver um exemplo" do hero: rola até a seção da história da Marina. */
 export function WhatIsButton() {
   return (
     <button type="button" className="btn btn-lg btn-quiet-dark lp-btn" onClick={() => scrollToId('o-que-e')}>
-      O que é a Folyo?
+      Ver um exemplo
       <LpIcon name="ArrowDown" size={17} />
     </button>
+  )
+}
+
+/**
+ * A história da Marina: abas (Antes, Aprende, Cria, Mostra) que avançam sozinhas a cada ~5s
+ * enquanto a seção está visível. Pausa com o mouse/foco em cima e para quem prefere movimento reduzido.
+ * Os quadros (`frames`) vêm prontos do servidor, na mesma ordem das abas (`steps`).
+ */
+export function StoryTabs({
+  steps,
+  frames,
+}: {
+  steps: readonly { k: string; t: string }[]
+  frames: ReactNode[]
+}) {
+  const [index, setIndex] = useState(0)
+  const [hovered, setHovered] = useState(false)
+  const [visible, setVisible] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+  // Preferência de movimento: lida só no navegador (no servidor vale `false`).
+  const calm = useSyncExternalStore(noSubscribe, reducedMotion, () => false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el || typeof IntersectionObserver === 'undefined') return
+    const observer = new IntersectionObserver((entries) => setVisible(entries.some((e) => e.isIntersecting)), {
+      threshold: 0.35,
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (calm || hovered || !visible) return
+    const timer = setTimeout(() => setIndex((i) => (i + 1) % steps.length), 5200)
+    return () => clearTimeout(timer)
+  }, [index, hovered, visible, calm, steps.length])
+
+  return (
+    <div
+      className={'story' + (hovered || calm || !visible ? ' is-paused' : '')}
+      ref={ref}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocusCapture={() => setHovered(true)}
+      onBlurCapture={() => setHovered(false)}
+    >
+      <div className="story-tabs" role="tablist" aria-label="A história da Marina, passo a passo">
+        {steps.map((step, i) => (
+          <button
+            key={step.k}
+            type="button"
+            role="tab"
+            id={'st-tab-' + i}
+            aria-selected={i === index}
+            aria-controls="st-panel"
+            className={'story-tab' + (i === index ? ' on' : '') + (i < index ? ' past' : '')}
+            onClick={() => setIndex(i)}
+          >
+            <span className="story-n">{i + 1}</span>
+            <span className="story-tt">
+              <b>{step.k}</b>
+              <small>{step.t}</small>
+            </span>
+            <span className="story-prog" aria-hidden="true">
+              <span key={index + '-' + i} />
+            </span>
+          </button>
+        ))}
+      </div>
+      <div className="story-stage" role="tabpanel" id="st-panel" aria-labelledby={'st-tab-' + index}>
+        <div className="story-frame" key={index}>
+          {frames[index]}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -176,7 +255,6 @@ export function LandingSticky() {
   )
 }
 
-const noSubscribe = () => () => {}
 const clientYear = () => new Date().getFullYear()
 const serverYear = () => null
 

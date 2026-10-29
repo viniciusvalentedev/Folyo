@@ -2,19 +2,25 @@ import Link from 'next/link'
 import { Fragment, type CSSProperties } from 'react'
 import { MarkPath, Wordmark } from '@/components/brand/Logo'
 import {
-  AUDIENCE,
+  COMPARE_FOR,
+  COMPARE_ROWS,
   FAQ,
+  FREE_COURSE_CHIPS,
   FREE_COURSE_LEARN,
   FREE_COURSE_TITLE,
+  HERO_LESSONS,
   HREF,
   INSTAGRAM_URL,
   JOURNEY_STEPS,
   SKILL_BLOBS,
   SKILL_TONES,
+  STORY_BLOCKS,
+  STORY_MODULES,
+  STORY_STEPS,
   TICKER_SKILLS,
 } from './data'
 import { LpIcon } from './icons'
-import { FooterYear, LandingHeader, LandingRoot, LandingSticky, WhatIsButton } from './LandingClient'
+import { FooterYear, LandingHeader, LandingRoot, LandingSticky, StoryTabs, WhatIsButton } from './LandingClient'
 
 /*
  * Página pública da Folyo (o que aparece em "/" para quem não está logado).
@@ -53,43 +59,75 @@ function BigMark({ size, rotate, className }: { size: number; rotate: number; cl
   )
 }
 
-/** Mini-ilustração de cada passo do "Como funciona". */
-function StepArt({ i }: { i: number }) {
+/** Mini-interface de cada passo do hero (Aprenda, Crie, Mostre). */
+function HeroArt({ i }: { i: number }) {
   if (i === 0) {
     return (
-      <div className="lp-sa lp-sa-learn" aria-hidden="true">
-        <span className="lp-sa-play">
-          <LpIcon name="Play" size={16} />
-        </span>
-        {[0, 1, 2].map((a) => (
-          <span key={a} className={'lp-sa-row' + (a < 2 ? ' done' : '')} style={vars({ '--i': a })}>
-            <i>
-              <LpIcon name="Check" size={12} />
-            </i>
-            <em />
+      <div className="hx hx-learn" aria-hidden="true">
+        <div className="hx-video">
+          <span className="hx-playb">
+            <LpIcon name="Play" size={14} />
+          </span>
+          <span className="hx-vbar">
+            <span />
+          </span>
+        </div>
+        {HERO_LESSONS.map((lesson, a) => (
+          <span key={lesson} className={'hx-lesson' + (a < 2 ? ' done' : '')} style={vars({ '--i': a })}>
+            <i>{a < 2 && <LpIcon name="Check" size={11} />}</i>
+            {lesson}
           </span>
         ))}
+        <span className="hx-skill">+ skill</span>
       </div>
     )
   }
   if (i === 1) {
     return (
-      <div className="lp-sa lp-sa-make" aria-hidden="true">
-        <span className="lp-sa-drop">
-          <LpIcon name="FileUp" size={22} />
-          <small>PDF ou link</small>
+      <div className="hx hx-create" aria-hidden="true">
+        <div className="hx-doc-top">
+          <span />
+          <span />
+          <span />
+        </div>
+        <span className="hx-blk b1">
+          <em />
+          Pesquisa
+        </span>
+        <span className="hx-blk b2">
+          <em />
+          Proposta
+        </span>
+        <span className="hx-blk b3">
+          <em />
+          Peças
+        </span>
+        <span className="hx-cursor">
+          <LpIcon name="MousePointerClick" size={16} />
         </span>
       </div>
     )
   }
   return (
-    <div className="lp-sa lp-sa-win" aria-hidden="true">
-      <span className="lp-sa-cert">
-        <svg viewBox="0 0 40 40" width="34" height="34">
-          <MarkPath x={20} y={20} r={17} fill="#DD33CF" />
-        </svg>
-        <em />
-        <em className="s" />
+    <div className="hx hx-show" aria-hidden="true">
+      <div className="hx-card">
+        <div className="hx-cover">
+          <svg viewBox="0 0 40 40" width="26" height="26">
+            <MarkPath x={20} y={20} r={17} fill="#fff" />
+          </svg>
+        </div>
+        <div className="hx-card-t">
+          <b />
+          <small />
+        </div>
+        <span className="hx-ok">
+          <LpIcon name="BadgeCheck" size={13} />
+          Demonstrado
+        </span>
+      </div>
+      <span className="hx-tags">
+        <i>Projeto</i>
+        <i>Portfólio</i>
       </span>
     </div>
   )
@@ -106,55 +144,57 @@ function Hero() {
             Aprenda. Crie. Conquiste.
           </p>
           <h1 id="lp-title" className="lp-title">
-            <span className="lp-line lp-line-1">
-              <Words text="Seu próximo" from={80} />{' '}
+            <span className="lp-line">
+              <Words text="Não basta dizer" from={80} />
+            </span>
+            <span className="lp-line">
+              <Words text="que você sabe." from={300} />
+            </span>
+            <span className="lp-line lp-line-hl">
               <span className="lp-hlwrap">
                 <span className="lp-w lp-hl">
-                  <span style={vars({ '--d': '240ms' })}>projeto</span>
+                  <span style={vars({ '--d': '520ms' })}>Mostre.</span>
                 </span>
                 <svg className="lp-swoosh" viewBox="0 0 300 24" preserveAspectRatio="none" aria-hidden="true">
                   <path d="M4 16 C 70 4, 160 4, 296 12" pathLength="1" />
                 </svg>
               </span>
             </span>
-            <span className="lp-line">
-              <Words text="começa aqui." from={340} />
-            </span>
           </h1>
-          <p className="lp-lead lp-in" style={vars({ '--d': '560ms' })}>
-            A Folyo é uma plataforma de <b>cursos online curtos e práticos</b>. Você assiste às aulas, faz um projeto de
-            verdade e sai com <b>certificado e currículo</b> prontos para mostrar.
+          <p className="lp-lead lp-in" style={vars({ '--d': '700ms' })}>
+            Aprenda uma habilidade, crie um <b>projeto real</b> e saia com <b>algo concreto para mostrar</b>.
           </p>
-          <div className="lp-ctas lp-in" style={vars({ '--d': '680ms' })}>
+          <div className="lp-ctas lp-in" style={vars({ '--d': '800ms' })}>
             <Link href={HREF.cursoGratis} className="btn btn-lg btn-go lp-btn lp-btn-free">
               <LpIcon name="Sparkles" size={17} />
               <span>Acessar curso grátis</span>
             </Link>
             <WhatIsButton />
           </div>
-          <ul className="lp-checks lp-in" style={vars({ '--d': '780ms' })}>
+          <ul className="lp-checks lp-in" style={vars({ '--d': '880ms' })}>
             <li>
               <LpIcon name="CircleCheck" size={16} />
-              Criar conta é grátis
+              Cursos com projeto prático
+            </li>
+            <li>
+              <LpIcon name="CircleCheck" size={16} />
+              Conta grátis
             </li>
             <li>
               <LpIcon name="CircleCheck" size={16} />
               Curso gratuito para começar
             </li>
-            <li>
-              <LpIcon name="CircleCheck" size={16} />
-              Estude pelo celular ou computador
-            </li>
           </ul>
         </div>
         <div id="como-funciona" className="lp-journey-wrap">
-          <p className="lp-journey-t lp-in" style={vars({ '--d': '860ms' })}>
-            Como funciona, em 3 passos
-          </p>
-          <ol className="lp-journey">
+          <ol className="lp-journey" aria-label="Como funciona">
             {JOURNEY_STEPS.map((step, i) => (
-              <li key={step.k} className="lp-jstep lp-in" style={vars({ '--d': `${960 + i * 160}ms` })}>
-                <StepArt i={i} />
+              <li
+                key={step.k}
+                className="lp-jstep lp-in"
+                style={vars({ '--d': `${960 + i * 160}ms`, '--sd': `${1.2 + i * 0.5}s` })}
+              >
+                <HeroArt i={i} />
                 <div className="lp-jstep-t">
                   <span className="lp-jn" aria-hidden="true">
                     {i + 1}
@@ -189,67 +229,190 @@ function Hero() {
   )
 }
 
+/* ---- A história da Marina (quadros de cada aba) ---- */
+
+function StoryBefore() {
+  return (
+    <div className="mf mf-before">
+      <div className="mf-profile">
+        <span className="mf-av">M</span>
+        <div>
+          <b>Marina</b>
+          <small>Quer o primeiro estágio em marketing</small>
+        </div>
+      </div>
+      <p className="mf-say">“Eu sei marketing.”</p>
+      <dl className="mf-facts">
+        <div>
+          <dt>Experiência profissional</dt>
+          <dd className="no">Ainda não tem</dd>
+        </div>
+        <div>
+          <dt>Projetos para mostrar</dt>
+          <dd className="no">Nenhum</dd>
+        </div>
+      </dl>
+    </div>
+  )
+}
+
+function StoryLearn() {
+  return (
+    <div className="mf mf-learn">
+      <div className="mf-course">
+        <span className="mf-course-ico">
+          <LpIcon name="Play" size={16} />
+        </span>
+        <div>
+          <small>Curso</small>
+          <b>Fundamentos de marketing</b>
+        </div>
+        <span className="mf-pct">75%</span>
+      </div>
+      <span className="mf-bar">
+        <span />
+      </span>
+      <ul className="mf-mods">
+        {STORY_MODULES.map(([name, done], i) => (
+          <li key={name} className={done ? 'done' : 'now'} style={vars({ '--i': i })}>
+            <i>{done ? <LpIcon name="Check" size={12} /> : <LpIcon name="Play" size={10} />}</i>
+            {name}
+          </li>
+        ))}
+      </ul>
+      <div className="mf-skills">
+        <span>Marketing</span>
+        <span>Comunicação</span>
+      </div>
+    </div>
+  )
+}
+
+function StoryCreate() {
+  return (
+    <div className="mf mf-create">
+      <div className="mf-doc-h">
+        <span className="mf-brand">Aurora Café</span>
+        <span className="mf-pill">Projeto em construção</span>
+      </div>
+      <p className="mf-doc-t">Plano de comunicação digital</p>
+      <ul className="mf-blocks">
+        {STORY_BLOCKS.map((block, i) => (
+          <li key={block} style={vars({ '--i': i })}>
+            <i>
+              <LpIcon name="Check" size={11} />
+            </i>
+            {block}
+            {i === 5 && (
+              <span className="mf-pieces">
+                <em className="p1">Bom dia começa aqui</em>
+                <em className="p2" />
+                <em className="p3" />
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function StoryShow() {
+  return (
+    <div className="mf mf-show">
+      <p className="mf-port">Portfólio · Marina</p>
+      <div className="mf-pcard">
+        <div className="mf-pcover">
+          <span className="mf-sun" />
+          <b>Aurora Café</b>
+          <small>campanha digital</small>
+        </div>
+        <div className="mf-pbody">
+          <b>Plano de comunicação digital</b>
+          <span className="mf-ptags">
+            <i>Marketing</i>
+            <i>Comunicação</i>
+          </span>
+          <span className="mf-pok">
+            <LpIcon name="BadgeCheck" size={15} />
+            Projeto concluído
+          </span>
+        </div>
+      </div>
+      <div className="mf-quote">
+        <span className="was">“Eu sei marketing.”</span>
+        <LpIcon name="ArrowRight" size={16} />
+        <span className="now">“Olha o projeto que eu fiz.”</span>
+      </div>
+    </div>
+  )
+}
+
 function WhatIs() {
   return (
     <section id="o-que-e" className="lp-sec lp-paper" aria-labelledby="lp-what">
       <div className="lp-wrap">
         <div className="lp-sec-head lp-reveal">
-          <p className="eyebrow">Para quem nunca ouviu falar</p>
+          <p className="eyebrow">Exemplo ilustrativo</p>
           <h2 id="lp-what" className="lp-h2">
-            O que é a Folyo?
+            Do “eu sei” ao <span className="lp-mark">“olha o que eu fiz”</span>.
           </h2>
-          <p className="lp-sub lp-sub-big">
-            É um lugar para <b>aprender fazendo</b>. Em vez de só assistir, você termina cada curso com um projeto
-            pronto e um certificado no seu nome. Tudo vai para o seu currículo, para você mostrar o que sabe fazer em
-            entrevistas e processos seletivos.
-          </p>
         </div>
-        <div className="lp-ba">
-          <div className="lp-ba-card lp-ba-before lp-reveal">
-            <span className="lp-ba-tag">Só estudar</span>
-            <div className="lp-ba-cv" aria-hidden="true">
-              <span className="lp-ba-name" />
-              <span className="lp-ba-l" />
-              <span className="lp-ba-l s" />
-              <span className="lp-ba-empty">
-                Experiência prática: <em>nada para mostrar</em>
-              </span>
-            </div>
-            <p>Você aprende, mas não tem como provar.</p>
-          </div>
-          <div className="lp-ba-arrow" aria-hidden="true">
-            <LpIcon name="ArrowRight" size={22} />
-          </div>
-          <div className="lp-ba-card lp-ba-after lp-reveal" style={vars({ '--d': '140ms' })}>
-            <span className="lp-ba-tag on">Com a Folyo</span>
-            <div className="lp-ba-cv" aria-hidden="true">
-              <span className="lp-ba-name" />
-              <span className="lp-ba-l" />
-              <span className="lp-ba-row r1">
-                <LpIcon name="Award" size={15} />
-                Certificado em seu nome
-              </span>
-              <span className="lp-ba-row r2">
-                <LpIcon name="Paperclip" size={15} />
-                Projeto prático no portfólio
-              </span>
-              <span className="lp-ba-row r3">
-                <LpIcon name="Puzzle" size={15} />
-                Skills que você desenvolveu
-              </span>
-            </div>
-            <p>Você aprende e sai com provas do que sabe fazer.</p>
-          </div>
+        <div className="lp-reveal">
+          <StoryTabs
+            steps={STORY_STEPS}
+            frames={[<StoryBefore key="0" />, <StoryLearn key="1" />, <StoryCreate key="2" />, <StoryShow key="3" />]}
+          />
         </div>
-        <div className="lp-who lp-reveal">
-          <p className="lp-who-t">
-            <b>Para quem é.</b> Para quem quer se preparar para o mercado de trabalho, em qualquer momento:
-          </p>
+        <p className="story-note lp-reveal">
+          Marina e a Aurora Café são personagens fictícias, criadas para ilustrar como funciona a Folyo.
+        </p>
+      </div>
+    </section>
+  )
+}
+
+/** Comparação em diagrama: "só conhecimento" x "conhecimento aplicado". */
+function Compare() {
+  return (
+    <section className="lp-sec lp-ink lp-cmp" aria-labelledby="lp-cmp-t">
+      <div className="lp-wrap">
+        <h2 id="lp-cmp-t" className="lp-h2 lp-cmp-title lp-reveal">
+          Saber é o começo. <span>Mostrar faz a diferença.</span>
+        </h2>
+        <div className="lp-cmp-rows">
+          {COMPARE_ROWS.map((row, e) => (
+            <div key={row.k} className={'lp-cmp-row ' + row.cls + ' lp-reveal'} style={vars({ '--d': `${e * 140}ms` })}>
+              <span className="lp-cmp-k">
+                {e === 1 && (
+                  <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                    <MarkPath x={12} y={12} r={10} fill="#C9E23F" />
+                  </svg>
+                )}
+                {row.k}
+                {e === 1 && <em>Folyo</em>}
+              </span>
+              <ol>
+                {row.nodes.map(([icon, label], i) => (
+                  <li key={label} className={i === 2 ? 'end' : ''} style={vars({ '--i': i })}>
+                    <span className="ico-b">
+                      <LpIcon name={icon} size={18} />
+                    </span>
+                    {label}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </div>
+        <p className="lp-cmp-note lp-reveal">O certificado continua valendo. O projeto mostra o que ele significa.</p>
+        <div className="lp-for lp-reveal">
+          <span>Para quem busca</span>
           <ul>
-            {AUDIENCE.map((a) => (
-              <li key={a.id}>
-                <LpIcon name={a.icon} size={16} />
-                {a.title}
+            {COMPARE_FOR.map(([icon, label]) => (
+              <li key={label}>
+                <LpIcon name={icon} size={15} />
+                {label}
               </li>
             ))}
           </ul>
@@ -272,17 +435,21 @@ function FreeCourse() {
           <h2 id="lp-free-t" className="lp-free-title">
             {FREE_COURSE_TITLE}
           </h2>
-          <p className="lp-free-lead">Prepare-se melhor para as oportunidades que podem transformar sua trajetória.</p>
-          <p className="lp-free-desc">
-            Aprenda a entender os processos seletivos, organizar sua preparação e apresentar suas habilidades com mais
-            estratégia e confiança.
-          </p>
+          <p className="lp-free-lead">Comece de graça. Chegue mais preparado.</p>
+          <ul className="lp-free-chips">
+            {FREE_COURSE_CHIPS.map(([icon, label]) => (
+              <li key={label}>
+                <LpIcon name={icon} size={14} />
+                {label}
+              </li>
+            ))}
+          </ul>
           <div className="lp-free-cta">
             <Link href={HREF.cursoGratis} className="btn btn-lg btn-go lp-btn lp-btn-free">
               <span>Quero acessar o curso grátis</span>
               <LpIcon name="ArrowRight" size={17} />
             </Link>
-            <small>Sem custo. Você só precisa de uma conta na Folyo.</small>
+            <small>Grátis. Só precisa de uma conta.</small>
           </div>
         </div>
         <div className="lp-free-card lp-reveal" style={vars({ '--d': '140ms' })}>
@@ -291,10 +458,12 @@ function FreeCourse() {
             <span className="plan free">Gratuito</span>
           </header>
           <ul className="lp-learn">
-            {FREE_COURSE_LEARN.map((item, i) => (
-              <li key={item} style={vars({ '--i': i })}>
-                <LpIcon name="CircleCheck" size={18} />
-                {item}
+            {FREE_COURSE_LEARN.map(([icon, label], i) => (
+              <li key={label} style={vars({ '--i': i })}>
+                <span className="lp-learn-ico">
+                  <LpIcon name={icon} size={17} />
+                </span>
+                {label}
               </li>
             ))}
           </ul>
@@ -314,18 +483,14 @@ function Why() {
         <div className="lp-sec-head lp-reveal">
           <p className="eyebrow">Por que a Folyo?</p>
           <h2 id="lp-why" className="lp-h2">
-            O que você aprende fica registrado a seu favor.
+            Aprenda, aplique, mostre.
           </h2>
         </div>
         <div className="lp-bento">
           <article className="lp-tile lp-tile-cv lp-reveal">
             <div className="lp-tile-t">
-              <LpIcon name="FileUser" size={22} />
-              <h3>Um currículo que se monta enquanto você estuda</h3>
-              <p>
-                Certificados e projetos entram no seu currículo da Folyo com um clique. Você escolhe o que mostrar e em
-                que ordem.
-              </p>
+              <h3>Demonstre suas habilidades.</h3>
+              <p>Projetos e certificados no seu currículo e portfólio.</p>
             </div>
             <div className="lp-cv" aria-hidden="true">
               <span className="lp-cv-h" />
@@ -361,38 +526,41 @@ function Why() {
               ))}
             </div>
             <div className="lp-tile-t">
-              <h3>Suas skills ganham forma</h3>
-              <p>Cada aula concluída alimenta o gráfico das suas skills. Você enxerga onde está evoluindo.</p>
+              <h3>Construa seu caminho.</h3>
+              <p>Skills e projetos crescendo juntos no seu perfil.</p>
             </div>
           </article>
           <article className="lp-tile lp-tile-goal lp-reveal" style={vars({ '--d': '60ms' })}>
             <div className="lp-tile-t">
-              <LpIcon name="Route" size={22} />
-              <h3>Um objetivo, um caminho</h3>
-              <p>
-                Escolha aonde quer chegar, como conseguir o primeiro estágio ou construir carreira em Marketing, e veja
-                os cursos que levam até lá.
-              </p>
+              <h3>Aprenda na prática.</h3>
+              <p>Cada aula leva a algo que você vai fazer.</p>
             </div>
-            <div className="lp-route" aria-hidden="true">
-              <i />
-              <i />
-              <i />
-              <span />
+            <div className="lp-flow" aria-hidden="true">
+              <span className="lp-flow-a">
+                <LpIcon name="Play" size={14} />
+                Aula
+              </span>
+              <span className="lp-flow-line" />
+              <span className="lp-flow-b">
+                <LpIcon name="SquarePen" size={14} />
+                Atividade do projeto
+              </span>
             </div>
           </article>
           <article className="lp-tile lp-tile-resume lp-reveal" style={vars({ '--d': '150ms' })}>
             <div className="lp-tile-t">
-              <LpIcon name="History" size={22} />
-              <h3>Retome de onde parou</h3>
-              <p>A Folyo guarda a última aula de cada curso e mostra o seu ritmo de estudo por semana.</p>
+              <h3>Crie projetos reais.</h3>
+              <p>Trabalhos seus, em PDF ou link.</p>
             </div>
-            <div className="lp-resume" aria-hidden="true">
-              <span className="lp-resume-play">
-                <LpIcon name="Play" size={14} />
+            <div className="lp-fan" aria-hidden="true">
+              <span className="f1">
+                <LpIcon name="FileText" size={16} />
               </span>
-              <span className="lp-resume-bar">
-                <span />
+              <span className="f2">
+                <LpIcon name="Link" size={16} />
+              </span>
+              <span className="f3">
+                <LpIcon name="BadgeCheck" size={16} />
               </span>
             </div>
           </article>
@@ -411,7 +579,7 @@ function Faq() {
           <h2 id="lp-faq-t" className="lp-h2">
             Perguntas frequentes
           </h2>
-          <p className="lp-sub">Tudo o que você precisa saber antes de criar sua conta.</p>
+          <p className="lp-sub">Respostas rápidas antes de começar.</p>
         </div>
         <div className="lp-faq-list lp-reveal" style={vars({ '--d': '100ms' })}>
           {FAQ.map(([q, a], i) => (
@@ -435,9 +603,9 @@ function FinalCall() {
       <BigMark size={620} rotate={10} className="lp-final-f" />
       <div className="lp-wrap lp-final-in lp-reveal">
         <h2 id="lp-final-t" className="lp-final-title">
-          O próximo passo <span>começa com você.</span>
+          Seu conhecimento <span>merece ser visto.</span>
         </h2>
-        <p>Conheça a Folyo, explore novas possibilidades e comece sua jornada.</p>
+        <p>Comece grátis. Termine com algo para mostrar.</p>
         <div className="lp-final-ctas">
           <Link href={HREF.criarConta} className="btn btn-lg btn-primary lp-btn lp-btn-glow">
             <span>Criar minha conta grátis</span>
@@ -495,6 +663,7 @@ export function Landing({ tagline }: { tagline: string }) {
       <main id="lp-main" tabIndex={-1}>
         <Hero />
         <WhatIs />
+        <Compare />
         <FreeCourse />
         <Why />
         <Faq />
