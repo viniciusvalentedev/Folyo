@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { findCourse } from '@/lib/domain/catalog'
-import { formatDate } from '@/lib/format'
+import { formatDate, formatPhoneBR } from '@/lib/format'
 import type { Catalog, Derived, ResumeSection, SkillType, UserState } from '@/lib/types'
 
 export const SECTION_NAMES: Record<ResumeSection, string> = {
@@ -75,7 +75,7 @@ export function resumeData(s: UserState, d: Derived, catalog: Catalog) {
 /** Versão em texto puro (para "Copiar texto"). */
 export function resumeText(s: UserState, d: Derived, catalog: Catalog) {
   const r = resumeData(s, d, catalog)
-  const lines = [r.u.name, [r.u.city, r.u.email, r.u.phone, r.u.link].filter(Boolean).join(' | '), '']
+  const lines = [r.u.name, [r.u.city, r.u.email, formatPhoneBR(r.u.phone), r.u.link].filter(Boolean).join(' | '), '']
   for (const sec of r.order) {
     const items: string[] = []
     if (sec === 'objetivo' && r.u.objective) items.push(r.u.objective)
@@ -123,7 +123,7 @@ export function Scaled({ children }: { children: ReactNode }) {
 export function ResumeSheet({ s, d, catalog }: { s: UserState; d: Derived; catalog: Catalog }) {
   const r = resumeData(s, d, catalog)
   const template = s.resume.template
-  const contact = [r.u.city, r.u.email, r.u.phone, r.u.link].filter(Boolean)
+  const contact = [r.u.city, r.u.email, formatPhoneBR(r.u.phone), r.u.link].filter(Boolean)
   const groups: SkillType[] = ['tecnica', 'ferramenta', 'comportamental']
 
   const blocks: Record<ResumeSection, ReactNode> = {

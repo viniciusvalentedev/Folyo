@@ -536,7 +536,9 @@ export function ClassroomView({ courseId, lessonId, embedUrl }: { courseId: stri
         <div className="celebrate">
           <svg viewBox="0 0 120 120" width="96" height="96" aria-hidden="true" className="celebrate-mark">
             <circle cx="60" cy="60" r="50" fill="none" stroke="var(--lime)" strokeWidth="6" strokeLinecap="round" className="draw" />
-            <MarkPath x={60} y={60} r={22} fill="var(--lime)" />
+            <g className="celebrate-star">
+              <MarkPath x={60} y={60} r={22} fill="var(--lime)" />
+            </g>
           </svg>
           {celebrate === 'lessons' ? (
             <p>

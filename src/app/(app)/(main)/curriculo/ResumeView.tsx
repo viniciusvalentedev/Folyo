@@ -10,7 +10,7 @@ import { Ring } from '@/components/ui/indicators'
 import { Modal } from '@/components/ui/Modal'
 import { sameText } from '@/lib/domain/catalog'
 import { suggestedObjective } from '@/lib/domain/derive'
-import { formatDate } from '@/lib/format'
+import { formatDate, formatPhoneBR } from '@/lib/format'
 import type { ProfileListKey, ResumeSection, SkillType, UserProfile } from '@/lib/types'
 import { LIMITS } from '@/lib/validation'
 import { EXPERIENCE_KINDS, ResumeSheet, SECTION_NAMES, SKILL_GROUPS, Scaled, resumeText } from './ResumeSheet'
@@ -316,8 +316,11 @@ export function ResumeView() {
                       type="tel"
                       className="inp"
                       maxLength={30}
-                      value={s.user.phone}
-                      onChange={(e) => a.setUser({ phone: e.target.value })}
+                      inputMode="tel"
+                      autoComplete="tel-national"
+                      placeholder="(35) 99999-9999"
+                      value={formatPhoneBR(s.user.phone)}
+                      onChange={(e) => a.setUser({ phone: formatPhoneBR(e.target.value) })}
                     />
                   </Field>
                   <Field label="Portfólio ou LinkedIn" id="cv-link" className="span-2" hint="Endereço do seu portfólio ou perfil profissional (LinkedIn, Behance, GitHub…).">

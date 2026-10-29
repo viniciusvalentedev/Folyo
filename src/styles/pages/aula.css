@@ -71,7 +71,9 @@
 .celebrate.light b, .celebrate b { color: var(--fg); }
 .draw { stroke-dasharray: 320; stroke-dashoffset: 320; animation: draw 1s .1s var(--ease) forwards; }
 
-.celebrate-mark path { transform-origin: 60px 60px; animation: starIn .6s .5s var(--ease) both; }
+/* A animação roda no <g>, não no <path>: o <path> da marca já tem o posicionamento no atributo
+   transform, e o `transform: none` final da animação apagava isso e deixava a logo gigante e torta. */
+.celebrate-mark .celebrate-star { transform-origin: 60px 60px; animation: starIn .6s .5s var(--ease) both; }
 
 /* ---------- Folyo 2.0 ---------- */
 .player-none { position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; gap: 10px; align-items: center; margin: 0; padding: 12px 14px; border-radius: 12px; background: rgba(0,0,0,.55); color: #F1F0F7; font-size: 14px; line-height: 1.4; }

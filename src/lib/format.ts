@@ -22,6 +22,27 @@ export function formatDate(iso: string | null | undefined, long?: boolean) {
   return long ? `${d} de ${MONTHS[m - 1]} de ${y}` : `${d} ${MONTHS_SHORT[m - 1]} ${y}`
 }
 
+/**
+ * Telefone brasileiro com DDD entre parênteses: "35998099131" → "(35) 99809-9131" (celular) ou
+ * "(35) 3722-1234" (fixo). Serve para digitar (vai formatando) e para mostrar o que já estava salvo.
+ * Números internacionais (começam com "+") ficam como a pessoa digitou.
+ */
+export function formatPhoneBR(raw: string | null | undefined) {
+  const text = (raw ?? '').trim()
+  if (text.startsWith('+')) return text
+  let d = text.replace(/\D/g, '')
+  if (d.length > 11 && d.startsWith('55')) d = d.slice(2) // colou com o código do país
+  d = d.slice(0, 11)
+  if (!d) return ''
+  if (d.length <= 2) return `(${d}`
+  const ddd = d.slice(0, 2)
+  const rest = d.slice(2)
+  if (rest.length <= 4) return `(${ddd}) ${rest}`
+  // 8 dígitos (fixo) quebram 4-4; 9 dígitos (celular) quebram 5-4.
+  const cut = rest.length > 8 ? 5 : 4
+  return `(${ddd}) ${rest.slice(0, cut)}-${rest.slice(cut)}`
+}
+
 /** "12 out". */
 export function formatDayMonth(iso: string) {
   const [, m, d] = iso.slice(0, 10).split('-').map(Number)

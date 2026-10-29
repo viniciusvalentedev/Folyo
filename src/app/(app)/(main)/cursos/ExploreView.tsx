@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useMemo, useState, type CSSProperties } from 'react'
 import { LaunchBanner } from '@/components/cart/CartBits'
-import { CourseArt, CourseCard, CourseRow, FavButton } from '@/components/course/CourseBits'
+import { CourseCard, CourseRow, FavButton } from '@/components/course/CourseBits'
 import { useApp } from '@/components/providers/AppState'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/controls'
@@ -241,7 +241,6 @@ export function ExploreView() {
               style={{ '--i': 3 } as CSSProperties}
               onClick={() => router.push('/cursos/' + featured.id)}
             >
-              <CourseArt course={featured} ratio="auto" className="feature-art" big />
               <div className="feature-body">
                 <p className="eyebrow">Em destaque · {categoryOf(catalog, featured.cat).name}</p>
                 <h2>{featured.title}</h2>

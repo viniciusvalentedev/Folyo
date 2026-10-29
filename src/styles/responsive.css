@@ -48,7 +48,6 @@
   
   
   .feature, .cert-card, .case { grid-template-columns: minmax(0, 1fr); }
-  .feature-art { min-height: 200px; }
   
   .resume-split { grid-template-columns: minmax(0, 1fr); }
   .resume-split.view-editar .resume-preview-wrap { display: none; }

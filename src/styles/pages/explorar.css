@@ -21,10 +21,7 @@
 .filter-fav.on { background: var(--magenta-soft); border-color: transparent; color: var(--magenta-deep); }
 .filter-fav.on .ico { fill: currentColor; }
 
-.feature { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); border-radius: 26px; overflow: hidden; background: var(--ink); color: #fff; cursor: pointer; min-height: 340px; }
-.feature-art { height: 100%; min-height: 240px; }
-.feature-art .art-glyph { color: var(--lime); }
-.feature:hover .art-svg { transform: scale(1.05); }
+.feature { display: grid; grid-template-columns: minmax(0, 1fr); border-radius: 26px; overflow: hidden; background: var(--ink); color: #fff; cursor: pointer; }
 .feature-body { padding: 36px 40px; display: grid; gap: 14px; align-content: center; }
 .feature-body h2 { color: #fff; font-size: clamp(26px, 3vw, 38px); line-height: 1.06; }
 .feature-body p { color: #C9C7DA; max-width: 52ch; }
