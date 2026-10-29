@@ -24,6 +24,7 @@ import '@/styles/pages/landing.css'
 import '@/styles/pages/primeiro-acesso.css'
 import '@/styles/pages/admin.css'
 import '@/styles/pages/legal.css'
+import '@/styles/pages/loja.css'
 import '@/styles/responsive.css'
 import '@/styles/motion.css'
 

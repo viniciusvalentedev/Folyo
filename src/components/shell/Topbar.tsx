@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Wordmark } from '@/components/brand/Logo'
+import { CartButton } from '@/components/cart/CartBits'
 import { useApp } from '@/components/providers/AppState'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { isListed, normalize } from '@/lib/domain/catalog'
@@ -237,6 +238,7 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
       </Link>
       <GlobalSearch />
       <div className="topbar-right">
+        <CartButton />
         <Notifications />
       </div>
     </header>

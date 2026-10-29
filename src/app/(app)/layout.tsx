@@ -1,9 +1,11 @@
 import { Suspense } from 'react'
 import { Mark } from '@/components/brand/Logo'
 import { AppStateProvider } from '@/components/providers/AppState'
+import { ShopProvider } from '@/components/providers/Shop'
 import { Toasts } from '@/components/ui/Toasts'
 import { getCatalog } from '@/lib/data/catalog'
 import { getPublicConfig } from '@/lib/data/config'
+import { getShop } from '@/lib/data/shop'
 import { getCurrentUserState } from '@/lib/data/user'
 
 /**
@@ -23,11 +25,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 }
 
 async function SignedInApp({ children }: { children: React.ReactNode }) {
-  const [catalog, config, state] = await Promise.all([getCatalog(), getPublicConfig(), getCurrentUserState()])
+  const [catalog, config, state, shop] = await Promise.all([getCatalog(), getPublicConfig(), getCurrentUserState(), getShop()])
   return (
     <AppStateProvider catalog={catalog} config={config} initialState={state}>
-      {children}
-      <Toasts />
+      <ShopProvider shop={shop}>
+        {children}
+        <Toasts />
+      </ShopProvider>
     </AppStateProvider>
   )
 }

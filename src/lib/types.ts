@@ -67,6 +67,10 @@ export type Course = {
   tone: Tone
   glyph: string
   plan: Plan
+  /** Preço em centavos. Sem preço (ou 0) = gratuito. Só para a tela: quem cobra e libera é o banco. */
+  priceCents?: number
+  /** O cupom de lançamento vale para este curso. */
+  promo?: boolean
   featured: boolean
   summary: string
   /** Curso recomendado: sobe na ordenação por relevância. */

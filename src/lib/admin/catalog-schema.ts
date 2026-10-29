@@ -79,6 +79,8 @@ export const courseSchema = z.object({
   publishAt: z.string().max(40).nullable(),
   plan: z.enum(['free', 'pro']),
   access: z.enum(['todos', 'assinantes']),
+  priceCents: z.number().int().min(L.priceCents.min).max(L.priceCents.max).nullable(),
+  promo: z.boolean(),
   project: z.object({
     title: str(L.projectTitle),
     brief: str(L.projectText),

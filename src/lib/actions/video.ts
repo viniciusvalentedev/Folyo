@@ -81,9 +81,20 @@ export async function deleteVideoAction(input: unknown): Promise<{ ok: true } | 
   const { fail, ctx } = await gate()
   if (!ctx) return fail
   if (!bunnyConfigured()) return NOT_CONFIGURED
-  const { count, error } = await ctx.supabase.from('lessons').select('id', { count: 'exact', head: true }).eq('bunny_video_id', parsed.data.id)
-  if (error) return FAILED
-  if ((count ?? 0) > 0) return { ok: false, error: 'Este vídeo ainda é usado por uma aula.' }
+  // A coluna do vídeo não é lida direto (SQL do cupom de lançamento): lesson_videos() entrega todos para a equipe.
+  const { data: videos, error } = await ctx.supabase.rpc('lesson_videos')
+  let inUse: boolean
+  if (!error) {
+    inUse = Array.isArray(videos) && videos.some((v) => (v as { bunny_video_id?: unknown })?.bunny_video_id === parsed.data.id)
+  } else if (error.code === 'PGRST202') {
+    // Banco ainda sem o SQL do cupom: lê como antes.
+    const old = await ctx.supabase.from('lessons').select('id', { count: 'exact', head: true }).eq('bunny_video_id', parsed.data.id)
+    if (old.error) return FAILED
+    inUse = (old.count ?? 0) > 0
+  } else {
+    return FAILED
+  }
+  if (inUse) return { ok: false, error: 'Este vídeo ainda é usado por uma aula.' }
   try {
     await deleteBunnyVideo(parsed.data.id)
     return { ok: true }

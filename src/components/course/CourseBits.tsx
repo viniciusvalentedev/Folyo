@@ -3,7 +3,9 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { CSSProperties, ReactNode } from 'react'
+import { AddToCartButton, OfferBadge, PriceLabel } from '@/components/cart/CartBits'
 import { useApp } from '@/components/providers/AppState'
+import { useShop } from '@/components/providers/Shop'
 import { Art, Spark } from '@/components/ui/Art'
 import { Icon } from '@/components/ui/Icon'
 import { Progress, StatusPill } from '@/components/ui/indicators'
@@ -79,16 +81,19 @@ export function CourseStatus({ cid }: { cid: string }) {
 /** Card de curso usado no catálogo, no início e nos objetivos. */
 export function CourseCard({ course, i = 0 }: { course: Course; i?: number }) {
   const { d, catalog, config } = useApp()
+  const { offer: offerOf, cart } = useShop()
   const router = useRouter()
   const st = d.courseStats[course.id]
   const href = '/cursos/' + course.id
+  const offer = offerOf(course)
+  const forSale = offer.kind === 'a-venda' && course.status !== 'arquivado'
+  const inCart = forSale && cart.ready && cart.has(course.id)
   return (
-    <article className="ccard rise" style={{ '--i': i } as CSSProperties} onClick={() => router.push(href)}>
+    <article className={'ccard rise' + (inCart ? ' in-cart' : '')} style={{ '--i': i } as CSSProperties} onClick={() => router.push(href)}>
       <div className="ccard-art">
         <CourseArt course={course} ratio="16 / 9" />
         <div className="ccard-top">
-          {config.catalog.showPlanBadge &&
-            (course.plan === 'free' ? <span className="plan free">Gratuito</span> : <span className="plan">Pro</span>)}
+          <OfferBadge offer={offer} plan={course.plan} showPlan={config.catalog.showPlanBadge} />
           <FavButton cid={course.id} />
         </div>
         {st.started && !st.complete && (
@@ -115,15 +120,22 @@ export function CourseCard({ course, i = 0 }: { course: Course; i?: number }) {
           <span className="ccard-make-k">Você vai produzir</span>
           <span>{course.project.title}</span>
         </div>
-        <div className="ccard-foot">
-          <div className="chips-mini">
-            {course.skills.slice(0, 2).map((s) => (
-              <span key={s}>{s}</span>
-            ))}
-            {course.skills.length > 2 && <span>+{course.skills.length - 2}</span>}
+        {forSale ? (
+          <div className="ccard-foot ccard-buy">
+            <PriceLabel cents={offer.priceCents} />
+            <AddToCartButton course={course} />
           </div>
-          <CourseStatus cid={course.id} />
-        </div>
+        ) : (
+          <div className="ccard-foot">
+            <div className="chips-mini">
+              {course.skills.slice(0, 2).map((s) => (
+                <span key={s}>{s}</span>
+              ))}
+              {course.skills.length > 2 && <span>+{course.skills.length - 2}</span>}
+            </div>
+            <CourseStatus cid={course.id} />
+          </div>
+        )}
       </div>
     </article>
   )

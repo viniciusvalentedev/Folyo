@@ -106,6 +106,10 @@ export const AUDIT_LABELS: Record<string, { label: string; icon: string }> = {
   'midia.excluida': { label: 'Arquivo excluído', icon: 'Trash2' },
   'config.alterada': { label: 'Configurações alteradas', icon: 'Settings' },
   'relatorio.exportado': { label: 'Relatório exportado', icon: 'Download' },
+  'cupom.resgatado': { label: 'Pré-acesso de lançamento liberado', icon: 'Ticket' },
+  'cupom.alterado': { label: 'Promoção de lançamento alterada', icon: 'Ticket' },
+  'acesso.liberado': { label: 'Acesso a curso liberado', icon: 'Lock' },
+  'acesso.removido': { label: 'Acesso a curso removido', icon: 'Lock' },
 }
 
 /** "aluno → editor" vira "Aluno → Editor de conteúdo". */

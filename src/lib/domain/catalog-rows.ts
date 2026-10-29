@@ -31,8 +31,13 @@ export const COURSE_COLUMNS = [
   'status, publish_at, plan, access, project_title, project_brief, project_expected, project_steps',
   'cert_enabled, cert_hours, cert_note, images, created_at, updated_at',
 ].join(', ')
+/** Preço e cupom (SQL do cupom de lançamento). Lidos à parte: sem esse SQL, todo curso vale como gratuito. */
+export const COURSE_SALE_COLUMNS = 'id, price_cents, promo_launch_eligible'
 export const MODULE_COLUMNS = 'id, course_id, title, description, archived, position'
-export const LESSON_COLUMNS = 'id, module_id, course_id, title, description, minutes, published, video_kind, video_url, bunny_video_id, position'
+/** Sem o vídeo: ele vem de lesson_videos(), que só entrega o dos cursos que a pessoa pode assistir. */
+export const LESSON_COLUMNS = 'id, module_id, course_id, title, description, minutes, published, position'
+/** Leitura direta do vídeo (só funciona antes do SQL do cupom de lançamento, que fecha essas colunas). */
+export const LESSON_VIDEO_COLUMNS = 'id, video_kind, video_url, bunny_video_id'
 export const MATERIAL_COLUMNS = 'id, lesson_id, label, url, media_id, position'
 export const MEDIA_COLUMNS = 'id, kind, name, alt, path, mime, size, width, height, created_at, updated_at'
 
@@ -90,6 +95,9 @@ const courseRow = z.object({
   publish_at: z.string().nullable(),
   plan: z.enum(['free', 'pro']),
   access: z.enum(['todos', 'assinantes']),
+  // Ausentes antes do SQL do cupom de lançamento: curso gratuito e fora da promoção.
+  price_cents: z.number().int().min(0).max(10_000_000).nullable().catch(null),
+  promo_launch_eligible: z.boolean().catch(false),
   project_title: text(120),
   project_brief: text(600),
   project_expected: text(600),
@@ -121,9 +129,10 @@ const lessonRow = z.object({
   description: text(2000),
   minutes: z.number().int().min(1).max(300),
   published: z.boolean(),
-  video_kind: z.enum(['link', 'bunny']).nullable(),
-  video_url: httpsUrl.nullable(),
-  bunny_video_id: z.uuid().nullable(),
+  // Sem vídeo, ou vídeo que esta pessoa não pode assistir (curso pago sem acesso): null.
+  video_kind: z.enum(['link', 'bunny']).nullable().catch(null),
+  video_url: httpsUrl.nullable().catch(null),
+  bunny_video_id: z.uuid().nullable().catch(null),
   position: z.number().int(),
 })
 
@@ -243,6 +252,8 @@ export function adminCatalogFromRows(rows: CatalogRows, tags: string[] = []): Ad
       publishAt: c.publish_at,
       plan: c.plan,
       access: c.access,
+      priceCents: c.price_cents && c.price_cents > 0 ? c.price_cents : null,
+      promo: c.promo_launch_eligible,
       project: { title: c.project_title, brief: c.project_brief, expected: c.project_expected, steps: c.project_steps },
       certificate: { enabled: c.cert_enabled, hours: c.cert_hours, note: c.cert_note },
       images: Object.fromEntries(
@@ -330,6 +341,7 @@ export function studentCatalog(admin: AdminCatalog, now = Date.now(), mediaList:
       tone: c.tone,
       glyph: c.glyph,
       plan: c.plan,
+      ...(c.priceCents ? { priceCents: c.priceCents, promo: c.promo } : {}),
       featured: c.featured,
       recommended: c.recommended,
       hidden: c.hidden,

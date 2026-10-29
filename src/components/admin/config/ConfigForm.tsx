@@ -17,6 +17,7 @@ import {
   type ConfigErrors,
 } from '@/lib/app-config'
 import { AdminHead, Notice } from '../ui'
+import { LaunchPromoToggle } from './LaunchPromoToggle'
 
 export type Fact = [label: string, value: string]
 
@@ -33,7 +34,18 @@ const GROUPS: { value: Group; label: string; icon: IconName }[] = [
 const same = (a: AppConfig, b: AppConfig) => JSON.stringify(a) === JSON.stringify(b)
 
 /** Configurações da plataforma, em abas. Salva tudo de uma vez; o banco confere o papel e os limites. */
-export function ConfigForm({ initial, updatedAt, facts }: { initial: AppConfig; updatedAt: string | null; facts: Fact[] }) {
+export function ConfigForm({
+  initial,
+  updatedAt,
+  facts,
+  launchPromo,
+}: {
+  initial: AppConfig
+  updatedAt: string | null
+  facts: Fact[]
+  /** Promoção de lançamento ligada? null = SQL do cupom ainda não rodado. */
+  launchPromo: boolean | null
+}) {
   const router = useRouter()
   const { toast } = useApp()
   const [group, setGroup] = useState<Group>('plataforma')
@@ -144,6 +156,9 @@ export function ConfigForm({ initial, updatedAt, facts }: { initial: AppConfig; 
             </Field>
             <div className="span-2">
               <Toggle label="Mostrar selo Gratuito/Pro nos cards" checked={draft.catalog.showPlanBadge} onChange={(v) => patch('catalog', { showPlanBadge: v })} />
+            </div>
+            <div className="span-2">
+              <LaunchPromoToggle initial={launchPromo} />
             </div>
           </div>
         )}

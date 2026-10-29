@@ -77,6 +77,16 @@ export const API_LIMITS = {
   publicDownload: { max: 60, windowMs: 60_000 },
 } satisfies Record<string, Rule>
 
+/** Carrinho e cupom de lançamento (por conta logada). */
+export const CART_LIMITS = {
+  /** Recalcular o carrinho (cada mudança de itens): folgado. */
+  quote: { max: 90, windowMs: 60_000 },
+  /** Tentar um código de cupom: baixo, para ninguém sair testando códigos. */
+  coupon: { max: 12, windowMs: 60_000 },
+  /** Liberar o pré-acesso. */
+  redeem: { max: 10, windowMs: 60_000 },
+} satisfies Record<string, Rule>
+
 /* Contagem em memória, por servidor (veja limiter.ts). */
 const limiter = createLimiter()
 export const { hit, limited, allow, reset } = limiter

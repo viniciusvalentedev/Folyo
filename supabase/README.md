@@ -1,5 +1,6 @@
 # Supabase — passo a passo
 
+- **Carrinho e cupom de lançamento (FOLYO100):** logo abaixo. Publique o código **antes** do SQL.
 - **Limite de pedidos (rate limit):** logo abaixo. Opcional, sem SQL.
 - **LGPD (baixar dados e excluir conta):** logo abaixo. Faça agora (depois de publicar o código novo).
 - **Verificação em duas etapas (MFA) do painel:** logo abaixo. Faça na ordem descrita lá.
@@ -16,6 +17,91 @@
 > A **secret key** (`sb_secret_...`) **não é usada** nesta etapa: não cole ela no `.env.local`, na Vercel,
 > no GitHub nem em conversas. Ela passa por cima de todas as regras de segurança do banco. Guarde só no
 > gerenciador de senhas.
+
+---
+
+# Carrinho e cupom de lançamento (FOLYO100)
+
+O aluno põe cursos pagos no carrinho, aplica o cupom `FOLYO100` e ganha **30 dias de pré-acesso** aos cursos
+marcados com "Liberar com cupom". **Não existe pagamento:** nenhuma cobrança, gateway ou dado de cartão.
+Preço, desconto e liberação são calculados **no banco**; o navegador só manda ids de cursos e o código.
+
+Um SQL novo, **uma vez só** (pode rodar de novo sem problema). Ele **não apaga nada** e **não cria cursos**.
+
+> **Ordem importante:** publique o código **primeiro** e só depois rode o SQL. O código novo funciona com e sem
+> o SQL (sem ele, todo curso continua gratuito). Já o código antigo **não** funciona depois do SQL: o SQL fecha a
+> leitura direta das colunas de vídeo das aulas, que o código antigo ainda lia.
+
+## 1. Publicar o código e rodar o SQL
+
+1. Publique o código (git push) e espere a Vercel terminar.
+2. Supabase → **SQL Editor** → **New query**.
+3. Abra `supabase/migrations/20261029000001_cupom_lancamento.sql`, copie tudo, cole e **Run**.
+   Deve aparecer *Success. No rows returned*.
+
+O que ele cria:
+
+- **`courses.price_cents`** (preço em centavos; vazio = gratuito) e **`courses.promo_launch_eligible`**
+  ("Liberar com cupom de lançamento?", desligado por padrão). Todos os cursos que já existem continuam gratuitos.
+- **`private.coupons`**, fora da API, com o `FOLYO100` (100%, 30 dias, ligado). Ninguém lê pelo site.
+- **`course_access`**: quem pode assistir a cada curso pago (`cupom`, `manual` ou `compra`). O aluno só **lê** as
+  próprias linhas; não existe regra de gravação para ele. Só as funções do banco gravam.
+- **`quote_cart`** (preço do carrinho), **`redeem_launch_coupon`** (libera o pré-acesso; não renova o mês),
+  **`has_course_access`**, **`my_course_access`**, **`launch_promo_state`** e **`lesson_videos`**.
+- Painel: **`admin_set_launch_promo`**, **`admin_set_course_sale`**, **`admin_user_course_access`**,
+  **`admin_grant_course_access`** e **`admin_revoke_course_access`** (todas conferem o papel e vão para o histórico).
+- **Curso pago sem acesso:** o banco não entrega o vídeo (`lesson_videos`), os materiais, os PDFs nem aceita
+  "aula concluída" ou eventos do player. Título e duração das aulas continuam visíveis (a página do curso mostra
+  o conteúdo). A equipe (com o 2º fator) vê tudo.
+- "Baixar meus dados" (LGPD) passa a incluir as liberações de curso.
+
+## 2. Configurar e testar (com uma conta de teste)
+
+1. **Painel › Cursos ›** um curso publicado **› Publicação e acesso › Venda**: preço `32,99` e ligue
+   **"Liberar com cupom de lançamento (FOLYO100)?"**. Salve.
+2. **Painel › Configurações › Catálogo**: confira que **"Promoção de lançamento ativa"** está ligada.
+3. Entre com um aluno de teste: aparece o **aviso de lançamento** (uma vez só). Em **Explorar cursos**, o curso
+   mostra "Curso pago", o preço e **Adicionar**. Abrir uma aula dele leva para a página de compra.
+4. **Carrinho**: aplique `folyo100` (minúsculas e espaços valem): o total vira **R$ 0,00**. Um código errado
+   mostra "Este cupom não existe ou não é válido." e o total não muda.
+5. **Prosseguir com a compra › Continuar para o pré-acesso**: aparece "Seu pré-acesso está liberado." com a data
+   (hoje + 30 dias). O curso ganha o selo **Pré-acesso** e as aulas abrem.
+6. **Painel › Alunos ›** o aluno: em **Cursos pagos** aparece "pré-acesso de lançamento até dd/mm/aaaa".
+   Teste também **Liberar acesso** / **Remover acesso** em outro curso pago.
+7. Desligue a promoção em Configurações: o cupom passa a responder "A promoção de lançamento foi encerrada." e o
+   pré-acesso do aluno se encerra (as aulas voltam a pedir compra). Ligue de novo: o pré-acesso volta (no prazo).
+
+Os testes automáticos (`npm test`) rodam este SQL de verdade, num Postgres em memória, junto com todas as
+migrations anteriores (lidas do histórico do git).
+
+## Regras que valem
+
+- O desconto só vale para curso com preço, publicado e marcado com "Liberar com cupom".
+- **Sem renovação:** quem já teve pré-acesso de um curso pelo cupom (mesmo vencido) não ganha outro mês.
+- Desligar a promoção encerra **na hora** todos os pré-acessos por cupom; religar devolve os que ainda estão no prazo.
+- Liberação manual (painel) não tem prazo e não depende da promoção.
+- Para mudar o cupom (prazo, limite de usos, dias), use o SQL Editor, por exemplo:
+  `update private.coupons set ends_at = '2026-12-31 23:59-03', max_redemptions = 500 where code = 'FOLYO100';`
+
+## Como desfazer
+
+Para fechar a promoção, basta desligá-la em Configurações. Para os cursos voltarem a ser gratuitos, apague o
+preço no editor. Se precisar devolver as regras antigas das aulas (sem apagar nenhum dado), rode no SQL Editor:
+
+```sql
+begin;
+create or replace function private.lesson_visible(p_lesson text)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.lessons l
+                  where l.id = p_lesson and l.published and private.module_visible(l.module_id))
+$$;
+grant select (video_kind, video_url, bunny_video_id) on public.lessons to authenticated;
+drop policy if exists "Aula de curso pago só com acesso" on public.lesson_completions;
+commit;
+```
+
+Apagar as tabelas `course_access` e `private.coupons` e as colunas novas de `courses` apaga as liberações dos
+alunos: só faça isso com backup e sabendo o que está fazendo.
 
 ---
 

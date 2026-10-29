@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Suspense, useCallback, useState, type MouseEvent, type ReactNode } from 'react'
+import { PromoLaunchModal } from '@/components/cart/PromoLaunchModal'
 import { IconButton } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import { RouteFocus, useFocusTrap } from '@/lib/a11y'
@@ -98,6 +99,9 @@ export function AppFrame({ children, classroom }: { children: ReactNode; classro
       </div>
       <MobileNav onMore={openDrawer} />
       <Drawer open={drawer} onClose={close} />
+      <Suspense fallback={null}>
+        <PromoLaunchModal />
+      </Suspense>
       <Suspense fallback={null}>
         <RouteFocus target="main" />
       </Suspense>

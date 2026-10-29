@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useMemo, useState, type CSSProperties } from 'react'
+import { LaunchBanner } from '@/components/cart/CartBits'
 import { CourseArt, CourseCard, CourseRow, FavButton } from '@/components/course/CourseBits'
 import { useApp } from '@/components/providers/AppState'
 import { Button } from '@/components/ui/Button'
@@ -139,6 +140,8 @@ export function ExploreView() {
           )}
         </div>
       </header>
+
+      <LaunchBanner />
 
       <div className="cat-rail rise" style={{ '--i': 1 } as CSSProperties} role="group" aria-label="Áreas profissionais">
         <button type="button" className={'cat-chip' + (cat === 'all' ? ' on' : '')} onClick={() => setCat('all')}>

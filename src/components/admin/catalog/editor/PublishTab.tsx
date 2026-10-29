@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import { Field, Select, Toggle } from '@/components/ui/controls'
 import { Icon } from '@/components/ui/Icon'
 import { publishProblems, type AdminCourse, type CourseStatus } from '@/lib/admin/catalog'
+import { formatBRL, parsePriceInput, priceInputValue, PROMO } from '@/lib/cart'
 import { Notice } from '../../ui'
 import { fromLocalInput, toLocalInput } from '../parts'
 import type { EditorContext, TabProps } from './types'
@@ -137,10 +139,62 @@ export function PublishTab({ draft, set, errors, ctx }: TabProps & { ctx: Editor
           </Field>
         </div>
         <Notice>
-          A Folyo ainda não tem cobrança nem controle de assinatura. O plano e a regra ficam registrados no curso para quando houver pagamento; hoje, todo aluno conectado consegue
-          assistir.
+          O plano e a regra ficam registrados no curso, mas hoje não bloqueiam ninguém. Quem decide se o curso é pago é o preço (seção Venda, abaixo).
+        </Notice>
+      </section>
+
+      <section className="ad-fs">
+        <h3>Venda</h3>
+        <div className="ad-fgrid">
+          <PriceField value={draft.priceCents} onChange={(priceCents) => set({ priceCents })} />
+        </div>
+        <Toggle
+          id="c-promo"
+          checked={draft.promo}
+          onChange={(promo) => set({ promo })}
+          label={`Liberar com cupom de lançamento (${PROMO.code})?`}
+          hint={`Sim: quem aplicar o cupom no carrinho ganha ${PROMO.days} dias de pré-acesso a este curso, sem pagar nada.`}
+        />
+        {draft.promo && !draft.priceCents && <Notice tone="warn">O cupom só faz diferença em curso com preço. Sem preço, o curso já é gratuito para todos.</Notice>}
+        <Notice>
+          A Folyo ainda não tem pagamento online: ninguém é cobrado. Curso com preço só abre para quem tem acesso liberado (pré-acesso do cupom ou liberação manual na ficha
+          do aluno).
         </Notice>
       </section>
     </div>
+  )
+}
+
+/** Preço em reais. Texto que não é preço não muda o curso (nunca vira "gratuito" por engano). */
+function PriceField({ value, onChange }: { value: number | null; onChange: (cents: number | null) => void }) {
+  const [text, setText] = useState(() => priceInputValue(value))
+  const [bad, setBad] = useState(false)
+  return (
+    <Field
+      label="Preço (R$)"
+      id="c-price"
+      error={bad ? 'Use só números, por exemplo 32,99.' : undefined}
+      hint={value ? `O aluno vê ${formatBRL(value)}.` : 'Vazio = curso gratuito, aberto a todos os alunos.'}
+    >
+      <input
+        id="c-price"
+        className="inp"
+        inputMode="decimal"
+        autoComplete="off"
+        placeholder="Gratuito"
+        maxLength={14}
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value)
+          const cents = parsePriceInput(e.target.value)
+          setBad(cents === 'invalid')
+          if (cents !== 'invalid') onChange(cents)
+        }}
+        onBlur={() => {
+          setText(priceInputValue(value))
+          setBad(false)
+        }}
+      />
+    </Field>
   )
 }

@@ -4,16 +4,19 @@ import { useRouter } from 'next/navigation'
 import { useState, type CSSProperties } from 'react'
 import { FavButton, lessonNumber } from '@/components/course/CourseBits'
 import { useApp } from '@/components/providers/AppState'
+import { useShop } from '@/components/providers/Shop'
 import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import { EmptyState, Ring } from '@/components/ui/indicators'
 import { useBack } from '@/components/ui/PageHead'
 import { WorksPanel } from '@/components/works/WorksPanel'
 import { categoryOf, findCourse, lessonsOf } from '@/lib/domain/catalog'
+import { formatBRL, formatDateBR } from '@/lib/cart'
 import { formatDate, formatMinutes, plural } from '@/lib/format'
 
 export function CourseView({ id }: { id: string }) {
   const { s, d, a, toast, catalog } = useApp()
+  const { offer: offerOf } = useShop()
   const router = useRouter()
   const back = useBack()
   const course = findCourse(catalog, id)
@@ -34,8 +37,13 @@ export function CourseView({ id }: { id: string }) {
   // Curso arquivado: quem já começou continua; ninguém novo entra.
   const locked = archived && !st.started
   const minutes = lessonsOf(course).reduce((sum, l) => sum + l.min, 0)
+  // Curso pago sem acesso: o banco nem entrega o vídeo; aqui o caminho é a página de compra.
+  const offer = offerOf(course)
+  const mustBuy = offer.kind === 'a-venda'
+  const buy = () => router.push('/comprar/' + course.id)
 
   const start = () => {
+    if (mustBuy) return buy()
     if (locked) return
     const lesson = st.resume
     a.openLesson(course.id, lesson.id)
@@ -73,7 +81,13 @@ export function CourseView({ id }: { id: string }) {
             <div className="rise">
               <p className="eyebrow">
                 {categoryOf(catalog, course.cat).name}
-                {course.plan === 'free' ? ' · Gratuito' : ' · Plano Pro'}
+                {offer.kind === 'pre-acesso'
+                  ? ` · Pré-acesso até ${formatDateBR(offer.until)}`
+                  : offer.kind !== 'gratuito'
+                    ? ' · Curso pago'
+                    : course.plan === 'free'
+                      ? ' · Gratuito'
+                      : ' · Plano Pro'}
               </p>
               <h1 className="display">{course.title}</h1>
               {course.subtitle && <p className="course-sub">{course.subtitle}</p>}
@@ -105,13 +119,22 @@ export function CourseView({ id }: { id: string }) {
                 </li>
               </ul>
               <div className="row gap-s wrap">
-                <Button variant="go" icon={st.complete ? 'RotateCcw' : 'Play'} onClick={start} disabled={locked}>
-                  {st.complete
-                    ? 'Revisar aulas'
-                    : st.started
-                      ? `Continuar · Aula ${lessonNumber(course, st.resume.id)}`
-                      : 'Começar curso'}
-                </Button>
+                {mustBuy && !locked ? (
+                  <>
+                    <b className="course-price">{formatBRL(offer.priceCents)}</b>
+                    <Button variant="go" icon="ShoppingBag" onClick={buy}>
+                      Comprar curso
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="go" icon={st.complete ? 'RotateCcw' : 'Play'} onClick={start} disabled={locked}>
+                    {st.complete
+                      ? 'Revisar aulas'
+                      : st.started
+                        ? `Continuar · Aula ${lessonNumber(course, st.resume.id)}`
+                        : 'Começar curso'}
+                  </Button>
+                )}
                 {st.offersProject && (
                   <Button
                     variant="ghost-on-dark"
@@ -242,6 +265,7 @@ export function CourseView({ id }: { id: string }) {
                                   disabled={locked}
                                   className={'lesson-line' + (isDone ? ' done' : '') + (isNext ? ' next' : '')}
                                   onClick={() => {
+                                    if (mustBuy) return buy()
                                     a.openLesson(course.id, l.id)
                                     router.push(`/aula/${course.id}/${l.id}`)
                                   }}

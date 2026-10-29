@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { Ago } from '@/components/admin/Ago'
+import { CourseAccessPanel } from '@/components/admin/CourseAccessPanel'
 import { SectionDenied, SectionLoading } from '@/components/admin/sections'
 import { AdminHead, Badge, fmtDate, fmtDateTime, fmtNum, Metric, Notice } from '@/components/admin/ui'
 import { RoleChanger, SuspendButton } from '@/components/admin/UserActions'
@@ -12,6 +13,7 @@ import { assignableRoles, canManage, ROLES } from '@/lib/admin/roles'
 import { allowed, getUserDetail } from '@/lib/data/admin'
 import { courseCounts } from '@/lib/admin/catalog'
 import { getFullCatalog } from '@/lib/data/catalog'
+import { getUserCourseAccess } from '@/lib/data/shop'
 import { findTrail, LIFE_STAGES } from '@/lib/trails'
 import { uuidSchema } from '@/lib/validation'
 
@@ -39,8 +41,9 @@ async function UserPage({ params }: { params: PageProps<'/admin/usuarios/[id]'>[
   const { id } = await params
   // Id com formato estranho nem chega ao banco.
   if (!uuidSchema.safeParse(id).success) return <NotFound />
-  const [u, catalog] = await Promise.all([getUserDetail(id), getFullCatalog()])
+  const [u, catalog, access] = await Promise.all([getUserDetail(id), getFullCatalog(), getUserCourseAccess(id)])
   if (!u) return <NotFound />
+  const paid = catalog.courses.flatMap((c) => (c.priceCents ? [{ id: c.id, title: c.title, priceCents: c.priceCents }] : []))
 
   const me = { id: ctx.id, role: ctx.role }
   const target = { id: u.id, role: u.role }
@@ -146,6 +149,16 @@ async function UserPage({ params }: { params: PageProps<'/admin/usuarios/[id]'>[
             lockedHint={u.id === ctx.id ? 'Você não pode alterar o próprio papel.' : 'Seu papel não permite alterar o papel desta conta.'}
           />
         </div>
+      </section>
+      <section className="panel">
+        <header className="ad-sec-head">
+          <h2>Cursos pagos</h2>
+        </header>
+        {access ? (
+          <CourseAccessPanel userId={u.id} courses={paid} access={access} />
+        ) : (
+          <p className="muted">Para ver e liberar cursos pagos, rode no Supabase o SQL do cupom de lançamento (veja supabase/README.md).</p>
+        )}
       </section>
       <p className="ad-help">
         Por privacidade, a equipe vê só este resumo. Anotações, conteúdo dos projetos e currículo ficam visíveis apenas

@@ -63,9 +63,26 @@ export async function saveCourseAction(input: unknown): Promise<SaveResult> {
     }
     const saved = savedSchema.safeParse(data)
     if (!saved.success) return { ok: false, error: 'Salvou, mas a resposta veio estranha. Recarregue a página.' }
+    const sale = await saveSale(ctx, saved.data.id, course.priceCents, course.promo)
+    if (!sale.ok) return sale
     return { ok: true, id: saved.data.id, updatedAt: saved.data.updatedAt ?? null }
   }
   return { ok: false, error: 'Não foi possível criar um endereço livre para este curso. Mude o título.' }
+}
+
+/**
+ * Preço e "liberar com cupom" ficam numa função própria do banco (admin_set_course_sale), chamada
+ * logo depois de salvar o curso. Sem o SQL do cupom de lançamento, um curso gratuito salva normal.
+ */
+async function saveSale(ctx: NonNullable<Awaited<ReturnType<typeof actionContext>>>, id: string, priceCents: number | null, promo: boolean): Promise<DoneResult> {
+  const { error } = await ctx.supabase.rpc('admin_set_course_sale', { p_id: id, p_price_cents: priceCents, p_promo: promo })
+  if (!error) return { ok: true }
+  if (error.code === 'PGRST202') {
+    if (priceCents === null && !promo) return { ok: true }
+    return { ok: false, error: 'O curso foi salvo, mas o preço não: rode no Supabase o SQL do cupom de lançamento (veja supabase/README.md).' }
+  }
+  const fail = fromDb('admin_set_course_sale', ctx.user.id, error)
+  return { ...fail, error: 'O curso foi salvo, mas o preço não. ' + fail.error }
 }
 
 const statusSchema = z.object({
@@ -115,7 +132,10 @@ export async function duplicateCourseAction(input: unknown): Promise<SaveResult>
       return fromDb('admin_save_course', ctx.user.id, error)
     }
     const saved = savedSchema.safeParse(data)
-    return saved.success ? { ok: true, id: saved.data.id, updatedAt: saved.data.updatedAt ?? null } : { ok: false, error: 'Recarregue a página.' }
+    if (!saved.success) return { ok: false, error: 'Recarregue a página.' }
+    // A cópia leva o preço e a opção do cupom (se falhar, a cópia fica gratuita: dá para ajustar no editor).
+    if (copy.priceCents !== null || copy.promo) await saveSale(ctx, saved.data.id, copy.priceCents, copy.promo)
+    return { ok: true, id: saved.data.id, updatedAt: saved.data.updatedAt ?? null }
   }
   return { ok: false, error: 'Não foi possível duplicar o curso agora.' }
 }

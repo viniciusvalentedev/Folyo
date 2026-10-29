@@ -131,6 +131,8 @@ import {
   Timer,
   Database,
   ImageOff,
+  ShoppingBag,
+  Ticket,
 } from 'lucide-react'
 
 /**
@@ -269,6 +271,8 @@ const ICONS = {
   Timer,
   Database,
   ImageOff,
+  ShoppingBag,
+  Ticket,
 } satisfies Record<string, LucideIcon>
 
 export type IconName = keyof typeof ICONS

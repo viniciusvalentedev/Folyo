@@ -5,7 +5,9 @@ import {
   adminCatalogFromRows,
   CATEGORY_COLUMNS,
   COURSE_COLUMNS,
+  COURSE_SALE_COLUMNS,
   LESSON_COLUMNS,
+  LESSON_VIDEO_COLUMNS,
   MATERIAL_COLUMNS,
   MEDIA_COLUMNS,
   mediaFromRows,
@@ -36,8 +38,14 @@ const PAGE = 1000
 /** Teto de segurança: o painel limita 500 cursos × 400 aulas, mas ninguém precisa de tudo isso numa página. */
 const MAX_ROWS = 20000
 
+class CatalogReadError extends Error {
+  constructor(readonly code: string | undefined) {
+    super('Não foi possível carregar os cursos agora.')
+  }
+}
+
 /** Lê uma tabela inteira, de mil em mil linhas (o Supabase corta respostas em 1000 por padrão). */
-async function fetchAll(supabase: Supabase, table: string, columns: string, orderBy: string): Promise<unknown[]> {
+async function fetchAll(supabase: Supabase, table: string, columns: string, orderBy: string, quiet = false): Promise<unknown[]> {
   const out: unknown[] = []
   for (let from = 0; from < MAX_ROWS; from += PAGE) {
     const { data, error } = await supabase
@@ -47,8 +55,8 @@ async function fetchAll(supabase: Supabase, table: string, columns: string, orde
       .order('id')
       .range(from, from + PAGE - 1)
     if (error) {
-      console.error('Falha ao carregar o catálogo', { table, code: error.code })
-      throw new Error('Não foi possível carregar os cursos agora.')
+      if (!quiet) console.error('Falha ao carregar o catálogo', { table, code: error.code })
+      throw new CatalogReadError(error.code)
     }
     out.push(...(data as unknown[]))
     if (data.length < PAGE) break
@@ -56,17 +64,63 @@ async function fetchAll(supabase: Supabase, table: string, columns: string, orde
   return out
 }
 
+/** 42703 = coluna não existe; 42501 = sem permissão; PGRST202 = função não existe. */
+const notMigrated = (code: string | undefined) => code === '42703' || code === '42501' || code === 'PGRST202'
+
+/**
+ * Preço e "liberar com cupom" de cada curso. Antes do SQL do cupom de lançamento as colunas não
+ * existem: aí todo curso vale como gratuito (exatamente como era).
+ */
+async function saleRows(supabase: Supabase): Promise<unknown[]> {
+  try {
+    return await fetchAll(supabase, 'courses', COURSE_SALE_COLUMNS, 'position', true)
+  } catch (error) {
+    if (error instanceof CatalogReadError && notMigrated(error.code)) return []
+    throw error
+  }
+}
+
+/**
+ * Vídeo das aulas. Depois do SQL do cupom de lançamento, só pela função lesson_videos(), que entrega
+ * apenas o vídeo dos cursos que a pessoa pode assistir (curso pago sem acesso = sem vídeo). Antes
+ * desse SQL, lê direto da tabela, como sempre foi.
+ */
+async function videoRows(supabase: Supabase): Promise<unknown[]> {
+  const { data, error } = await supabase.rpc('lesson_videos')
+  if (!error) return Array.isArray(data) ? data : []
+  if (error.code !== 'PGRST202') {
+    console.error('Falha ao carregar os vídeos', { code: error.code })
+    throw new CatalogReadError(error.code)
+  }
+  return fetchAll(supabase, 'lessons', LESSON_VIDEO_COLUMNS, 'position')
+}
+
+/** Junta as colunas lidas à parte (preço, vídeo) na linha principal, pelo id. */
+function mergeById(rows: unknown[], extra: unknown[]): unknown[] {
+  const byId = new Map<string, Record<string, unknown>>()
+  for (const row of extra) {
+    if (row && typeof row === 'object' && typeof (row as { id?: unknown }).id === 'string') byId.set((row as { id: string }).id, row as Record<string, unknown>)
+  }
+  return rows.map((row) => {
+    const id = (row as { id?: unknown })?.id
+    const more = typeof id === 'string' ? byId.get(id) : undefined
+    return more ? { ...(row as Record<string, unknown>), ...more } : row
+  })
+}
+
 const rawRows = cache(async (): Promise<CatalogRows> => {
   const supabase = await createSupabaseServerClient()
-  const [categories, courses, modules, lessons, materials, media] = await Promise.all([
+  const [categories, courses, sale, modules, lessons, videos, materials, media] = await Promise.all([
     fetchAll(supabase, 'categories', CATEGORY_COLUMNS, 'position'),
     fetchAll(supabase, 'courses', COURSE_COLUMNS, 'position'),
+    saleRows(supabase),
     fetchAll(supabase, 'course_modules', MODULE_COLUMNS, 'position'),
     fetchAll(supabase, 'lessons', LESSON_COLUMNS, 'position'),
+    videoRows(supabase),
     fetchAll(supabase, 'lesson_materials', MATERIAL_COLUMNS, 'position'),
     fetchAll(supabase, 'media_files', MEDIA_COLUMNS, 'created_at'),
   ])
-  return { categories, courses, modules, lessons, materials, media }
+  return { categories, courses: mergeById(courses, sale), modules, lessons: mergeById(lessons, videos), materials, media }
 })
 
 /** Tags sugeridas (a RLS só deixa a equipe ler; para o aluno vem vazio). */

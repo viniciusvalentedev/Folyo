@@ -62,6 +62,8 @@ export const STATUS_INFO: Record<CourseStatus, { label: string; tone: 'muted' | 
 
 /** Limites (iguais aos do banco). */
 export const CATALOG_LIMITS = {
+  /** Preço em centavos (R$ 0,01 a R$ 100.000,00); o banco confere o mesmo. */
+  priceCents: { min: 1, max: 10_000_000 },
   title: { min: 4, max: 90 },
   subtitle: 120,
   summary: { min: 20, max: 220 },
@@ -138,6 +140,10 @@ export type AdminCourse = {
   publishAt: string | null
   plan: Plan
   access: 'todos' | 'assinantes'
+  /** Preço em centavos (null = gratuito). Curso com preço só abre para quem tem acesso liberado. */
+  priceCents: number | null
+  /** "Liberar com cupom de lançamento?" (FOLYO100). */
+  promo: boolean
   project: { title: string; brief: string; expected: string; steps: string[] }
   certificate: { enabled: boolean; hours: number | null; note: string }
   /** Capa, miniatura e banner (arquivos da biblioteca de mídia). */
@@ -189,6 +195,8 @@ export function blankCourse(order = 0): AdminCourse {
     publishAt: null,
     plan: 'free',
     access: 'todos',
+    priceCents: null,
+    promo: false,
     project: { title: '', brief: '', expected: '', steps: [] },
     certificate: { enabled: true, hours: null, note: '' },
     images: {},
