@@ -180,7 +180,7 @@
 .lp-ink .lp-h2{ color: #fff; }
 .lp-ink .eyebrow{ color: var(--magenta); }
 .lp-bento{ display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
-.lp-tile{ position: relative; overflow: hidden; border-radius: 24px; padding: 26px; background: var(--ink-2); border: 1px solid rgba(255,255,255,.08); display: grid; gap: 18px; align-content: space-between; min-width: 0; transition: transform .45s var(--ease), border-color .3s, background .3s; }
+.lp-tile{ position: relative; isolation: isolate; overflow: hidden; border-radius: 24px; padding: 26px; background: var(--ink-2); border: 1px solid rgba(255,255,255,.08); display: grid; gap: 18px; align-content: space-between; min-width: 0; transition: transform .45s var(--ease), border-color .3s, background .3s; }
 .lp-tile:hover{ transform: translateY(-5px); border-color: rgba(255,255,255,.18); }
 .lp-tile-t{ display: grid; gap: 10px; align-content: start; }
 .lp-tile-t > .ico{ color: var(--lime); }
@@ -199,7 +199,7 @@
 .lp-cv-item.a{ animation-delay: .3s; } .lp-cv-item.b{ animation-delay: .5s; color: var(--magenta-deep); }
 .lp-cv-item em{ height: 8px; border-radius: 99px; background: #E4E2F0; flex: 1; }
 .lp-tile:hover .lp-cv-item{ animation: cvFlash 1.1s ease both; }
-.lp-blobs{ position: relative; height: 230px; }
+.lp-blobs{ position: relative; isolation: isolate; height: 230px; }
 .lp-blob{ position: absolute; z-index: calc(100 - var(--zi, 0)); width: calc(var(--r) * 1.75); aspect-ratio: 1; border-radius: 50%; transform: translate(-50%, -50%); display: grid; place-items: center; font: 600 12.5px/1.1 var(--f-ui); text-align: center; box-shadow: inset 0 -12px 24px rgba(0,0,0,.18); animation: lpBlob 5s ease-in-out infinite alternate; animation-delay: var(--bd, 0s); }
 .lp-tile:hover .lp-blob{ animation-duration: 2.4s; }
 @keyframes lpBlob{ from{ transform: translate(-50%, -50%); } to{ transform: translate(calc(-50% + 5px), calc(-50% - 8px)) scale(1.03); } }
@@ -298,7 +298,7 @@
   .lp-bento{ grid-template-columns: minmax(0, 1fr); }
   .lp-tile-cv, .lp-tile-skills, .lp-tile-goal, .lp-tile-resume{ grid-column: auto; grid-row: auto; }
   .lp-tile-cv{ grid-template-columns: minmax(0, 1fr); }
-  .lp-blobs{ height: 200px; }
+  .lp-blobs{ height: auto; aspect-ratio: 1 / .92; width: 100%; max-width: 360px; margin-inline: auto; }
   .lp-free-cta, .lp-free-cta .btn-lg{ width: 100%; }
   .lp-free-cta .btn-lg{ justify-content: center; white-space: normal; text-align: center; }
   .lp-free-card{ padding: 18px; }
