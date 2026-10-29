@@ -67,9 +67,9 @@ export function CheckoutView() {
           </div>
         ) : (
           <div className="fin-wait" aria-busy="true" aria-label="Carregando">
-            <span className="skel skel-title" />
-            <span className="skel skel-line" />
-            <span className="skel skel-line" />
+            <span className="cart-skel cart-skel-title" />
+            <span className="cart-skel cart-skel-line" />
+            <span className="cart-skel cart-skel-line" />
           </div>
         )}
       </Shell>
@@ -140,7 +140,7 @@ function LaunchOffer({ quote, onDone }: { quote: CartQuote; onDone: (r: { course
           Oferta de lançamento
         </p>
         <h1 id="fin-h" className="display-xl fin-h">
-          Você chegou antes. <span className="lime">Aproveite o lançamento da Folyo.</span>
+          Você chegou antes. <span className="txt-lime">Aproveite o lançamento da Folyo.</span>
         </h1>
         <p className="lead fin-lead">
           Estamos liberando o pré-acesso promocional aos cursos da Folyo. Com seu cupom de lançamento, você pode explorar os cursos elegíveis sem custo durante o
@@ -166,7 +166,7 @@ function LaunchOffer({ quote, onDone }: { quote: CartQuote; onDone: (r: { course
           <Button variant="go" size="lg" iconRight={pending ? undefined : 'ArrowRight'} onClick={go} disabled={pending} aria-busy={pending}>
             {pending ? (
               <>
-                <span className="spin" aria-hidden="true" /> Liberando pré-acesso…
+                <span className="cart-spin" aria-hidden="true" /> Liberando pré-acesso…
               </>
             ) : (
               'Continuar para o pré-acesso'

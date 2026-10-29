@@ -76,7 +76,7 @@ export function BuyView({ id }: { id: string }) {
         </div>
 
         <aside className="buy-card surface-ink rise" style={{ '--i': 1 } as CSSProperties} aria-label="Resumo da compra">
-          <p className="eyebrow lime">Resumo da compra</p>
+          <p className="eyebrow txt-lime">Resumo da compra</p>
           <div className="buy-card-head">
             <CourseArt course={course} variant="thumb" ratio="1 / 1" className="buy-thumb" />
             <div>
@@ -112,11 +112,11 @@ export function BuyView({ id }: { id: string }) {
                 <b>{formatBRL(offer.priceCents)}</b>
               </div>
               {inCart ? (
-                <ButtonLink href="/carrinho" variant="go" size="lg" icon="ShoppingBag" className="wide">
+                <ButtonLink href="/carrinho" variant="go" size="lg" icon="ShoppingBag" className="btn-wide">
                   Ir para o carrinho
                 </ButtonLink>
               ) : (
-                <Button variant="go" size="lg" icon="ShoppingBag" className="wide" onClick={addAndGo}>
+                <Button variant="go" size="lg" icon="ShoppingBag" className="btn-wide" onClick={addAndGo}>
                   Adicionar ao carrinho
                 </Button>
               )}
@@ -131,10 +131,10 @@ export function BuyView({ id }: { id: string }) {
               {others > 0 && (
                 <div className="buy-more">
                   <b>Você tem {plural(others, 'outro curso', 'outros cursos')} no carrinho.</b>
-                  <ButtonLink href="/cursos" variant="quiet-dark" icon="Plus" className="wide">
+                  <ButtonLink href="/cursos" variant="quiet-dark" icon="Plus" className="btn-wide">
                     Adicionar mais cursos
                   </ButtonLink>
-                  <ButtonLink href="/carrinho" variant="ghost-on-dark" icon="ShoppingBag" className="wide">
+                  <ButtonLink href="/carrinho" variant="ghost-on-dark" icon="ShoppingBag" className="btn-wide">
                     Ver carrinho
                   </ButtonLink>
                 </div>
@@ -152,7 +152,7 @@ export function BuyView({ id }: { id: string }) {
                       : 'Você já tem este curso'}
               </p>
               {offer.kind !== 'a-venda' && (
-                <ButtonLink href={'/cursos/' + course.id} variant="go" size="lg" iconRight="ArrowRight" className="wide">
+                <ButtonLink href={'/cursos/' + course.id} variant="go" size="lg" iconRight="ArrowRight" className="btn-wide">
                   Acessar curso
                 </ButtonLink>
               )}

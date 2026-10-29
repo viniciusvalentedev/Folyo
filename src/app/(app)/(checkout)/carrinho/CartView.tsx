@@ -111,7 +111,7 @@ export function CartView() {
         </section>
 
         <aside className="cart-summary surface-ink" aria-label="Resumo">
-          <p className="eyebrow lime">Resumo</p>
+          <p className="eyebrow txt-lime">Resumo</p>
           {shown && (
             <>
               <ul className="sum-lines">
@@ -132,7 +132,7 @@ export function CartView() {
               <TotalsRows quote={shown} />
             </>
           )}
-          <Button variant="go" size="lg" iconRight="ArrowRight" className="wide" disabled={!shown?.items.length} onClick={() => router.push('/finalizar')}>
+          <Button variant="go" size="lg" iconRight="ArrowRight" className="btn-wide" disabled={!shown?.items.length} onClick={() => router.push('/finalizar')}>
             Prosseguir com a compra
           </Button>
           <p className="sum-foot">
@@ -181,7 +181,7 @@ function EmptyCart() {
         </ButtonLink>
       </section>
       <aside className="cart-summary surface-ink" aria-label="Resumo">
-        <p className="eyebrow lime">Resumo</p>
+        <p className="eyebrow txt-lime">Resumo</p>
         <div className="totals on-dark">
           <div className="totals-total">
             <span className="totals-k">Total</span>
@@ -190,7 +190,7 @@ function EmptyCart() {
             </span>
           </div>
         </div>
-        <Button variant="go" size="lg" iconRight="ArrowRight" className="wide" disabled aria-describedby="cart-empty-hint">
+        <Button variant="go" size="lg" iconRight="ArrowRight" className="btn-wide" disabled aria-describedby="cart-empty-hint">
           Prosseguir com a compra
         </Button>
         <p className="sum-foot" id="cart-empty-hint">

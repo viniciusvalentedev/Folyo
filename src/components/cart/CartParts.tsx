@@ -46,7 +46,7 @@ export function CartItem({ course, line, onRemove }: { course: Course; line: Car
       </div>
       <div className="cart-item-price">
         {!line ? (
-          <span className="skel skel-price" aria-label="Carregando preço" />
+          <span className="cart-skel cart-skel-price" aria-label="Carregando preço" />
         ) : discounted ? (
           <>
             <s aria-label={`Preço original ${formatBRL(line.priceCents)}`}>{formatBRL(line.priceCents)}</s>
@@ -150,7 +150,7 @@ export function CouponBox({
           aria-describedby={error ? id + '-err' : undefined}
         />
         <button type="submit" className="btn btn-quiet-dark btn-md coupon-apply" disabled={!value.trim() || pending}>
-          {pending ? <span className="spin" aria-label="Validando cupom" /> : <span>Aplicar cupom</span>}
+          {pending ? <span className="cart-spin" aria-label="Validando cupom" /> : <span>Aplicar cupom</span>}
         </button>
       </div>
       {error && (
@@ -196,20 +196,20 @@ export function CartSkeleton() {
   return (
     <div className="cart-grid" aria-busy="true" aria-label="Carregando o carrinho">
       <div>
-        <span className="skel skel-title" />
+        <span className="cart-skel cart-skel-title" />
         <ul className="cart-list">
           {[0, 1].map((i) => (
             <li key={i} className="cart-item">
-              <span className="skel skel-thumb" />
-              <span className="skel skel-line" />
+              <span className="cart-skel cart-skel-thumb" />
+              <span className="cart-skel cart-skel-line" />
             </li>
           ))}
         </ul>
       </div>
       <div className="cart-summary surface-ink">
-        <span className="skel skel-line" />
-        <span className="skel skel-line" />
-        <span className="skel skel-total" />
+        <span className="cart-skel cart-skel-line" />
+        <span className="cart-skel cart-skel-line" />
+        <span className="cart-skel cart-skel-total" />
       </div>
     </div>
   )

@@ -127,7 +127,7 @@ function LaunchDialog({ onClose, onExplore }: { onClose: () => void; onExplore: 
           Lançamento
         </p>
         <h2 id="launch-h" className="launch-h">
-          A Folyo está chegando, e você pode <span className="lime">chegar primeiro.</span>
+          A Folyo está chegando, e você pode <span className="txt-lime">chegar primeiro.</span>
         </h2>
         <p id="launch-d" className="launch-d">
           Estamos liberando um mês de pré-acesso promocional aos cursos elegíveis. Explore novas habilidades, desenvolva projetos e comece a construir um portfólio

@@ -49,8 +49,8 @@
 .eyebrow.lime { color: var(--lime); }
 .eyebrow.blue { color: var(--blue); }
 .surface-ink .eyebrow.blue { color: var(--blue-on-dark); }
-.wide { width: 100%; }
-.lime { color: var(--lime); }
+.btn-wide { width: 100%; }
+.txt-lime { color: var(--lime); }
 
 /* ---------- /comprar/[id] ---------- */
 .buy-grid { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 48px; align-items: start; }
@@ -161,15 +161,14 @@
 .cart-empty-art .ico { position: relative; background: var(--paper); border-radius: 12px; }
 
 /* Esqueleto e carregando */
-.skel { display: block; border-radius: 8px; background: linear-gradient(90deg, var(--card-2) 25%, var(--hover) 50%, var(--card-2) 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
-.surface-ink .skel, .cart-summary .skel { background: linear-gradient(90deg, rgba(255,255,255,.06) 25%, rgba(255,255,255,.12) 50%, rgba(255,255,255,.06) 75%); background-size: 200% 100%; }
-.skel-price { width: 72px; height: 20px; }
-.skel-title { width: min(360px, 80%); height: 44px; margin-bottom: 20px; }
-.skel-line { flex: 1; height: 18px; min-width: 120px; }
-.skel-thumb { width: 64px; height: 64px; flex: none; border-radius: 12px; }
-.skel-total { height: 44px; width: 60%; justify-self: end; }
-.spin { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .7s linear infinite; vertical-align: -3px; }
-@keyframes spin { to { transform: rotate(360deg); } }
+.cart-skel { display: block; border-radius: 8px; background: linear-gradient(90deg, var(--card-2) 25%, var(--hover) 50%, var(--card-2) 75%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+.surface-ink .cart-skel, .cart-summary .cart-skel { background: linear-gradient(90deg, rgba(255,255,255,.06) 25%, rgba(255,255,255,.12) 50%, rgba(255,255,255,.06) 75%); background-size: 200% 100%; }
+.cart-skel-price { width: 72px; height: 20px; }
+.cart-skel-title { width: min(360px, 80%); height: 44px; margin-bottom: 20px; }
+.cart-skel-line { flex: 1; height: 18px; min-width: 120px; }
+.cart-skel-thumb { width: 64px; height: 64px; flex: none; border-radius: 12px; }
+.cart-skel-total { height: 44px; width: 60%; justify-self: end; }
+.cart-spin { display: inline-block; width: 16px; height: 16px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .7s linear infinite; vertical-align: -3px; }
 
 /* ---------- /finalizar ---------- */
 .fin-grid { display: grid; grid-template-columns: minmax(0, 1fr) 460px; gap: 56px; align-items: start; }
