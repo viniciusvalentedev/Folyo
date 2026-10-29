@@ -206,7 +206,7 @@ export function ResumeView() {
   const [langDraft, setLangDraft] = useState<{ name: string; level: string } | null>(null)
   const [modal, setModal] = useState<false | 'text' | 'pdf'>(false)
   const [view, setView] = useState<'editar' | 'ver'>('editar')
-  const suggestion = suggestedObjective(s)
+  const suggestion = suggestedObjective(s, catalog.trails)
 
   const copyText = async (closeModal?: boolean) => {
     try {

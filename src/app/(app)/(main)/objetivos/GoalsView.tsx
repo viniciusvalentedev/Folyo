@@ -13,7 +13,7 @@ import { SoonBlock } from '@/components/ui/SoonBlock'
 import { categoryOf, sameText } from '@/lib/domain/catalog'
 import { catalogSkills, recommendCourses, skillInCatalog, trailWithCourses, type CatalogSkill } from '@/lib/domain/derive'
 import { plural } from '@/lib/format'
-import { findTrail, GENERIC_SKILLS, TRAILS } from '@/lib/trails'
+import { chooseableTrails, findTrail, GENERIC_SKILLS } from '@/lib/trails'
 
 const EXAMPLES = [
   'Construir uma carreira em marketing digital',
@@ -47,11 +47,11 @@ export function GoalsView() {
 
 /** 1. Qual é o meu objetivo? Texto livre, salvo na conta. */
 function ObjectiveBox() {
-  const { s, a, toast } = useApp()
+  const { s, a, toast, catalog } = useApp()
   const saved = s.goals.text || ''
   const [text, setText] = useState(saved)
   const dirty = text.trim() !== saved.trim()
-  const trail = findTrail(s.goals.primary)
+  const trail = findTrail(catalog.trails, s.goals.primary)
   const last = useRef(saved)
 
   // Se o objetivo mudou por outro caminho (ex.: aplicar uma trilha), acompanha, sem perder o que está sendo digitado.
@@ -154,7 +154,7 @@ function SkillPicker({ skills }: { skills: CatalogSkill[] }) {
   const [all, setAll] = useState(false)
   const chosen = s.goals.skills
   const isChosen = (name: string) => chosen.some((k) => sameText(k, name))
-  const trail = trailWithCourses(findTrail(s.goals.primary), catalog, skills)
+  const trail = trailWithCourses(findTrail(catalog.trails, s.goals.primary), catalog, skills)
 
   const shown: string[] = []
   const add = (name: string) => {
@@ -345,7 +345,7 @@ function Trails({ skills }: { skills: CatalogSkill[] }) {
   const router = useRouter()
   const [pick, setPick] = useState<string | null>(null)
   const [mode, setMode] = useState<'somar' | 'substituir'>('somar')
-  const trails = TRAILS.map((t) => trailWithCourses(t, catalog, skills)!).filter((t) => t.liveCourses.length)
+  const trails = chooseableTrails(catalog.trails).map((t) => trailWithCourses(t, catalog, skills)!).filter((t) => t.liveCourses.length)
   const selected = pick ? (trails.find((t) => t.id === pick) ?? null) : null
   const mine = s.goals.skills
   const incoming = selected ? selected.skills.filter((k) => !mine.some((m) => sameText(m, k))) : []

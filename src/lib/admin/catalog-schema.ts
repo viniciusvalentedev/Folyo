@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { ALT_MAX } from '@/lib/media'
 import { CATALOG_LIMITS as L, CATEGORY_ICONS, COURSE_STATUSES, ID_PATTERN, LEVELS, TONES } from './catalog'
+import { TRAIL_LIMITS as T } from './trails'
 
 /**
  * Conferência (zod) dos dados do cadastro que chegam nas Server Actions.
@@ -103,4 +104,16 @@ export const categorySchema = z.object({
   icon: z.enum(CATEGORY_ICONS),
   active: z.boolean(),
   media: uuid.nullable(),
+})
+
+/** Trilha de carreira (Objetivos). Os limites são os mesmos do banco. */
+export const trailSchema = z.object({
+  id,
+  title: str(T.title.max),
+  blurb: str(T.blurb),
+  icon: z.enum(CATEGORY_ICONS),
+  skills: strs(T.skills.items, T.skills.length),
+  keywords: strs(T.keywords.items, T.keywords.length),
+  courseIds: z.array(id).max(T.courses),
+  active: z.boolean(),
 })

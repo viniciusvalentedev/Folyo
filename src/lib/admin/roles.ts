@@ -9,7 +9,7 @@
 
 export const ROLES = {
   aluno: { label: 'Aluno', rank: 0, desc: 'Usa a plataforma. Sem acesso ao painel.' },
-  editor: { label: 'Editor de conteúdo', rank: 1, desc: 'Cria e edita cursos, aulas, categorias e mídia.' },
+  editor: { label: 'Editor de conteúdo', rank: 1, desc: 'Cria e edita cursos, aulas, categorias, trilhas e mídia.' },
   admin: { label: 'Administrador', rank: 2, desc: 'Tudo do editor, mais usuários, relatórios e configurações.' },
   proprietario: { label: 'Proprietário', rank: 3, desc: 'Acesso total, inclusive conceder o papel de administrador.' },
 } as const
@@ -38,7 +38,7 @@ export const can = (role: Role, perm: Perm) => rankOf(role) >= PERMS[perm]
 export const ROLE_MATRIX: [string, number][] = [
   ['Ver o painel e a visão geral', 1],
   ['Criar, editar, publicar e despublicar cursos, módulos e aulas', 1],
-  ['Categorias, tags, destaques e ordem do catálogo', 1],
+  ['Categorias, tags, destaques, trilhas de carreira e ordem do catálogo', 1],
   ['Excluir cursos (só os que nenhum aluno começou)', 2],
   ['Biblioteca de mídia: enviar, trocar e excluir arquivos', 1],
   ['Usuários: consultar, suspender e reativar', 2],
@@ -72,6 +72,7 @@ export const ADMIN_NAV = [
   { to: '/admin', label: 'Visão geral', icon: 'LayoutDashboard', perm: 'painel' },
   { to: '/admin/cursos', label: 'Cursos', icon: 'BookOpen', perm: 'conteudo' },
   { to: '/admin/categorias', label: 'Categorias', icon: 'Tags', perm: 'conteudo' },
+  { to: '/admin/trilhas', label: 'Trilhas', icon: 'Target', perm: 'conteudo' },
   { to: '/admin/aulas', label: 'Módulos e aulas', icon: 'Layers', perm: 'conteudo' },
   { to: '/admin/usuarios', label: 'Alunos e usuários', icon: 'Users', perm: 'usuarios' },
   { to: '/admin/audiencia', label: 'Audiência', icon: 'Activity', perm: 'relatorios' },
@@ -98,6 +99,10 @@ export const AUDIT_LABELS: Record<string, { label: string; icon: string }> = {
   'categoria.atualizada': { label: 'Categoria atualizada', icon: 'Tags' },
   'categoria.excluida': { label: 'Categoria excluída', icon: 'Trash2' },
   'categorias.reordenadas': { label: 'Categorias reordenadas', icon: 'ArrowUpDown' },
+  'trilha.criada': { label: 'Trilha criada', icon: 'Target' },
+  'trilha.atualizada': { label: 'Trilha atualizada', icon: 'Target' },
+  'trilha.excluida': { label: 'Trilha excluída', icon: 'Trash2' },
+  'trilhas.reordenadas': { label: 'Trilhas reordenadas', icon: 'ArrowUpDown' },
   'catalogo.reordenado': { label: 'Catálogo reordenado', icon: 'ArrowUpDown' },
   'catalogo.atualizado': { label: 'Catálogo atualizado', icon: 'Layers' },
   'midia.enviada': { label: 'Arquivo enviado', icon: 'Upload' },

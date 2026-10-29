@@ -8,6 +8,8 @@
  * src/lib/admin/catalog.ts.
  */
 
+import type { Trail } from '@/lib/trails'
+
 // ---------- Catálogo ----------
 
 import type { StudentImages } from '@/lib/media'
@@ -104,6 +106,8 @@ export type LessonRef = Lesson & { mi: number; li: number; module: string }
 export type Catalog = {
   courses: Course[]
   categories: Category[]
+  /** Trilhas de carreira, na ordem do painel (inclui as desativadas: quem já escolheu continua com elas). */
+  trails: Trail[]
 }
 
 // ---------- Usuário ----------
@@ -223,7 +227,7 @@ export type AppNotification = {
 }
 
 export type Goals = {
-  /** Trilha principal (ver TRAILS). */
+  /** Trilha principal (id de uma trilha de Catalog.trails). */
   primary: string | null
   secondary: string[]
   /** Objetivo escrito pelo aluno, com as próprias palavras. */

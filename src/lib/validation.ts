@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { AREA_IDS, STAGE_IDS, TRAIL_IDS, WANT_IDS } from '@/lib/trails'
+import { AREA_IDS, STAGE_IDS, TRAIL_ID_PATTERN, WANT_IDS } from '@/lib/trails'
 
 /**
  * Regras de validação dos dados que entram no site (URLs e formulários).
@@ -159,8 +159,9 @@ export const onboardingSchema = z.object({
 export const GOAL_TEXT_MAX = 160
 export const goalsPatchSchema = z
   .object({
-    primary: z.enum(TRAIL_IDS as [string, ...string[]]).nullable(),
-    secondary: z.array(z.enum(TRAIL_IDS as [string, ...string[]])).max(2),
+    // O formato é conferido aqui; se a trilha existe, o servidor confere na ação (as trilhas vêm do banco).
+    primary: z.string().regex(TRAIL_ID_PATTERN).nullable(),
+    secondary: z.array(z.string().regex(TRAIL_ID_PATTERN)).max(2),
     text: z.string().max(GOAL_TEXT_MAX),
     skills: z.array(z.string().trim().min(1).max(60)).max(40),
     wants: z.array(z.enum(WANT_IDS as [string, ...string[]])).max(WANT_IDS.length),

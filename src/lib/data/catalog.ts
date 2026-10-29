@@ -13,10 +13,13 @@ import {
   mediaFromRows,
   MODULE_COLUMNS,
   studentCatalog,
+  TRAIL_COLUMNS,
+  trailsFromRows,
   type CatalogRows,
 } from '@/lib/domain/catalog-rows'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
 import type { MediaItem } from '@/lib/media'
+import type { Trail } from '@/lib/trails'
 import type { Catalog } from '@/lib/types'
 
 /**
@@ -81,6 +84,19 @@ async function saleRows(supabase: Supabase): Promise<unknown[]> {
 }
 
 /**
+ * Trilhas de carreira. Antes do SQL das trilhas a tabela não existe: aí devolve `undefined` e valem
+ * as 7 trilhas de sempre (src/lib/trails.ts).
+ */
+async function trailRows(supabase: Supabase): Promise<unknown[] | undefined> {
+  const { data, error } = await supabase.from('trails').select(TRAIL_COLUMNS).order('position').order('id').limit(100)
+  if (!error) return data as unknown[]
+  // 42P01 = tabela não existe; PGRST205 = a API ainda não conhece a tabela.
+  if (error.code === '42P01' || error.code === 'PGRST205' || notMigrated(error.code)) return undefined
+  console.error('Falha ao carregar as trilhas', { code: error.code })
+  return undefined
+}
+
+/**
  * Vídeo das aulas. Depois do SQL do cupom de lançamento, só pela função lesson_videos(), que entrega
  * apenas o vídeo dos cursos que a pessoa pode assistir (curso pago sem acesso = sem vídeo). Antes
  * desse SQL, lê direto da tabela, como sempre foi.
@@ -110,7 +126,7 @@ function mergeById(rows: unknown[], extra: unknown[]): unknown[] {
 
 const rawRows = cache(async (): Promise<CatalogRows> => {
   const supabase = await createSupabaseServerClient()
-  const [categories, courses, sale, modules, lessons, videos, materials, media] = await Promise.all([
+  const [categories, courses, sale, modules, lessons, videos, materials, media, trails] = await Promise.all([
     fetchAll(supabase, 'categories', CATEGORY_COLUMNS, 'position'),
     fetchAll(supabase, 'courses', COURSE_COLUMNS, 'position'),
     saleRows(supabase),
@@ -119,8 +135,9 @@ const rawRows = cache(async (): Promise<CatalogRows> => {
     videoRows(supabase),
     fetchAll(supabase, 'lesson_materials', MATERIAL_COLUMNS, 'position'),
     fetchAll(supabase, 'media_files', MEDIA_COLUMNS, 'created_at'),
+    trailRows(supabase),
   ])
-  return { categories, courses: mergeById(courses, sale), modules, lessons: mergeById(lessons, videos), materials, media }
+  return { categories, courses: mergeById(courses, sale), modules, lessons: mergeById(lessons, videos), materials, media, trails }
 })
 
 /** Tags sugeridas (a RLS só deixa a equipe ler; para o aluno vem vazio). */
@@ -141,7 +158,13 @@ async function readTags(): Promise<string[]> {
  */
 export const getCatalog = cache(async (): Promise<Catalog> => {
   const rows = await rawRows()
-  return studentCatalog(adminCatalogFromRows(rows), Date.now(), mediaFromRows(rows.media ?? []))
+  return studentCatalog(adminCatalogFromRows(rows), Date.now(), mediaFromRows(rows.media ?? []), trailsFromRows(rows.trails))
+})
+
+/** Trilhas para o painel (as cadastradas, ativas ou não). `saved` = false enquanto o SQL das trilhas não foi rodado. */
+export const getTrails = cache(async (): Promise<{ trails: Trail[]; saved: boolean }> => {
+  const rows = (await rawRows()).trails
+  return { trails: trailsFromRows(rows), saved: rows !== undefined }
 })
 
 /** Biblioteca de mídia inteira (só a equipe lê arquivos que não aparecem para o aluno). */

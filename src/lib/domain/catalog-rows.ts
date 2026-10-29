@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { IconName } from '@/components/ui/Icon'
 import {
   CATEGORY_ICONS,
   COURSE_STATUSES,
@@ -11,6 +12,7 @@ import {
   type AdminModule,
 } from '@/lib/admin/catalog'
 import { clampPct, imageUrl, materialUrl, type CourseImages, type ImageSlot, type MediaItem, type StudentImages } from '@/lib/media'
+import { DEFAULT_TRAILS, TRAIL_ID_PATTERN, type Trail } from '@/lib/trails'
 import type { Catalog, Category, Course, Lesson, LessonMaterial, Module } from '@/lib/types'
 
 /**
@@ -24,6 +26,8 @@ import type { Catalog, Category, Course, Lesson, LessonMaterial, Module } from '
 
 // ---------- Colunas lidas (nunca "select *") ----------
 
+/** Trilhas (SQL das trilhas). Lidas à parte: sem esse SQL, valem as 7 trilhas de sempre. */
+export const TRAIL_COLUMNS = 'id, title, blurb, icon, skills, keywords, course_ids, position, active'
 export const CATEGORY_COLUMNS = 'id, name, description, icon, position, active, media_id'
 export const COURSE_COLUMNS = [
   'id, title, subtitle, summary, description, category_id, instructor, level, language, tags, hours',
@@ -182,6 +186,37 @@ export type CatalogRows = {
   lessons: unknown[]
   materials: unknown[]
   media?: unknown[]
+  /** Ausente = o banco ainda não tem a tabela de trilhas (valem as de sempre). */
+  trails?: unknown[]
+}
+
+const trailRow = z.object({
+  id: z.string().regex(TRAIL_ID_PATTERN),
+  title: z.string().min(1).max(80),
+  blurb: z.string().max(200),
+  icon: z.string().max(40),
+  skills: z.array(z.string().max(40)).max(10),
+  keywords: z.array(z.string().max(40)).max(10),
+  course_ids: z.array(z.string().max(40)).max(12),
+  position: z.number(),
+  active: z.boolean(),
+})
+
+/** Trilhas na ordem do painel. Sem a tabela (SQL ainda não rodou), as 7 trilhas de sempre. */
+export function trailsFromRows(rows: unknown[] | undefined): Trail[] {
+  if (!rows) return DEFAULT_TRAILS
+  return valid(rows, trailRow)
+    .sort(byPosition)
+    .map((t) => ({
+      id: t.id,
+      title: t.title,
+      blurb: t.blurb,
+      icon: ((CATEGORY_ICONS as readonly string[]).includes(t.icon) ? t.icon : 'Rocket') as IconName,
+      skills: t.skills,
+      keywords: t.keywords,
+      courseIds: t.course_ids,
+      active: t.active,
+    }))
 }
 
 function valid<T>(rows: unknown[], schema: z.ZodType<T>): T[] {
@@ -299,7 +334,7 @@ export function isLive(course: Pick<AdminCourse, 'status' | 'publishAt'>, now = 
 }
 
 /** Vira o catálogo do aluno: sem rascunhos, módulos arquivados, aulas despublicadas e cursos vazios. */
-export function studentCatalog(admin: AdminCatalog, now = Date.now(), mediaList: MediaItem[] = []): Catalog {
+export function studentCatalog(admin: AdminCatalog, now = Date.now(), mediaList: MediaItem[] = [], trails: Trail[] = DEFAULT_TRAILS): Catalog {
   const media = new Map(mediaList.map((m) => [m.id, m]))
   const categories: Category[] = admin.categories.map((c) => {
     const file = c.media ? media.get(c.media) : undefined
@@ -365,7 +400,7 @@ export function studentCatalog(admin: AdminCatalog, now = Date.now(), mediaList:
       images: studentImages(c.images, media),
     })
   }
-  return { courses, categories }
+  return { courses, categories, trails }
 }
 
 /** Capa, miniatura e banner prontos para a tela (só arquivos que ainda existem e são imagens). */

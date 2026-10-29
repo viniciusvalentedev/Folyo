@@ -1,4 +1,4 @@
-import { GENERIC_SKILLS, TRAILS, findTrail, type Trail } from '@/lib/trails'
+import { GENERIC_SKILLS, findTrail, type Trail } from '@/lib/trails'
 import type {
   Catalog,
   Certificate,
@@ -231,11 +231,11 @@ export function deriveUserData(state: UserState, catalog: Catalog): Derived {
   })
 
   // Preenchimento do currículo
-  const goal = findTrail(state.goals.primary)
+  const goal = findTrail(catalog.trails, state.goals.primary)
   const hasEnglish = state.user.languages.some((l) => sameText(l.name, 'Inglês'))
   const cvSkills = skills.filter((s) => s.inCV && s.type !== 'idioma')
   const objective = (state.user.objective || '').trim()
-  const keywords = TRAILS.flatMap((t) => t.keywords).concat([
+  const keywords = catalog.trails.flatMap((t) => t.keywords).concat([
     'administração',
     'vendas',
     'design',
@@ -331,15 +331,24 @@ export function catalogSkills(catalog: Catalog): CatalogSkill[] {
 /** Algum curso do catálogo ensina esta skill? */
 export const skillInCatalog = (catalog: CatalogSkill[], name: string) => catalog.some((s) => sameText(s.name, name))
 
-/** A trilha com as skills que o catálogo ensina hoje e os cursos que combinam com ela. */
+/**
+ * A trilha com as skills que o catálogo ensina hoje e os cursos dela. Se o painel escolheu os cursos à mão,
+ * valem esses (na ordem escolhida, só os que estão no ar); senão, os que ensinam as skills da trilha.
+ */
 export function trailWithCourses(trail: Trail | null, catalog: Catalog, skills: CatalogSkill[] = catalogSkills(catalog)) {
   if (!trail) return null
-  const courses = catalog.courses
-    .filter((course) => isListed(course))
-    .map((course) => ({ course, n: uniqueNames(course.skills).filter((s) => trail.skills.some((t) => sameText(t, s))).length }))
-    .filter((x) => x.n > 0)
-    .sort((a, b) => b.n - a.n)
-    .map((x) => x.course)
+  const listed = catalog.courses.filter((course) => isListed(course))
+  let courses: Course[]
+  if (trail.courseIds.length) {
+    const byId = new Map(listed.map((course) => [course.id, course]))
+    courses = trail.courseIds.flatMap((id) => byId.get(id) ?? [])
+  } else {
+    courses = listed
+      .map((course) => ({ course, n: uniqueNames(course.skills).filter((s) => trail.skills.some((t) => sameText(t, s))).length }))
+      .filter((x) => x.n > 0)
+      .sort((a, b) => b.n - a.n)
+      .map((x) => x.course)
+  }
   return { ...trail, liveSkills: trail.skills.filter((s) => skillInCatalog(skills, s)), liveCourses: courses }
 }
 
@@ -388,8 +397,8 @@ export function recommendCourses(state: UserState, derived: Derived, catalog: Ca
 }
 
 /** Sugestão de objetivo profissional a partir da trilha escolhida. */
-export function suggestedObjective(state: UserState) {
-  const trail = findTrail(state.goals.primary)
+export function suggestedObjective(state: UserState, trails: readonly Trail[]) {
+  const trail = findTrail(trails, state.goals.primary)
   const byTrail: Record<string, string> = {
     marketing: 'Estágio em marketing, com foco em pesquisa de público e posicionamento de marca para pequenos negócios.',
     estagio: 'Primeiro estágio em administração, com foco em atendimento, vendas e organização de processos.',
@@ -405,7 +414,7 @@ export function suggestedObjective(state: UserState) {
 /** Skills sugeridas na escolha de skills em Objetivos (as do aluno, as da trilha e as do catálogo). */
 export function suggestedGoalSkills(state: UserState, catalog: Catalog, limit = 18) {
   const catalogList = catalogSkills(catalog)
-  const trail = trailWithCourses(findTrail(state.goals.primary), catalog, catalogList)
+  const trail = trailWithCourses(findTrail(catalog.trails, state.goals.primary), catalog, catalogList)
   const out: string[] = []
   const add = (name: string) => {
     if (!out.some((n) => sameText(n, name))) out.push(name)

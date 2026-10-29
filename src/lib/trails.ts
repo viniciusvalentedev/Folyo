@@ -3,8 +3,10 @@ import type { IconName } from '@/components/ui/Icon'
 /**
  * Trilhas de carreira e opções do primeiro acesso.
  *
- * Ficam no código (iguais para todo mundo, nada disso é dado do aluno). O servidor usa
- * estas mesmas listas para conferir o que chega: um id que não existe aqui é recusado.
+ * As TRILHAS são cadastradas no painel (Trilhas) e ficam no banco; as daqui (DEFAULT_TRAILS) são as
+ * de sempre: servem de ponto de partida e de reserva enquanto o SQL das trilhas não foi rodado.
+ * O resto (momento de vida, áreas e objetivos do primeiro acesso) fica no código, igual para todo mundo.
+ * O servidor usa estas listas para conferir o que chega: um id que não existe é recusado.
  */
 
 export type Trail = {
@@ -16,9 +18,17 @@ export type Trail = {
   skills: string[]
   /** Palavras que indicam a área no texto do objetivo profissional do currículo. */
   keywords: string[]
+  /** Cursos escolhidos à mão no painel, na ordem em que aparecem. Vazio = a trilha usa as skills. */
+  courseIds: string[]
+  /** Trilha desativada some da escolha, mas continua valendo para quem já a escolheu. */
+  active: boolean
 }
 
-export const TRAILS: Trail[] = [
+/** Formato do endereço (id) de uma trilha; é o mesmo do banco. */
+export const TRAIL_ID_PATTERN = /^[a-z0-9-]{1,40}$/
+
+/** As 7 trilhas de sempre (o mesmo que o SQL das trilhas cadastra de início). */
+export const DEFAULT_TRAILS: Trail[] = [
   {
     id: 'marketing',
     icon: 'Megaphone',
@@ -26,6 +36,8 @@ export const TRAILS: Trail[] = [
     blurb: 'Entender públicos, posicionar marcas e comunicar ideias com clareza.',
     skills: ['Marketing', 'Comunicação'],
     keywords: ['marketing', 'marca', 'posicionamento', 'comunicação'],
+    courseIds: [],
+    active: true,
   },
   {
     id: 'vendas',
@@ -34,6 +46,8 @@ export const TRAILS: Trail[] = [
     blurb: 'Vender com escuta e método, atender bem e gerar indicações.',
     skills: ['Vendas', 'Comunicação'],
     keywords: ['vendas', 'comercial', 'negociação'],
+    courseIds: [],
+    active: true,
   },
   {
     id: 'familia',
@@ -42,6 +56,8 @@ export const TRAILS: Trail[] = [
     blurb: 'Organizar o caixa, vender, atender e posicionar o próprio negócio.',
     skills: ['Gestão', 'Vendas', 'Marketing'],
     keywords: ['empresa', 'negócio', 'gestão', 'empreender'],
+    courseIds: [],
+    active: true,
   },
   {
     id: 'programacao',
@@ -50,6 +66,8 @@ export const TRAILS: Trail[] = [
     blurb: 'Sair do zero em programação e trabalhar com dados e IA com critério.',
     skills: ['Tecnologia', 'Idiomas'],
     keywords: ['programação', 'desenvolvimento', 'tecnologia', 'software'],
+    courseIds: [],
+    active: true,
   },
   {
     id: 'estagio',
@@ -58,6 +76,8 @@ export const TRAILS: Trail[] = [
     blurb: 'Chegar preparado ao processo seletivo e mostrar o que você sabe fazer.',
     skills: ['Carreira', 'Comunicação', 'Idiomas'],
     keywords: ['estágio', 'estagio', 'processo seletivo', 'trainee'],
+    courseIds: [],
+    active: true,
   },
   {
     id: 'ingles',
@@ -66,6 +86,8 @@ export const TRAILS: Trail[] = [
     blurb: 'Participar de reuniões, escrever e-mails e responder entrevistas em inglês.',
     skills: ['Idiomas', 'Comunicação'],
     keywords: ['inglês', 'ingles'],
+    courseIds: [],
+    active: true,
   },
   {
     id: 'criativo',
@@ -74,14 +96,18 @@ export const TRAILS: Trail[] = [
     blurb: 'Ler e propor espaços e apresentar ideias visuais com processo.',
     skills: ['Design', 'Comunicação'],
     keywords: ['design', 'criativo', 'arquitetura'],
+    courseIds: [],
+    active: true,
   },
 ]
 
-export const TRAIL_IDS = TRAILS.map((t) => t.id)
-
-export function findTrail(id: string | null | undefined): Trail | null {
-  return id ? (TRAILS.find((t) => t.id === id) ?? null) : null
+/** Acha uma trilha pelo id (ativa ou não: quem já escolheu uma trilha desativada continua com ela). */
+export function findTrail(trails: readonly Trail[], id: string | null | undefined): Trail | null {
+  return id ? (trails.find((t) => t.id === id) ?? null) : null
 }
+
+/** Só as trilhas que o aluno pode escolher agora. */
+export const chooseableTrails = (trails: readonly Trail[]) => trails.filter((t) => t.active)
 
 /** Skills sugeridas quando o catálogo ainda tem poucas (a escolha de skills em Objetivos). */
 export const GENERIC_SKILLS = ['Marketing', 'Vendas', 'Comunicação', 'Tecnologia', 'Gestão', 'Design', 'Idiomas', 'Carreira']
@@ -174,7 +200,7 @@ function same(a: string, b: string) {
  * Função pura usada nos DOIS lados: o servidor grava este resultado e a tela mostra o
  * mesmo resultado na hora. Como parte só de ids, quem manda o pedido não escolhe os textos.
  */
-export function computeOnboarding(input: { stage: string; areas: string[]; wants: string[] }) {
+export function computeOnboarding(input: { stage: string; areas: string[]; wants: string[] }, trails: readonly Trail[]) {
   const stage = findStage(input.stage)
   if (!stage) return null
   const areas = AREAS.filter((a) => input.areas.includes(a.id))
@@ -184,8 +210,10 @@ export function computeOnboarding(input: { stage: string; areas: string[]; wants
   for (const option of [...areas, ...wants]) {
     for (const skill of option.skills) if (!skills.some((s) => same(s, skill))) skills.push(skill)
   }
-  const primary = (areas.find((a) => a.trail) ?? wants.find((w) => w.trail))?.trail ?? null
-  const trail = findTrail(primary)
+  // A trilha sugerida tem que existir e estar ativa (o painel pode ter desativado ou excluído a de sempre).
+  const offered = (id: string | null) => !!id && trails.some((t) => t.id === id && t.active)
+  const primary = (areas.find((a) => offered(a.trail)) ?? wants.find((w) => offered(w.trail)))?.trail ?? null
+  const trail = findTrail(trails, primary)
 
   return {
     stage: stage.id,

@@ -136,7 +136,7 @@ src/
 │  ├─ actions/               → ações que salvam no banco: student.ts (aulas, currículo…), profile.ts (primeiro acesso e
 │  │                           objetivos), works.ts (trabalhos e PDFs), admin.ts (usuários), catalog.ts (cursos,
 │  │                           categorias, tags), shared.ts e admin-shared.ts (peças comuns das ações)
-│  ├─ trails.ts              → trilhas, etapas de vida e metas do primeiro acesso (uma lista só, usada por tela e servidor)
+│  ├─ trails.ts              → tipo das trilhas, as 7 de reserva (DEFAULT_TRAILS), etapas de vida e metas do primeiro acesso
 │  ├─ pdf-file.ts            → limites e conferência de PDF (tamanho e assinatura %PDF-)
 │  ├─ admin/catalog*.ts      → cadastro de cursos do painel: formato, limites e regras de publicação (navegador e servidor)
 │  ├─ domain/                → regras/cálculos (progresso, tempo estudado, certificados, objetivos)
@@ -250,6 +250,9 @@ supabase/
     publicadas; rascunhos nunca saem do banco para ele. A equipe vê tudo, mas no site do aluno vê o mesmo que o aluno.
   - **Quem pode:** editor cria, edita, publica, despublica e organiza; **excluir curso é só do administrador** e o banco
     recusa se algum aluno já começou o curso (despublique em vez de excluir).
+  - **Trilhas de carreira:** a tela **Trilhas** cadastra as trilhas de Objetivos (tabela `trails`, funções
+    `admin_save_trail`, `admin_delete_trail` e `admin_reorder_trails`): criar, editar, ordenar, ativar/desativar, excluir
+    (o banco recusa se algum aluno a escolheu) e escolher à mão os cursos de cada uma. Detalhes em `supabase/README.md`.
   - **Histórico:** criar, editar, publicar, agendar, despublicar, excluir e reordenar ficam em
     Administração e permissões › Histórico (filtro "Conteúdo").
   - **Links:** vídeos e materiais são links `https://`. YouTube e Vimeo abrem no site deles (a Folyo não carrega
@@ -286,7 +289,7 @@ supabase/
 | **Capas e imagens dos cursos** | ✅ Capa, miniatura e banner enviados pela biblioteca de mídia, com ponto de foco; sem imagem, arte padrão | Recorte automático por IA |
 | **Currículo em PDF e certificados** | Só visual ("Certificados a caminho"). Hoje "aula concluída" é marcada pelo próprio aluno | Certificado emitido pelo servidor (conferindo aulas e trabalho) + código de verificação |
 | **Perfil público** | ✅ `/u/<endereço>` aberto sem login, com controle de privacidade; `/publico` é a pré-visualização. Não é indexado pelo Google (`noindex`) | Opção "aparecer no Google" e subdomínio (`nome.usefolyo.com`) |
-| **Objetivos com recomendação** | ✅ Trilhas em `src/lib/trails.ts`; as recomendações usam os cursos do banco (publicados e visíveis) | Refinar com os dados de audiência |
+| **Objetivos com recomendação** | ✅ Trilhas cadastradas no painel (Trilhas), com as 7 de `src/lib/trails.ts` de reserva; as recomendações usam os cursos do banco (publicados e visíveis) | Refinar com os dados de audiência |
 | **Pagamentos (Plano Pro)** | Só o selo "Pro" | Mercado Pago / Stripe / Pagar.me |
 
 ### Como os dados vão para o banco

@@ -2,6 +2,7 @@
 
 - **Aulas em sequência e continuar de onde parou:** logo abaixo. Rode o SQL **antes** de publicar o código.
 - **Concluir a aula só no final do vídeo:** logo abaixo. Sem SQL.
+- **Trilhas no painel (Objetivos > Escolher objetivos):** logo abaixo. O código funciona com e sem o SQL.
 - **Troca do código do cupom (FOLYO100 → LANCAMENTO):** logo abaixo. Rode o SQL junto com a publicação do código.
 - **Carrinho e cupom de lançamento (LANCAMENTO):** logo abaixo. Publique o código **antes** do SQL.
 - **Limite de pedidos (rate limit):** logo abaixo. Opcional, sem SQL.
@@ -20,6 +21,38 @@
 > A **secret key** (`sb_secret_...`) **não é usada** nesta etapa: não cole ela no `.env.local`, na Vercel,
 > no GitHub nem em conversas. Ela passa por cima de todas as regras de segurança do banco. Guarde só no
 > gerenciador de senhas.
+
+---
+
+# Trilhas no painel
+
+As trilhas de **Objetivos > Escolher objetivos** (Marketing, Vendas, Empreender, Tecnologia...) agora são cadastradas no
+painel, em **Trilhas** (menu à esquerda; editores e acima). Dá para **criar, editar, ordenar, ativar/desativar e excluir**
+trilhas, e escolher **à mão os cursos** de cada uma (na ordem que você quiser). Se uma trilha ficar **sem cursos
+escolhidos**, ela continua automática: mostra os cursos que ensinam as skills dela, como antes.
+
+## 1. Rodar o SQL
+No Supabase → **SQL Editor**, rode `supabase/migrations/20261030000004_trilhas.sql` (pode rodar de novo sem problema).
+Ele cria a tabela `trails`, cadastra as **7 trilhas de sempre com os mesmos ids** (quem já escolheu uma continua com ela)
+e cria as funções do painel (`admin_save_trail`, `admin_delete_trail`, `admin_reorder_trails`), com histórico.
+Pode rodar **antes ou depois** de publicar o código: sem o SQL, o site mostra as 7 trilhas de sempre e a tela do painel
+avisa que falta rodar o arquivo.
+
+## 2. Como funciona
+- **Ativa/inativa:** trilha inativa some de Objetivos e do primeiro acesso, mas continua valendo para quem já a escolheu.
+- **Excluir:** o banco recusa se algum aluno escolheu a trilha (use "desativar"). Aparece no histórico do painel.
+- **Cursos escolhidos à mão:** só os que estão no ar aparecem para o aluno; curso despublicado some do pacote sozinho.
+- **Skills da trilha:** são somadas aos objetivos do aluno ao aplicar a trilha. Use os mesmos nomes das skills dos cursos.
+- **Primeiro acesso:** a trilha sugerida pelas respostas só vale se existir e estiver ativa.
+
+## 3. Testar
+1. Painel › Trilhas: devem aparecer as 7 de sempre. Crie uma trilha nova, escolha 2 cursos e salve.
+2. Como aluno, em Objetivos > Escolher objetivos: a trilha nova aparece com os 2 cursos, na ordem escolhida.
+3. Desative a trilha: ela some para o aluno. Tente excluir uma trilha que um aluno escolheu: o painel explica.
+
+## Como desfazer
+Só se precisar: `drop table public.trails cascade;` e apague as três funções `admin_*_trail` (e `admin_reorder_trails`).
+O site volta sozinho para as 7 trilhas de `src/lib/trails.ts` (`DEFAULT_TRAILS`).
 
 ---
 

@@ -1,7 +1,7 @@
 import type { z } from 'zod'
 import { findCourse, findLesson } from '@/lib/domain/catalog'
 import { brDate } from '@/lib/format'
-import { STAGE_IDS, TRAIL_IDS, WANT_IDS } from '@/lib/trails'
+import { STAGE_IDS, WANT_IDS } from '@/lib/trails'
 import type { Catalog, ResumeSection, Skill, UserState, Work } from '@/lib/types'
 import {
   achievementSchema,
@@ -213,8 +213,10 @@ export function stateFromRows(rows: StudentRows, catalog: Catalog): UserState {
 
   const welcomeRead = !!profile.notifications_read_at
 
-  const primaryGoal = profile.goal_primary && TRAIL_IDS.includes(profile.goal_primary) ? profile.goal_primary : null
-  const secondaryGoals = knownIds(profile.goals_secondary, TRAIL_IDS, 2).filter((g) => g !== primaryGoal)
+  // Trilhas desativadas continuam valendo para quem já as escolheu; as excluídas deixam de existir.
+  const trailIds = catalog.trails.map((t) => t.id)
+  const primaryGoal = profile.goal_primary && trailIds.includes(profile.goal_primary) ? profile.goal_primary : null
+  const secondaryGoals = knownIds(profile.goals_secondary, trailIds, 2).filter((g) => g !== primaryGoal)
 
   return {
     onboarded: profile.onboarded,

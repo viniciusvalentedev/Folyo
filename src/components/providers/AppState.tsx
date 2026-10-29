@@ -636,7 +636,8 @@ function useActions(
       saveResume: () => sync.flush(),
       setGoal: (id: string) => {
         const changed = commit((s) => {
-          if (!findTrail(id) || s.goals.primary === id) return false
+          const trail = findTrail(catalog.trails, id)
+          if (!trail?.active || s.goals.primary === id) return false
           s.goals.secondary = [s.goals.primary, ...s.goals.secondary.filter((g) => g !== id)]
             .filter((g): g is string => !!g)
             .slice(0, 2)
@@ -647,7 +648,10 @@ function useActions(
       },
       toggleSecondaryGoal: (id: string) => {
         const changed = commit((s) => {
-          if (!findTrail(id) || id === s.goals.primary || !s.goals.primary) return false
+          const trail = findTrail(catalog.trails, id)
+          if (!trail || id === s.goals.primary || !s.goals.primary) return false
+          // Trilha desativada: dá para tirar de quem já a escolheu, mas não para adicionar.
+          if (!trail.active && !s.goals.secondary.includes(id)) return false
           s.goals.secondary = s.goals.secondary.includes(id)
             ? s.goals.secondary.filter((g) => g !== id)
             : [...s.goals.secondary, id].slice(-2)
@@ -676,8 +680,8 @@ function useActions(
       },
       /** Adota uma trilha como objetivo: soma as skills dela às suas ou troca todas. */
       applyTrail: (id: string, mode: 'somar' | 'substituir' = 'somar') => {
-        const trail = findTrail(id)
-        if (!trail) return
+        const trail = findTrail(catalog.trails, id)
+        if (!trail?.active) return
         commit((s) => {
           if (s.goals.primary !== trail.id) {
             s.goals.secondary = s.goals.secondary.filter((g) => g !== trail.id)
@@ -740,7 +744,7 @@ function useActions(
        * Usa a mesma função que o servidor, então o que aparece é o que foi gravado.
        */
       completeOnboarding: (input: { stage: string; areas: string[]; wants: string[] }): OnboardingResult | null => {
-        const result = computeOnboarding(input)
+        const result = computeOnboarding(input, catalog.trails)
         if (!result) return null
         commit((s) => {
           s.onboarded = true
