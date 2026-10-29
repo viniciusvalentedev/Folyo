@@ -91,18 +91,20 @@ export async function saveLessonNoteAction(input: unknown): Promise<ActionResult
 }
 
 /**
- * Tempo assistido de uma aula (total em segundos, medido pelo player).
+ * Tempo assistido de uma aula (total em segundos, medido pelo player) e o ponto em que a pessoa
+ * parou (`position`, para continuar de onde parou).
  * O banco só deixa o total crescer e no máximo na velocidade do relógio, então um
  * pedido forjado não consegue "inventar" horas de estudo.
  */
 export async function saveLessonWatchAction(input: unknown): Promise<ActionResult> {
   const parsed = lessonWatchSchema.safeParse(input)
   if (!parsed.success) return INVALID
-  const { courseId, lessonId, seconds } = parsed.data
+  const { courseId, lessonId, seconds, position } = parsed.data
   if (findLesson(await getCatalog(), lessonId)?.course.id !== courseId) return INVALID
   const ctx = await actionContext()
   if (!ctx) return EXPIRED
-  return updateOrInsert(ctx, 'lesson_watch', { lesson_id: lessonId }, { seconds }, { course_id: courseId })
+  const changes = position === undefined ? { seconds } : { seconds, position }
+  return updateOrInsert(ctx, 'lesson_watch', { lesson_id: lessonId }, changes, { course_id: courseId })
 }
 
 /** Cria ou atualiza uma competência. */

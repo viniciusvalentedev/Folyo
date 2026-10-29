@@ -77,6 +77,26 @@ export const getAccount = cache(async (): Promise<Account> => {
   return parsed.data
 })
 
+/**
+ * Ids das aulas que o aluno logado já concluiu num curso (para travar as aulas em sequência no servidor).
+ * Se não der para ler, falha em vez de liberar: na dúvida, não entrega a aula.
+ */
+export const getCompletedLessonIds = cache(async (courseId: string): Promise<Set<string>> => {
+  const user = await requireUser()
+  const supabase = await createSupabaseServerClient()
+  const { data, error } = await supabase
+    .from('lesson_completions')
+    .select('lesson_id')
+    .eq('user_id', user.id)
+    .eq('course_id', courseId)
+    .limit(1200)
+  if (error) {
+    console.error('Falha ao ler as aulas concluídas', { code: error.code })
+    throw new Error('Não foi possível carregar seu progresso agora.')
+  }
+  return new Set((data ?? []).map((r) => r.lesson_id as string))
+})
+
 /** Colunas lidas do perfil (nunca "select *": coluna nova não vaza sem querer para a tela). */
 const PROFILE_COLUMNS = [
   'name, stage, exploring, goal_primary, goals_secondary, goals_text, goals_skills, goals_wants, onboarded, created_at, updated_at',
@@ -123,7 +143,7 @@ export async function getCurrentUserState(): Promise<UserState> {
       .eq('user_id', user.id)
       .limit(1200),
     supabase.from('lesson_notes').select('course_id, lesson_id, body').eq('user_id', user.id).limit(600),
-    supabase.from('lesson_watch').select('course_id, lesson_id, seconds').eq('user_id', user.id).limit(1600),
+    supabase.from('lesson_watch').select('course_id, lesson_id, seconds, position').eq('user_id', user.id).limit(1600),
     supabase.from('works').select(WORK_COLUMNS).eq('user_id', user.id).order('created_at', { ascending: false }).limit(120),
     supabase
       .from('skills')

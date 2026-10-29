@@ -334,8 +334,10 @@ function useActions(
       if (!found || sync.isQueued('watch:' + lid)) return
       sync.schedule('watch:' + lid, () => {
         const seconds = Math.min(86400, Math.floor(now().watch[lid] ?? 0))
-        return seconds >= 1
-          ? saveLessonWatchAction({ courseId: found.course.id, lessonId: lid, seconds })
+        const position = Math.min(86400, Math.floor(now().position[lid] ?? 0))
+        // Manda o ponto em que a pessoa parou junto com o total assistido (uma gravação só).
+        return seconds >= 1 || position >= 1
+          ? saveLessonWatchAction({ courseId: found.course.id, lessonId: lid, seconds, position })
           : Promise.resolve(OK_RESULT)
       }, WATCH_DELAY)
     }
@@ -524,6 +526,18 @@ function useActions(
           s.watch[lid] = Math.min(86400, Math.round(((s.watch[lid] ?? 0) + Math.min(seconds, 120)) * 10) / 10)
         })
         syncWatch(lid)
+      },
+      /** Ponto do vídeo em que a pessoa parou (segundos). 0 = recomeça do início (ex.: terminou a aula). */
+      savePosition: (lid: string, seconds: number) => {
+        if (!Number.isFinite(seconds) || !findLesson(catalog, lid)) return
+        const at = Math.min(86400, Math.max(0, Math.floor(seconds)))
+        const changed = commit((s) => {
+          if ((s.position[lid] ?? 0) === at) return false
+          if (at === 0) delete s.position[lid]
+          else s.position[lid] = at
+          return true
+        })
+        if (changed) syncWatch(lid)
       },
       toggleCertCV: (cid: string, on?: boolean) => {
         commit((s) => {

@@ -255,6 +255,8 @@ export type UserState = {
   notes: Record<string, string>
   /** id da aula -> segundos de vídeo assistidos (medidos pelo player). */
   watch: Record<string, number>
+  /** id da aula -> segundo em que a pessoa parou (para continuar de onde parou). */
+  position: Record<string, number>
   works: Work[]
   skills: Skill[]
   resume: ResumeState

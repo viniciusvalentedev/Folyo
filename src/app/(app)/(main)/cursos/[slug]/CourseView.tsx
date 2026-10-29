@@ -11,6 +11,7 @@ import { EmptyState, Ring } from '@/components/ui/indicators'
 import { useBack } from '@/components/ui/PageHead'
 import { WorksPanel } from '@/components/works/WorksPanel'
 import { categoryOf, findCourse, lessonsOf } from '@/lib/domain/catalog'
+import { blockingIndex, followsSequence } from '@/lib/domain/sequence'
 import { formatBRL, formatDateBR } from '@/lib/cart'
 import { formatDate, formatMinutes, plural } from '@/lib/format'
 
@@ -36,7 +37,12 @@ export function CourseView({ id }: { id: string }) {
   const archived = course.status === 'arquivado'
   // Curso arquivado: quem já começou continua; ninguém novo entra.
   const locked = archived && !st.started
-  const minutes = lessonsOf(course).reduce((sum, l) => sum + l.min, 0)
+  const allLessons = lessonsOf(course)
+  const minutes = allLessons.reduce((sum, l) => sum + l.min, 0)
+  // Aulas em sequência: a aula só abre se todas as anteriores estiverem concluídas.
+  const sequential = followsSequence(s.role)
+  const blockerOf = (lessonId: string) =>
+    sequential ? blockingIndex(allLessons, allLessons.findIndex((x) => x.id === lessonId), (id) => !!s.completed[id]) : -1
   // Curso pago sem acesso: o banco nem entrega o vídeo; aqui o caminho é a página de compra.
   const offer = offerOf(course)
   const mustBuy = offer.kind === 'a-venda'
@@ -258,14 +264,21 @@ export function CourseView({ id }: { id: string }) {
                           {m.lessons.map((l) => {
                             const isDone = !!s.completed[l.id]
                             const isNext = st.resume?.id === l.id && !st.complete
+                            const blocker = blockerOf(l.id)
+                            const isLocked = blocker >= 0
                             return (
                               <li key={l.id}>
                                 <button
                                   type="button"
                                   disabled={locked}
-                                  className={'lesson-line' + (isDone ? ' done' : '') + (isNext ? ' next' : '')}
+                                  className={'lesson-line' + (isDone ? ' done' : '') + (isNext ? ' next' : '') + (isLocked ? ' locked' : '')}
+                                  aria-disabled={isLocked || undefined}
                                   onClick={() => {
                                     if (mustBuy) return buy()
+                                    if (isLocked) {
+                                      toast(`Conclua a aula ${lessonNumber(course, allLessons[blocker].id)} antes de abrir esta.`, 'info')
+                                      return
+                                    }
                                     a.openLesson(course.id, l.id)
                                     router.push(`/aula/${course.id}/${l.id}`)
                                   }}
@@ -275,6 +288,8 @@ export function CourseView({ id }: { id: string }) {
                                       <Icon name="Check" size={14} />
                                     ) : isNext ? (
                                       <Icon name="Play" size={12} />
+                                    ) : isLocked ? (
+                                      <Icon name="Lock" size={12} />
                                     ) : (
                                       <span className="ll-dot" />
                                     )}

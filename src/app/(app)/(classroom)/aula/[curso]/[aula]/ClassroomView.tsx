@@ -13,10 +13,12 @@ import { Modal } from '@/components/ui/Modal'
 import { useAudience } from '@/components/classroom/useAudience'
 import { WorksPanel } from '@/components/works/WorksPanel'
 import { findCourse, lessonsOf } from '@/lib/domain/catalog'
+import { blockingIndex, followsSequence } from '@/lib/domain/sequence'
 import { isExternalVideo, isHttpsUrl } from '@/lib/admin/catalog'
 import { issuesCertificate } from '@/lib/domain/derive'
 import { plural } from '@/lib/format'
 import { formatBytes } from '@/lib/media'
+import { isTrackedVideo, reachedEnd, resumePoint, shouldSavePosition } from '@/lib/watch-rules'
 import { NOTE_MAX } from '@/lib/validation'
 import type { Course, LessonRef } from '@/lib/types'
 
@@ -50,16 +52,40 @@ const BUNNY_EVENTS = ['play', 'pause', 'ended', 'timeupdate'] as const
  *  - YouTube/Vimeo: não tocam dentro de outro site (a Folyo não carrega iframes de terceiros
  *    além do Bunny), então a aula mostra um botão que abre o vídeo no site deles.
  * Sem vídeo (ou se falhar), aparece o aviso de vídeo indisponível.
+ * A pessoa pode pular trechos à vontade; `onEnd` avisa quando o vídeo chega ao final (libera concluir a aula).
  */
-function LessonPlayer({ lesson, courseId, n, embedUrl }: { lesson: LessonRef; courseId: string; n: number; embedUrl: string | null }) {
-  const { a } = useApp()
+function LessonPlayer({ lesson, courseId, n, embedUrl, onEnd }: { lesson: LessonRef; courseId: string; n: number; embedUrl: string | null; onEnd: () => void }) {
+  const { a, s } = useApp()
   const audience = useAudience(courseId, lesson.id)
   const video = lesson.video ?? null
   const url = video?.kind === 'link' ? video.url : null
   const [failed, setFailed] = useState(false)
   const frame = useRef<HTMLIFrameElement>(null)
-  // Soma o tempo realmente assistido (ignora quem pula a barra de tempo).
+  // Soma o tempo realmente assistido (trechos pulados não contam como tempo de estudo).
   const track = useRef({ last: 0, pending: 0 })
+  // Continuar de onde parou: o ponto salvo na última visita (lido uma vez, ao abrir a aula).
+  const [resumeAt] = useState(() => resumePoint(s.position[lesson.id] ?? 0))
+  const place = useRef({ saved: resumeAt, latest: resumeAt, duration: 0, applied: resumeAt === 0 })
+
+  /** Guarda o ponto em que a pessoa está (aos poucos, ou na hora com `force`). Chegou ao fim = recomeça do início. */
+  const remember = (current: number, duration: number, force = false) => {
+    const p = place.current
+    if (!Number.isFinite(current) || current < 0) return
+    p.latest = current
+    if (duration > 0) p.duration = duration
+    const at = p.duration > 0 && reachedEnd(current, p.duration) ? 0 : resumePoint(current)
+    if (!force && !shouldSavePosition(p.saved, at)) return
+    p.saved = at
+    a.savePosition(lesson.id, at)
+  }
+  // Ao sair da aula, guarda o último ponto.
+  useEffect(
+    () => () => {
+      if (place.current.latest > 0 || place.current.saved > 0) remember(place.current.latest, place.current.duration, true)
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
 
   const flush = () => {
     const t = track.current
@@ -72,6 +98,8 @@ function LessonPlayer({ lesson, courseId, n, embedUrl }: { lesson: LessonRef; co
     const delta = current - t.last
     t.last = current
     audience.time(current, duration)
+    if (reachedEnd(current, duration)) onEnd()
+    remember(current, duration)
     if (!playing || delta <= 0 || delta > 3) return
     t.pending += delta
     if (t.pending >= WATCH_BATCH) flush()
@@ -102,6 +130,11 @@ function LessonPlayer({ lesson, courseId, n, embedUrl }: { lesson: LessonRef; co
         case 'play':
           playing = true
           track.current.last = seconds
+          // Se o player não abriu no ponto salvo, leva até lá (uma vez só).
+          if (!place.current.applied) {
+            place.current.applied = true
+            if (seconds < resumeAt - 3) post({ method: 'setCurrentTime', value: resumeAt })
+          }
           audience.play()
           break
         case 'timeupdate':
@@ -110,12 +143,16 @@ function LessonPlayer({ lesson, courseId, n, embedUrl }: { lesson: LessonRef; co
         case 'pause':
           playing = false
           flush()
+          remember(seconds, duration, true)
           audience.pause()
           break
         case 'ended':
           playing = false
           flush()
+          place.current.duration = duration || place.current.duration
+          remember(place.current.duration || seconds, place.current.duration, true)
           audience.end()
+          onEnd()
           break
       }
     }
@@ -146,7 +183,7 @@ function LessonPlayer({ lesson, courseId, n, embedUrl }: { lesson: LessonRef; co
         <iframe
           ref={frame}
           className="player-video player-embed"
-          src={bunnyEmbed}
+          src={resumeAt > 0 ? `${bunnyEmbed}&t=${resumeAt}s` : bunnyEmbed}
           title={`Vídeo: ${lesson.title}`}
           loading="lazy"
           allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope"
@@ -184,7 +221,18 @@ function LessonPlayer({ lesson, courseId, n, embedUrl }: { lesson: LessonRef; co
           playsInline
           preload="metadata"
           controlsList="nodownload"
-          onError={() => setFailed(true)}
+          onLoadedMetadata={(e) => {
+            const el = e.currentTarget
+            if (!place.current.applied) {
+              place.current.applied = true
+              if (el.duration > 0 && resumeAt < el.duration - 5) el.currentTime = resumeAt
+            }
+          }}
+          onError={() => {
+            // Vídeo que não carrega não pode prender a pessoa na aula.
+            setFailed(true)
+            onEnd()
+          }}
           onPlay={(e) => {
             track.current.last = e.currentTarget.currentTime
             audience.time(e.currentTarget.currentTime, e.currentTarget.duration)
@@ -194,13 +242,16 @@ function LessonPlayer({ lesson, courseId, n, embedUrl }: { lesson: LessonRef; co
             const el = e.currentTarget
             tick(el.currentTime, el.duration, !el.paused)
           }}
-          onPause={() => {
+          onPause={(e) => {
             flush()
+            remember(e.currentTarget.currentTime, e.currentTarget.duration, true)
             audience.pause()
           }}
-          onEnded={() => {
+          onEnded={(e) => {
             flush()
+            remember(e.currentTarget.duration, e.currentTarget.duration, true)
             audience.end()
+            onEnd()
           }}
         />
       </div>
@@ -263,7 +314,7 @@ type Tab = 'sobre' | 'material' | 'notas' | 'projeto'
 type Celebration = null | 'cert' | 'lessons' | 'done'
 
 export function ClassroomView({ courseId, lessonId, embedUrl }: { courseId: string; lessonId: string; embedUrl: string | null }) {
-  const { s, d, a, toast, catalog } = useApp()
+  const { s, d, a, toast, catalog, isSaving } = useApp()
   const router = useRouter()
   const course = findCourse(catalog, courseId) as Course | undefined
   const lessons = course ? lessonsOf(course) : []
@@ -274,6 +325,19 @@ export function ClassroomView({ courseId, lessonId, embedUrl }: { courseId: stri
   const [celebrate, setCelebrate] = useState<Celebration>(null)
   // Guarda QUAL aula acabou de ser concluída (a animação não repete ao trocar de aula).
   const [justDone, setJustDone] = useState<string | null>(null)
+  // Guarda em QUAL aula o vídeo já chegou ao final (pular trechos é livre; concluir só no final).
+  const [endedLesson, setEndedLesson] = useState<string | null>(null)
+
+  // Trocar de aula logo depois de concluir: espera a conclusão chegar ao servidor (ele confere a sequência das aulas).
+  const goAfterSave = useRef<string | null>(null)
+  const savingLesson = isSaving('lesson:' + lessonId)
+  useEffect(() => {
+    if (goAfterSave.current && !savingLesson) {
+      const to = goAfterSave.current
+      goAfterSave.current = null
+      router.push(to)
+    }
+  }, [savingLesson, router])
 
   // Ao abrir a aula, registra como "última aula vista" do curso.
   useEffect(() => {
@@ -296,12 +360,31 @@ export function ClassroomView({ courseId, lessonId, embedUrl }: { courseId: stri
   const n = lessonNumber(course, lesson.id)
   const hasProject = !!course.project?.title
   const pendingProject = st.offersProject && !st.delivered
-  const go = (l?: LessonRef) => l && router.push(`/aula/${course.id}/${l.id}`)
+  const go = (l?: { id: string }) => {
+    if (!l) return
+    const to = `/aula/${course.id}/${l.id}`
+    if (isSaving('lesson:' + lesson.id)) goAfterSave.current = to
+    else router.push(to)
+  }
+  // Aulas em sequência (só aluno): uma aula só abre se todas as anteriores estiverem concluídas.
+  const sequential = followsSequence(s.role)
+  const blockerOf = (lessonIndex: number) =>
+    sequential ? blockingIndex(lessons, lessonIndex, (id) => !!s.completed[id]) : -1
+  const nextBlocked = blockerOf(index + 1) >= 0
+  // Aula com vídeo que a Folyo acompanha: concluir e ir para a próxima só quando o vídeo chega ao final.
+  // Aula já concluída, sem vídeo ou com vídeo de fora (YouTube/Vimeo) não trava.
+  const needsEnd = isTrackedVideo(lesson.video) && !(lesson.video?.kind === 'bunny' && !embedUrl) && !done
+  const atEnd = endedLesson === lesson.id
+  const locked = needsEnd && !atEnd
 
   const toggleDone = () => {
     if (done) {
       a.toggleLesson(lesson.id)
       toast('Aula marcada como não concluída.', 'info')
+      return
+    }
+    if (locked) {
+      toast('Assista até o final do vídeo para concluir a aula.', 'info')
       return
     }
     a.toggleLesson(lesson.id)
@@ -346,7 +429,7 @@ export function ClassroomView({ courseId, lessonId, embedUrl }: { courseId: stri
 
       <div className="class-grid">
         <div className="class-main">
-          <LessonPlayer key={lesson.id} lesson={lesson} courseId={course.id} n={n} embedUrl={embedUrl} />
+          <LessonPlayer key={lesson.id} lesson={lesson} courseId={course.id} n={n} embedUrl={embedUrl} onEnd={() => setEndedLesson(lesson.id)} />
           <div className="class-titlebar">
             <div>
               <p className="eyebrow">
@@ -359,16 +442,26 @@ export function ClassroomView({ courseId, lessonId, embedUrl }: { courseId: stri
               <Button
                 variant={done ? 'done' : 'go'}
                 icon={done ? 'CircleCheck' : 'Check'}
+                disabled={locked}
                 onClick={toggleDone}
                 className={justDone === lesson.id && done ? 'pop' : ''}
               >
                 {done ? 'Concluída' : 'Marcar como concluída'}
               </Button>
-              <Button variant={done ? 'primary' : 'quiet-dark'} iconRight="ChevronRight" disabled={!next} onClick={() => go(next)}>
+              <Button variant={done ? 'primary' : 'quiet-dark'} iconRight="ChevronRight" disabled={!next || locked || nextBlocked} onClick={() => go(next)}>
                 Próxima aula
               </Button>
             </div>
           </div>
+
+          {needsEnd && (
+            <p className={'class-gate' + (atEnd ? ' ok' : '')} role="status">
+              <Icon name={atEnd ? 'CircleCheck' : 'Info'} size={16} />
+              {atEnd
+                ? 'Você chegou ao final do vídeo: já pode concluir a aula e ir para a próxima.'
+                : 'Você pode pular trechos do vídeo, mas só conclui a aula e vai para a próxima quando chegar ao final.'}
+            </p>
+          )}
 
           <Tabs
             label="Conteúdo da aula"
@@ -460,16 +553,33 @@ export function ClassroomView({ courseId, lessonId, embedUrl }: { courseId: stri
                 {m.lessons.map((l) => {
                   const isDone = !!s.completed[l.id]
                   const isCur = l.id === lesson.id
+                  const blocker = blockerOf(lessons.findIndex((x) => x.id === l.id))
+                  const isLocked = blocker >= 0
                   return (
                     <li key={l.id}>
                       <button
                         type="button"
-                        className={'side-lesson' + (isDone ? ' done' : '') + (isCur ? ' cur' : '')}
+                        className={'side-lesson' + (isDone ? ' done' : '') + (isCur ? ' cur' : '') + (isLocked ? ' locked' : '')}
                         aria-current={isCur ? 'true' : undefined}
-                        onClick={() => router.push(`/aula/${course.id}/${l.id}`)}
+                        aria-disabled={isLocked || undefined}
+                        onClick={() => {
+                          if (isLocked) {
+                            toast(`Conclua a aula ${lessonNumber(course, lessons[blocker].id)} antes de abrir esta.`, 'info')
+                            return
+                          }
+                          go(l)
+                        }}
                       >
                         <span className="sl-ico">
-                          {isDone ? <Icon name="Check" size={13} /> : isCur ? <Icon name="Play" size={11} /> : lessonNumber(course, l.id)}
+                          {isDone ? (
+                            <Icon name="Check" size={13} />
+                          ) : isCur ? (
+                            <Icon name="Play" size={11} />
+                          ) : isLocked ? (
+                            <Icon name="Lock" size={11} />
+                          ) : (
+                            lessonNumber(course, l.id)
+                          )}
                         </span>
                         <span className="sl-t">{l.title}</span>
                         <span className="sl-m">{l.min}′</span>

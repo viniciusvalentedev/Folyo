@@ -1,5 +1,7 @@
 # Supabase — passo a passo
 
+- **Aulas em sequência e continuar de onde parou:** logo abaixo. Rode o SQL **antes** de publicar o código.
+- **Concluir a aula só no final do vídeo:** logo abaixo. Sem SQL.
 - **Carrinho e cupom de lançamento (FOLYO100):** logo abaixo. Publique o código **antes** do SQL.
 - **Limite de pedidos (rate limit):** logo abaixo. Opcional, sem SQL.
 - **LGPD (baixar dados e excluir conta):** logo abaixo. Faça agora (depois de publicar o código novo).
@@ -17,6 +19,71 @@
 > A **secret key** (`sb_secret_...`) **não é usada** nesta etapa: não cole ela no `.env.local`, na Vercel,
 > no GitHub nem em conversas. Ela passa por cima de todas as regras de segurança do banco. Guarde só no
 > gerenciador de senhas.
+
+---
+
+# Aulas em sequência e continuar de onde parou
+
+**Aulas em sequência.** O aluno só abre uma aula se **todas as anteriores do curso estiverem concluídas** (para abrir a
+aula 4, as aulas 1, 2 e 3). Na lista de aulas as bloqueadas aparecem com cadeado, e abrir uma delas só mostra um aviso.
+Quem tentar abrir pelo endereço volta para a primeira aula que falta. Isso é conferido **no servidor**, antes de gerar
+o endereço do vídeo. Uma aula que a pessoa já concluiu continua aberta, mesmo que ela desmarque uma anterior depois.
+A equipe (editor, admin e proprietário) abre qualquer aula. **Não precisa de SQL.**
+
+**Continuar de onde parou.** O ponto em que a pessoa parou o vídeo é salvo (a cada ~5 s de vídeo, ao pausar e ao
+sair da aula) e vale em qualquer aparelho. Ao voltar, o vídeo abre nesse ponto. Se ela chegou ao final, a aula
+recomeça do início.
+
+## 1. Rodar o SQL (ANTES de publicar o código)
+No Supabase → **SQL Editor**, rode `supabase/migrations/20261030000002_retomar_aula.sql`. Ele só **acrescenta**
+a coluna `position` em `lesson_watch` (começa em 0) e libera o aluno para gravá-la; não apaga nem altera nada
+(pode rodar de novo sem problema). **Depois** publique o código (commit + push).
+
+> **Ordem importante:** o código novo lê essa coluna. Publicar antes do SQL faz a área do aluno falhar ao carregar
+> até o SQL ser rodado. (Código antigo + SQL novo funciona normalmente.)
+
+## 2. Testar (com uma conta de aluno de teste)
+1. Em um curso novo, só a aula 1 abre; as outras têm cadeado. Tentar abrir a aula 3 pelo endereço volta para a aula 1.
+2. Assista a aula 1 até o fim, conclua e vá para a próxima: a aula 2 abre, a 3 continua trancada.
+3. Abra uma aula, assista 3 min, saia (ou feche a aba) e volte: o vídeo continua dos 3 min.
+
+## Limitações conhecidas
+- A sequência vale para quem abre as aulas pelo site. Quem for técnico e conseguir gravar uma conclusão direto no
+  banco pode marcar aulas sem assistir (a conclusão "só no final do vídeo" é conferida na tela, ver a seção abaixo).
+- Se a pessoa desmarcar uma aula anterior, as seguintes que ela **ainda não** concluiu voltam a ficar trancadas.
+- O ponto salvo pode atrasar até uns 10 s do momento em que a pessoa fechou o vídeo.
+
+## Como desfazer
+Basta reverter o código. A coluna `position` pode ficar (é inofensiva); para removê-la:
+`alter table public.lesson_watch drop column if exists position;` (só depois de reverter o código).
+
+---
+
+# Concluir a aula só no final do vídeo (sem SQL)
+
+A pessoa pode **pular trechos** do vídeo (botão de 10 s ou barra de progresso). Mas só consegue **marcar a aula como
+concluída** e **ir para a próxima aula** (botão "Próxima aula") quando o vídeo **chega ao final**. Como o certificado
+depende das aulas concluídas, não dá para pegar o certificado sem ter chegado ao final de cada vídeo.
+
+**Não precisa rodar SQL.** A conferência é feita na tela (o banco não sabe em que ponto do vídeo a pessoa está).
+Se você chegou a rodar a versão anterior deste arquivo (`20261030000001_assistir_para_concluir.sql`, que exigia tempo
+assistido), rode o arquivo atual: ele só remove o gatilho antigo. Para remover à mão:
+
+```sql
+drop trigger if exists lesson_completion_guard on public.lesson_completions;
+drop function if exists private.lesson_completion_guard();
+```
+
+## Regras que valem
+- Vale para vídeo do **Bunny** e para link direto de arquivo (`.mp4`/`.webm`). Aula sem vídeo, YouTube/Vimeo e vídeo
+  que não carregou **não travam** (a Folyo não consegue saber quando o vídeo de fora termina).
+- Aula já concluída não trava: dá para desmarcar, marcar de novo e navegar.
+- A lista de aulas ao lado continua livre: só o botão "Próxima aula" espera o fim do vídeo.
+- Vale o fim do vídeo **nesta visita**: se a pessoa sair e voltar antes de concluir, precisa chegar ao final de novo.
+
+## Limitação conhecida
+- Quem for técnico consegue pedir a conclusão direto ao servidor sem passar pela tela. Para blindar isso seria preciso
+  um servidor que registre os eventos do player; não foi feito porque o pedido foi não travar o aluno.
 
 ---
 

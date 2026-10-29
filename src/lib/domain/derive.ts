@@ -15,6 +15,7 @@ import type {
 } from '@/lib/types'
 import { brDate } from '@/lib/format'
 import { categoryOf, isListed, lessonsOf, normalize, sameText } from './catalog'
+import { followsSequence } from './sequence'
 
 /** Data (ms) da última aula concluída de um curso — usada para ordenar "em andamento". */
 function lastActivity(state: UserState, course: Course) {
@@ -121,7 +122,9 @@ export function deriveUserData(state: UserState, catalog: Catalog): Derived {
     const doneDates = doneLessons.map((l) => state.completed[l.id]).sort()
     const nextLesson = lessons.find((l) => !state.completed[l.id]) ?? null
     const last = state.lastLesson[course.id] ? lessons.find((l) => l.id === state.lastLesson[course.id]) : undefined
-    const resume = (last && !state.completed[last.id] ? last : nextLesson) || last || lessons[0]
+    // Aluno em sequência: a "última aula aberta" só vale se for a próxima a fazer (as seguintes estão travadas).
+    const lastOk = last && !state.completed[last.id] && (!followsSequence(state.role) || last.id === nextLesson?.id)
+    const resume = (lastOk ? last : nextLesson) || last || lessons[0]
     const certified = complete && issuesCertificate(course) && (!offers || delivered)
     const certDate = certified ? ([doneDates[doneDates.length - 1], deliveredAt].filter(Boolean) as string[]).sort().pop()! : null
 

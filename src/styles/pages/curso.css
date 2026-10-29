@@ -47,6 +47,8 @@
 .lesson-line.done .ll-ico { background: var(--lime); border-color: var(--lime); color: var(--ink); }
 .lesson-line.next .ll-ico { background: var(--blue); border-color: var(--blue); color: #fff; }
 .lesson-line.done .ll-t { color: var(--mute); }
+.lesson-line.locked { opacity: .55; cursor: not-allowed; }
+.lesson-line.locked:hover { background: none; }
 .ll-n { font: 500 12.5px var(--f-mono); color: var(--mute); width: 20px; }
 .ll-t { flex: 1; min-width: 0; }
 .ll-tag { font: 600 11px var(--f-mono); text-transform: uppercase; letter-spacing: .05em; color: var(--blue); background: var(--blue-soft); padding: 4px 7px; border-radius: 6px; }

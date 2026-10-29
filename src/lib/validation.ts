@@ -304,7 +304,9 @@ export const pdfConfirmReplaceSchema = z.object({
 export const lessonWatchSchema = z.object({
   courseId: idSchema,
   lessonId: idSchema,
-  seconds: z.number().int().min(1).max(86400),
+  seconds: z.number().int().min(0).max(86400),
+  /** Segundo em que a pessoa parou (continuar de onde parou). Ausente = não mexe. */
+  position: z.number().int().min(0).max(86400).optional(),
 })
 
 export const storedSkillSchema = z.object({

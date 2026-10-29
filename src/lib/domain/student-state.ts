@@ -64,7 +64,7 @@ export type CourseProgressRow = {
 }
 export type LessonCompletionRow = { course_id: string; lesson_id: string; completed_at: string }
 export type LessonNoteRow = { course_id: string; lesson_id: string; body: string }
-export type LessonWatchRow = { course_id: string; lesson_id: string; seconds: number }
+export type LessonWatchRow = { course_id: string; lesson_id: string; seconds: number; position?: number | null }
 export type WorkRow = {
   id: string
   course_id: string | null
@@ -184,10 +184,12 @@ export function stateFromRows(rows: StudentRows, catalog: Catalog): UserState {
   }
 
   const watch: UserState['watch'] = {}
+  const position: UserState['position'] = {}
   for (const r of rows.watch) {
-    if (findLesson(catalog, r.lesson_id)?.course.id === r.course_id && Number.isFinite(r.seconds) && r.seconds > 0) {
-      watch[r.lesson_id] = Math.min(86400, Math.floor(r.seconds))
-    }
+    if (findLesson(catalog, r.lesson_id)?.course.id !== r.course_id) continue
+    if (Number.isFinite(r.seconds) && r.seconds > 0) watch[r.lesson_id] = Math.min(86400, Math.floor(r.seconds))
+    const at = Number(r.position)
+    if (Number.isFinite(at) && at > 0) position[r.lesson_id] = Math.min(86400, Math.floor(at))
   }
 
   const works: Work[] = []
@@ -244,6 +246,7 @@ export function stateFromRows(rows: StudentRows, catalog: Catalog): UserState {
     favorites,
     notes,
     watch,
+    position,
     works,
     skills,
     resume: {
