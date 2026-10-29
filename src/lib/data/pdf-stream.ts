@@ -23,8 +23,8 @@ export const pdfUnauthorized = () => new Response('Faça login para abrir o arqu
  * banco (RLS), que a pessoa pode ver o arquivo. O endereço do Storage nunca vai para o
  * navegador; o tipo é fixo em application/pdf e a resposta não fica em cache.
  */
-export async function streamPdf(supabase: Supabase, path: string, name: string, download: boolean) {
-  const signed = await supabase.storage.from(FILE_BUCKET).createSignedUrl(path, 60)
+export async function streamPdf(supabase: Supabase, path: string, name: string, download: boolean, bucket: string = FILE_BUCKET) {
+  const signed = await supabase.storage.from(bucket).createSignedUrl(path, 60)
   if (signed.error || !signed.data) return pdfNotFound()
   const upstream = await fetch(signed.data.signedUrl, { cache: 'no-store' })
   if (!upstream.ok || !upstream.body) return pdfNotFound()

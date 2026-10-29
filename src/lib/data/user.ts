@@ -83,7 +83,7 @@ const PROFILE_COLUMNS = [
   'headline, city, contact_email, phone, link, bio, objective, interests',
   'education, experiences, languages, achievements',
   'resume_template, resume_order, resume_hidden, resume_certs',
-  'public_profile, public_portfolio, show_email, notify_lessons, notify_weekly, notify_news',
+  'slug, public_profile, public_portfolio, show_email, notify_lessons, notify_weekly, notify_news',
   'study_time, captions, autoplay, reduce_motion, notifications_read_at',
 ].join(', ')
 

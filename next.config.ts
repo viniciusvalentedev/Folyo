@@ -53,7 +53,7 @@ const csp = [
 ].join('; ')
 
 /**
- * O PDF do aluno (/api/trabalhos/<id>/arquivo) abre numa aba própria. O leitor de PDF do
+ * O PDF do aluno (/api/trabalhos/<id>/arquivo; e o do perfil público, /api/u/...) abre numa aba própria. O leitor de PDF do
  * navegador não funciona com "object-src 'none'" (nem com "script-src"/"default-src", que o
  * leitor embutido de alguns navegadores respeita), então essa rota tem uma política só dela:
  * sem <base>, sem formulários e só pode aparecer em iframe da própria Folyo (a janela de
@@ -61,8 +61,9 @@ const csp = [
  * (%PDF-) antes de ser salvo.
  */
 const pdfCsp = "base-uri 'none'; form-action 'none'; frame-ancestors 'self'"
-const PDF_ROUTE = 'api/trabalhos/|api/materiais/|api/admin/midia/'
+const PDF_ROUTE = 'api/trabalhos/|api/materiais/|api/admin/midia/|api/u/'
 
+const noIndex = { key: 'X-Robots-Tag', value: 'noindex, nofollow' }
 const frameDeny = { key: 'X-Frame-Options', value: 'DENY' }
 const frameSame = { key: 'X-Frame-Options', value: 'SAMEORIGIN' }
 const baseHeaders = [
@@ -90,6 +91,10 @@ const nextConfig: NextConfig = {
       { source: '/api/trabalhos/:path*', headers: [{ key: 'Content-Security-Policy', value: pdfCsp }, frameSame, ...baseHeaders] },
       { source: '/api/materiais/:path*', headers: [{ key: 'Content-Security-Policy', value: pdfCsp }, frameSame, ...baseHeaders] },
       { source: '/api/admin/midia/:path*', headers: [{ key: 'Content-Security-Policy', value: pdfCsp }, frameSame, ...baseHeaders] },
+      // PDFs dos perfis públicos (visitantes, sem login): mesma política, e nunca vão para o Google.
+      { source: '/api/u/:path*', headers: [{ key: 'Content-Security-Policy', value: pdfCsp }, frameSame, ...baseHeaders, noIndex] },
+      // Perfis públicos (/u/<endereço>) não aparecem no Google, nem que algum link para eles seja publicado por aí.
+      { source: '/u/:path*', headers: [noIndex] },
     ]
   },
 }

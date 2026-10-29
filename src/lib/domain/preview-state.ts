@@ -37,6 +37,7 @@ export function previewState(catalog: Catalog, reduceMotion: boolean): UserState
         resume_order: [],
         resume_hidden: [],
         resume_certs: [],
+        slug: null,
         public_profile: false,
         public_portfolio: false,
         show_email: false,

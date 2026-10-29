@@ -238,6 +238,8 @@ export type UserState = {
   /** Papel na equipe (aluno = sem acesso ao painel). Só decide o que a tela mostra; quem protege é o banco. */
   role: 'aluno' | 'editor' | 'admin' | 'proprietario'
   user: UserProfile
+  /** Endereço do perfil público (/u/<endereço>); vazio = ainda não escolheu. Só muda pela ação própria, nunca por saveSettings. */
+  publicSlug: string
   /** id da aula -> data em que foi concluída (AAAA-MM-DD). */
   completed: Record<string, string>
   /** id do curso -> id da última aula aberta. */

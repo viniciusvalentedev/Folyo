@@ -10,6 +10,7 @@ import { Icon } from '@/components/ui/Icon'
 import { Avatar } from '@/components/ui/indicators'
 import { Modal } from '@/components/ui/Modal'
 import { formatDate } from '@/lib/format'
+import { publicProfilePath } from '@/lib/public-profile'
 import { fieldErrors, LIMITS, LIST_MAX, profileSchema } from '@/lib/validation'
 
 const INTEREST_SUGGESTIONS = [
@@ -321,7 +322,19 @@ export function ProfileView() {
           <section className="side-card">
             <p className="eyebrow">Portfólio público</p>
             <p className="muted small">
-              Veja como o seu portfólio aparece para quem visita. O endereço público para compartilhar será liberado em breve.
+              Veja como o seu portfólio aparece para quem visita.
+              {s.publicSlug && s.settings.publicProfile ? (
+                <>
+                  {' '}
+                  Ele está no ar em{' '}
+                  <a href={publicProfilePath(s.publicSlug)} target="_blank" rel="noopener noreferrer">
+                    usefolyo.com{publicProfilePath(s.publicSlug)}
+                  </a>
+                  .
+                </>
+              ) : (
+                ' Para ter um link para compartilhar, ligue o perfil público e escolha um endereço.'
+              )}
             </p>
             <div className="row gap-s">
               <Button size="sm" variant="quiet" icon="Eye" onClick={() => router.push('/publico')}>

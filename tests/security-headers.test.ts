@@ -32,7 +32,7 @@ describe('cabeçalhos de segurança (next.config.ts)', () => {
 
   it('rotas de PDF têm política própria e só abrem em iframe do próprio site', async () => {
     const all = await rules()
-    for (const source of ['/api/trabalhos/:path*', '/api/materiais/:path*', '/api/admin/midia/:path*']) {
+    for (const source of ['/api/trabalhos/:path*', '/api/materiais/:path*', '/api/admin/midia/:path*', '/api/u/:path*']) {
       const rule = all.find((r) => r.source === source)!
       expect(rule, source).toBeDefined()
       expect(header(rule, 'Content-Security-Policy')).toContain("frame-ancestors 'self'")

@@ -4,11 +4,16 @@ import { Button } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import { Modal } from '@/components/ui/Modal'
 import { pdfUrl } from '@/lib/pdf-file'
+import { publicPdfUrl } from '@/lib/public-profile'
 import type { Work } from '@/lib/types'
 
-/** Janela para ler um PDF do portfólio (o arquivo vem do servidor, e só o dono abre). */
-export function PdfViewer({ work, onClose }: { work: Work | null; onClose: () => void }) {
-  const src = work ? pdfUrl(work.id) : null
+/**
+ * Janela para ler um PDF do portfólio. O arquivo vem do servidor: no portfólio do aluno só o dono abre;
+ * na página pública (`slug` = endereço do perfil), qualquer pessoa abre, se o trabalho for público.
+ */
+export function PdfViewer({ work, onClose, slug }: { work: Work | null; onClose: () => void; slug?: string }) {
+  const href = (id: string, download?: boolean) => (slug ? publicPdfUrl(slug, id, download) : pdfUrl(id, download))
+  const src = work ? href(work.id) : null
   return (
     <Modal
       open={!!work}
@@ -19,11 +24,11 @@ export function PdfViewer({ work, onClose }: { work: Work | null; onClose: () =>
       footer={
         work && (
           <>
-            <a className="btn btn-quiet btn-md" href={pdfUrl(work.id, true)}>
+            <a className="btn btn-quiet btn-md" href={href(work.id, true)}>
               <Icon name="Download" size={17} />
               <span>Baixar</span>
             </a>
-            <a className="btn btn-quiet btn-md" href={pdfUrl(work.id)} target="_blank" rel="noopener noreferrer">
+            <a className="btn btn-quiet btn-md" href={href(work.id)} target="_blank" rel="noopener noreferrer">
               <Icon name="ExternalLink" size={17} />
               <span>Abrir em nova aba</span>
             </a>

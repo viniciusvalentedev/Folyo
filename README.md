@@ -16,6 +16,10 @@ Onde estamos:
   Progresso, **Projetos e portfólio** (trabalhos em PDF ou link), Currículo, Certificados, Perfil, Configurações e
   **perfil público** (`/publico`), seguindo o protótipo Folyo 2.0. Exige rodar um SQL novo (veja
   [`supabase/README.md`](supabase/README.md)).
+- **Perfil público de verdade** ✅ `usefolyo.com/u/<endereço>`: página aberta sem login com nome, objetivo, projetos
+  públicos (PDF e link), cursos concluídos e experiência. A pessoa escolhe o endereço e liga ou desliga o perfil,
+  o portfólio e o e-mail em Configurações › Privacidade. Fora do Google (`noindex`) por padrão. Exige rodar um SQL
+  **antes** de publicar (veja [`supabase/README.md`](supabase/README.md)).
 - **Folyo 2.0 — Fase 2 (painel com banco)** ✅ **Cursos, Categorias e Módulos e aulas** no painel, gravados no banco
   (a equipe cadastra, agenda, publica e despublica; o aluno só vê o que está publicado). Editor de curso com 5 abas
   (informações, capa e visual, módulos e aulas, publicação e acesso, prévia), vídeo por link e materiais por link,
@@ -90,6 +94,7 @@ src/
 │  ├─ (legal)/               ← páginas abertas a todos (sem login)
 │  │  ├─ privacidade/        → /privacidade  (Política de Privacidade, LGPD)
 │  │  └─ termos/             → /termos  (Termos de Uso)
+│  ├─ (public)/u/[slug]/     → /u/<endereço>  (perfil público: aberto a qualquer pessoa, noindex)
 │  ├─ (app)/                 ← área do aluno (tudo "depois do login")
 │  │  ├─ layout.tsx          → carrega o catálogo e os dados do aluno
 │  │  ├─ primeiro-acesso/    → /primeiro-acesso (primeiro acesso em 3 passos)
@@ -107,6 +112,7 @@ src/
 │  │  │  └─ configuracoes/   → /configuracoes
 │  │  └─ (classroom)/aula/   → /aula/[curso]/[aula]  (sala de aula, menu compacto)
 │  ├─ api/trabalhos/[id]/arquivo/ → ★ entrega o PDF de um trabalho (só para o dono, conferindo o login)
+│  ├─ api/u/[slug]/trabalhos/[id]/ → ★ entrega o PDF de um trabalho PÚBLICO (sem login; o banco confere tudo)
 │  ├─ layout.tsx             → HTML base, fontes e estilos
 │  └─ not-found.tsx          → página "não encontrada"
 ├─ components/               ← PEÇAS reutilizadas pelas páginas
@@ -181,7 +187,9 @@ supabase/
   sempre `<id do aluno>/<arquivo>.pdf`: as regras do Storage só deixam cada aluno ler, enviar e apagar dentro da
   própria pasta, e conta suspensa não acessa nada.
 - **Quem lê o PDF é só o dono:** o arquivo é aberto por `/api/trabalhos/<id>/arquivo`, que confere o login e a
-  linha do trabalho (RLS) antes de entregar. Não existe link público do arquivo. A resposta leva
+  linha do trabalho (RLS) antes de entregar. Não existe link permanente do arquivo (o PDF de um trabalho
+  marcado como "Público" abre pela rota `/api/u/<endereço>/trabalhos/<id>`, que o banco libera só enquanto
+  perfil, portfólio e trabalho estiverem públicos). A resposta leva
   `Content-Disposition`, `nosniff`, `no-store` e só pode ser exibida dentro do próprio site (`frame-ancestors 'self'`).
 - **Exceção documentada à regra "o navegador não fala com o Supabase":** o envio do PDF. O servidor valida o
   pedido e gera um endereço de envio de uso único (*signed upload URL*); o navegador faz o `PUT` direto no
@@ -272,7 +280,7 @@ supabase/
 | **Player de aula** | ✅ Vídeo hospedado no Bunny Stream (player com token) ou link `.mp4`/`.webm`, ambos medidos na audiência; YouTube/Vimeo abrem no site deles. Sem vídeo: aviso | Legendas e capítulos |
 | **Capas e imagens dos cursos** | ✅ Capa, miniatura e banner enviados pela biblioteca de mídia, com ponto de foco; sem imagem, arte padrão | Recorte automático por IA |
 | **Currículo em PDF e certificados** | Só visual ("Certificados a caminho"). Hoje "aula concluída" é marcada pelo próprio aluno | Certificado emitido pelo servidor (conferindo aulas e trabalho) + código de verificação |
-| **Perfil público** | `/publico` é só a pré-visualização para o próprio aluno (o que ele marcou como público) | Rota pública de verdade (`/u/nome` ou subdomínio) com controle de privacidade |
+| **Perfil público** | ✅ `/u/<endereço>` aberto sem login, com controle de privacidade; `/publico` é a pré-visualização. Não é indexado pelo Google (`noindex`) | Opção "aparecer no Google" e subdomínio (`nome.usefolyo.com`) |
 | **Objetivos com recomendação** | ✅ Trilhas em `src/lib/trails.ts`; as recomendações usam os cursos do banco (publicados e visíveis) | Refinar com os dados de audiência |
 | **Pagamentos (Plano Pro)** | Só o selo "Pro" | Mercado Pago / Stripe / Pagar.me |
 

@@ -684,6 +684,12 @@ function useActions(
         })
         syncSettings(key)
       },
+      /** Guarda na tela o endereço do perfil público depois que o servidor confirmou (o salvamento é a ação própria, não a fila). */
+      setPublicSlug: (slug: string) => {
+        commit((s) => {
+          s.publicSlug = slug
+        })
+      },
       /** Troca o nome (salvo no banco). */
       saveName: (name: string) => {
         const clean = name.trim()

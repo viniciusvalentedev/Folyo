@@ -3,6 +3,7 @@
 - **Limite de pedidos (rate limit):** logo abaixo. Opcional, sem SQL.
 - **LGPD (baixar dados e excluir conta):** logo abaixo. Faça agora (depois de publicar o código novo).
 - **Verificação em duas etapas (MFA) do painel:** logo abaixo. Faça na ordem descrita lá.
+- **Perfil público (`/u/nome`):** logo abaixo. Rode o SQL **antes** de publicar o código.
 - **Folyo 2.0 · Fase 3 (mídia, vídeo, audiência, relatórios e configurações):** já feita; fica como referência.
 - **Folyo 2.0 · Fase 2 (cursos, categorias e aulas no banco):** já feita; fica como referência.
 - **Folyo 2.0 · Fase 1 (área do aluno):** já feita; fica como referência.
@@ -190,6 +191,63 @@ Para ligar de novo, rode outra vez `20261026000001_mfa_painel.sql`.
   criar gatilhos nas tabelas dele). Quem consulta isso é o painel do Supabase (Authentication → Users).
 - Os limites de tentativas de código são por servidor da Vercel, como os de login; o Supabase tem o dele também.
 - Sem códigos de recuperação: o plano B é a remoção do autenticador pelo proprietário, descrita acima.
+
+---
+
+# Perfil público (`/u/nome`)
+
+Cada aluno pode ter uma página aberta a qualquer pessoa, **sem login**, em `usefolyo.com/u/<endereço>`: nome,
+objetivo, projetos marcados como "Público", cursos concluídos e experiência. É o mesmo desenho da
+pré-visualização (`/publico`), mas lida do banco por uma função própria.
+
+Um SQL novo, **uma vez só**. Ele **não apaga nada**: acrescenta duas colunas em `profiles`, funções e uma regra
+de leitura no Storage. Dá para rodar **antes** de publicar o código sem quebrar a versão que está no ar.
+
+> **Ordem importante:** rode o SQL **antes** de publicar o código. O código novo lê a coluna `slug`; sem o SQL,
+> a área do aluno não carrega. (Pré-requisitos: os SQLs das Fases 1 e 2, que criam `student_works` e os cursos.)
+
+## 1. Rodar o SQL
+
+1. Supabase → **SQL Editor** → **New query**.
+2. Abra `supabase/migrations/20261028000001_perfil_publico.sql`, copie tudo, cole e **Run**.
+   Deve aparecer *Success. No rows returned*.
+3. Se aparecer um erro dizendo que algo "already exists", o arquivo já foi rodado.
+
+O que ele cria:
+
+- **`profiles.slug` e `slug_changed_at`:** o endereço (3 a 30 letras minúsculas, números e hífen; único) e a data
+  da última troca. Só a função `set_my_slug()` grava essas colunas: um gatilho recusa qualquer outro caminho.
+  Nomes reservados (`admin`, `api`, `cursos`, `folyo`...) não podem ser escolhidos, e dá para trocar a cada 7 dias.
+- **`get_public_profile(slug)`:** o que a página mostra. Responde **sem login**, só se a pessoa ligou
+  "Perfil público" e tem endereço. Nunca devolve e-mail de login, telefone, anotações, progresso aula a aula nem
+  trabalhos privados; o e-mail só aparece se "Mostrar e-mail no perfil público" estiver ligado, e os projetos só se "Mostrar
+  projetos no portfólio público" estiver ligado. Perfil privado, endereço que não existe e conta suspensa dão
+  a **mesma resposta**: ninguém descobre quem tem conta.
+- **`get_public_work_file(slug, id)` e uma regra de leitura no Storage:** visitantes só conseguem o PDF de
+  trabalhos que estão públicos **neste momento**. O servidor gera um link assinado de 60 segundos; o endereço
+  do Storage nunca vai para o navegador. Desligou o perfil, o portfólio ou o "Público" do trabalho: o PDF fecha na hora.
+
+## 2. Testar (com uma conta de teste)
+
+1. **Configurações › Privacidade:** escolha o endereço (ex.: `maria-teste`) e **Salvar**. Ligue "Perfil público".
+2. Abra `usefolyo.com/u/maria-teste` numa **janela anônima** (sem login): deve aparecer o portfólio.
+3. Em **Projetos**, marque um PDF como "Público" e confirme que ele abre e baixa pela página pública.
+4. Desligue "Perfil público": a janela anônima deve passar a mostrar **"Perfil não encontrado"** (igual a um
+   endereço que nunca existiu) e o PDF deve dar 404.
+5. Tente um nome reservado (`admin`) e um endereço já usado: a tela deve recusar com uma mensagem clara.
+
+## O que é de propósito
+
+- **Não aparece no Google.** A página leva `noindex` (no HTML e no cabeçalho `X-Robots-Tag`), e a resposta não
+  fica em cache, então desligar o perfil vale na hora. Só quem tem o link chega nela. O `/u` **não** está
+  bloqueado no `robots.txt` de propósito: bloquear impediria o Google de ler o `noindex`.
+- Ainda não existe perfil por subdomínio (`maria.usefolyo.com`); o caminho `/u/nome` é o único.
+- Limites: 10 trocas de endereço por 15 minutos por conta, e 60 PDFs por minuto por IP.
+
+## Como desfazer
+
+Os comandos estão comentados no fim do arquivo SQL (apagam a regra do Storage, as funções, o gatilho e as duas
+colunas). Depois, publique o código anterior: o `/u/nome` deixa de existir e os endereços escolhidos se perdem.
 
 ---
 

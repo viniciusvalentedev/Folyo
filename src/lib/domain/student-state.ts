@@ -41,6 +41,7 @@ export type ProfileRow = {
   resume_order: string[]
   resume_hidden: string[]
   resume_certs: string[]
+  slug: string | null
   public_profile: boolean
   public_portfolio: boolean
   show_email: boolean
@@ -236,6 +237,7 @@ export function stateFromRows(rows: StudentRows, catalog: Catalog): UserState {
       languages: validItems(profile.languages, languageSchema, 15),
       achievements: validItems(profile.achievements, achievementSchema, 30),
     },
+    publicSlug: profile.slug ?? '',
     completed,
     lastLesson,
     started,

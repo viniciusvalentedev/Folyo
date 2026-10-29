@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import { useApp } from '@/components/providers/AppState'
 import { Button } from '@/components/ui/Button'
@@ -10,6 +11,7 @@ import { supportEmailOf } from '@/lib/app-config'
 import type { Settings } from '@/lib/types'
 import { fieldErrors, personalDataSchema } from '@/lib/validation'
 import { AccountSection } from './AccountSection'
+import { PublicAddress } from './PublicAddress'
 
 type Section = 'dados' | 'privacidade' | 'notificacoes' | 'aprendizagem' | 'preferencias' | 'conta'
 
@@ -112,26 +114,40 @@ export function SettingsView() {
               <Toggle
                 id="st-pub"
                 label="Perfil público"
-                hint="Qualquer pessoa com o link vê seu perfil e projetos concluídos."
+                hint="Qualquer pessoa com o link vê seu perfil e projetos concluídos. Desligando, o link para de abrir na hora."
                 checked={s.settings.publicProfile}
                 onChange={(v) => {
                   set('publicProfile', v)
-                  toast(v ? 'Perfil público ativado.' : 'Perfil agora é privado.', 'ok')
+                  toast(
+                    v
+                      ? s.publicSlug
+                        ? 'Perfil público ativado.'
+                        : 'Perfil público ativado. Escolha o endereço abaixo para poder compartilhar.'
+                      : 'Perfil agora é privado.',
+                    'ok',
+                  )
                 }}
               />
               <Toggle
                 id="st-port"
                 label="Mostrar projetos no portfólio público"
+                hint="Só os trabalhos que você marcou como Público em Projetos e portfólio. Desligando, nenhum projeto nem PDF abre para visitantes."
                 checked={s.settings.publicPortfolio}
                 onChange={(v) => set('publicPortfolio', v)}
               />
               <Toggle
                 id="st-mail"
                 label="Mostrar e-mail no perfil público"
-                hint="Desligado por padrão para proteger seus dados."
+                hint="Desligado por padrão para proteger seus dados. É o e-mail de contato do seu currículo, não o que você usa para entrar."
                 checked={s.settings.showEmail}
                 onChange={(v) => set('showEmail', v)}
               />
+              <PublicAddress />
+              <p className="muted small">
+                A página pública mostra nome, frase, cidade, objetivo, &quot;sobre mim&quot;, experiências, cursos concluídos e os
+                projetos públicos. Nunca mostra telefone, e-mail de login, anotações, progresso aula a aula nem projetos privados.
+                Ela não aparece no Google. <Link href="/publico">Ver como fica</Link>.
+              </p>
             </section>
           )}
 

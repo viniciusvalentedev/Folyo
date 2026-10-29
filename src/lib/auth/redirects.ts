@@ -3,8 +3,8 @@
  * (Arquivo sem dependências: usado pelo proxy, pelas ações e pelas páginas.)
  */
 
-/** Páginas que qualquer pessoa pode abrir sem login. */
-const PUBLIC_PATHS = ['/entrar', '/esqueci-senha', '/auth/confirmar', '/privacidade', '/termos']
+/** Páginas que qualquer pessoa pode abrir sem login ('/u' = perfis públicos, /u/<endereço>, e '/api/u' = os PDFs deles; o banco decide quais existem). */
+const PUBLIC_PATHS = ['/entrar', '/esqueci-senha', '/auth/confirmar', '/privacidade', '/termos', '/u', '/api/u']
 
 /** Páginas que não fazem sentido para quem já está logado. */
 const GUEST_ONLY_PATHS = ['/entrar', '/esqueci-senha']

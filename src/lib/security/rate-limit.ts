@@ -65,12 +65,16 @@ export const AUTH_LIMITS = {
   accountExport: { max: 5, windowMs: 15 * 60_000 },
   /** Excluir a própria conta (LGPD), por conta: cada pedido conta, certo ou errado. */
   accountDelete: { max: 5, windowMs: 15 * 60_000 },
+  /** Escolher ou trocar o endereço do perfil público, por conta (o banco ainda segura trocas seguidas). */
+  slugChange: { max: 10, windowMs: 15 * 60_000 },
 } satisfies Record<string, Rule>
 
 /** Limites das rotas /api (por conta logada). */
 export const API_LIMITS = {
   /** Abrir ou baixar PDFs (trabalhos, materiais, mídia do painel): folgado para uso normal, corta robô. */
   download: { max: 120, windowMs: 60_000 },
+  /** PDFs do perfil público (visitantes, sem login): por IP. */
+  publicDownload: { max: 60, windowMs: 60_000 },
 } satisfies Record<string, Rule>
 
 /* Contagem em memória, por servidor (veja limiter.ts). */
