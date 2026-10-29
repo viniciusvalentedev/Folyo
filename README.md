@@ -45,7 +45,7 @@ Onde estamos:
   `/privacidade` e `/termos`, com links no login. Exige um SQL novo (veja [`supabase/README.md`](supabase/README.md)).
   **Antes de abrir ao público:** preencha `src/lib/legal.ts` (CNPJ/CPF, endereço, encarregado, foro) e mande os dois
   textos para um advogado; só então troque `reviewed` para `true` (some o aviso "versão em revisão").
-- **Carrinho e cupom de lançamento (FOLYO100)** ✅ cursos com preço (definido no editor), carrinho (`/carrinho`),
+- **Carrinho e cupom de lançamento (LANCAMENTO)** ✅ cursos com preço (definido no editor), carrinho (`/carrinho`),
   página de compra (`/comprar/<curso>`) e `/finalizar`. O cupom dá **30 dias de pré-acesso** aos cursos marcados com
   "Liberar com cupom"; preço, desconto e liberação são calculados **no banco**. **Não existe pagamento**: sem cupom,
   `/finalizar` avisa que o pagamento online ainda não está disponível. Curso pago sem acesso não entrega vídeo nem

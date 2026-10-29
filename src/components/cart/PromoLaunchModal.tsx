@@ -9,7 +9,7 @@ import { PROMO } from '@/lib/cart'
 import { useFocusTrap } from '@/lib/a11y'
 
 /**
- * Aviso de lançamento (cupom FOLYO100).
+ * Aviso de lançamento (cupom LANCAMENTO).
  *
  * Aparece uma vez por conta: logado, promoção ligada no banco, com algum curso que participa,
  * sem pré-acesso valendo e sem ter fechado o aviso antes. Fica aberto até a pessoa fechar
@@ -18,7 +18,8 @@ import { useFocusTrap } from '@/lib/a11y'
  * esta moldura).
  */
 
-const SEEN_KEY = 'folyo-aviso-lancamento-v1'
+// v2: o código do cupom mudou (FOLYO100 → LANCAMENTO), então quem fechou o aviso antigo vê o novo uma vez.
+const SEEN_KEY = 'folyo-aviso-lancamento-v2'
 const HIDDEN_ON = ['/aula', '/configuracoes']
 const DELAY_MS = 700
 

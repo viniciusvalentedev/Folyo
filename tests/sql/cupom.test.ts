@@ -99,9 +99,9 @@ describe.skipIf(!migrations)('cupom de lançamento (SQL)', () => {
       expect(q.items.map((i) => i.priceCents)).toEqual([3299, 4990])
     })
 
-    test('FOLYO100 zera os cursos elegíveis', async () => {
-      const q = ok(await quote(ana, ['mkt', 'design'], 'FOLYO100'))
-      expect(q.coupon).toBe('FOLYO100')
+    test('LANCAMENTO zera os cursos elegíveis', async () => {
+      const q = ok(await quote(ana, ['mkt', 'design'], 'LANCAMENTO'))
+      expect(q.coupon).toBe('LANCAMENTO')
       expect(q.percentOff).toBe(100)
       expect(q.accessDays).toBe(30)
       expect(q.discountCents).toBe(8289)
@@ -110,8 +110,8 @@ describe.skipIf(!migrations)('cupom de lançamento (SQL)', () => {
     })
 
     test('minúsculas e espaços também valem', async () => {
-      const q = ok(await quote(ana, ['mkt'], '  folyo100 '))
-      expect(q.coupon).toBe('FOLYO100')
+      const q = ok(await quote(ana, ['mkt'], '  lancamento '))
+      expect(q.coupon).toBe('LANCAMENTO')
       expect(q.totalCents).toBe(0)
     })
 
@@ -130,7 +130,7 @@ describe.skipIf(!migrations)('cupom de lançamento (SQL)', () => {
     })
 
     test('curso que não participa mantém o preço', async () => {
-      const q = ok(await quote(ana, ['mkt', 'prog'], 'FOLYO100'))
+      const q = ok(await quote(ana, ['mkt', 'prog'], 'LANCAMENTO'))
       expect(q.items.find((i) => i.courseId === 'prog')).toMatchObject({ eligible: false, discountCents: 0, finalCents: 6990 })
       expect(q.totalCents).toBe(6990)
       expect(q.totalCents).toBeGreaterThanOrEqual(0)
@@ -197,14 +197,14 @@ describe.skipIf(!migrations)('cupom de lançamento (SQL)', () => {
     })
 
     test('o navegador não consegue mandar preço: a função só aceita ids e código', async () => {
-      const r = await rpc(db, { uid: ana }, `select public.quote_cart(array['mkt'], 'FOLYO100', 0) as r`)
+      const r = await rpc(db, { uid: ana }, `select public.quote_cart(array['mkt'], 'LANCAMENTO', 0) as r`)
       expect(r.ok).toBe(false)
     })
   })
 
   describe('pré-acesso (redeem_launch_coupon)', () => {
     test('libera 30 dias só nos elegíveis, sem pagamento', async () => {
-      const r = ok(await redeem(ana, ['mkt', 'prog', 'gratis'], 'folyo100'))
+      const r = ok(await redeem(ana, ['mkt', 'prog', 'gratis'], 'lancamento'))
       expect(r.courses.map((c) => c.id)).toEqual(['mkt'])
       expect(r.leftoverIds).toEqual(['prog'])
       expect(r.droppedIds).toEqual(['gratis'])
@@ -236,9 +236,9 @@ describe.skipIf(!migrations)('cupom de lançamento (SQL)', () => {
 
     test('reaplicar o cupom não renova o mês', async () => {
       const before = (await db.query<{ e: string }>(`select expires_at::text as e from public.course_access where user_id = $1 and course_id = 'mkt'`, [ana])).rows[0].e
-      const again = await redeem(ana, ['mkt'], 'FOLYO100')
+      const again = await redeem(ana, ['mkt'], 'LANCAMENTO')
       expect(again).toMatchObject({ ok: false, code: 'FC422' })
-      const q = ok(await quote(ana, ['mkt'], 'FOLYO100'))
+      const q = ok(await quote(ana, ['mkt'], 'LANCAMENTO'))
       expect(q.dropped).toEqual([{ courseId: 'mkt', reason: 'ja_possui' }])
       const after = (await db.query<{ e: string }>(`select expires_at::text as e from public.course_access where user_id = $1 and course_id = 'mkt'`, [ana])).rows[0].e
       expect(after).toBe(before)
@@ -247,9 +247,9 @@ describe.skipIf(!migrations)('cupom de lançamento (SQL)', () => {
     test('pré-acesso vencido bloqueia e não volta com o cupom', async () => {
       await db.query(`update public.course_access set expires_at = now() - interval '1 minute' where user_id = $1 and course_id = 'mkt'`, [ana])
       expect(await hasAccess(ana, 'mkt')).toBe(false)
-      const q = ok(await quote(ana, ['mkt'], 'FOLYO100'))
+      const q = ok(await quote(ana, ['mkt'], 'LANCAMENTO'))
       expect(q.items[0]).toMatchObject({ courseId: 'mkt', eligible: false, finalCents: 3299 })
-      expect(await redeem(ana, ['mkt'], 'FOLYO100')).toMatchObject({ ok: false, code: 'FC422' })
+      expect(await redeem(ana, ['mkt'], 'LANCAMENTO')).toMatchObject({ ok: false, code: 'FC422' })
       const mats = ok(await rpc<string[]>(db, { uid: ana }, `select coalesce(array_agg(id order by id), '{}') as r from public.lesson_materials`))
       expect(mats).toEqual(['gratis-mat'])
     })
@@ -270,14 +270,14 @@ describe.skipIf(!migrations)('cupom de lançamento (SQL)', () => {
     })
 
     test('desligar a promoção encerra o cupom e os pré-acessos dele', async () => {
-      ok(await redeem(bia, ['design'], 'FOLYO100'))
+      ok(await redeem(bia, ['design'], 'LANCAMENTO'))
       expect(await hasAccess(bia, 'design')).toBe(true)
       ok(await rpc(db, OWNER(), 'select public.admin_set_launch_promo(false) as r'))
       expect(await hasAccess(bia, 'design')).toBe(false)
-      const q = ok(await quote(caio, ['mkt'], 'FOLYO100'))
+      const q = ok(await quote(caio, ['mkt'], 'LANCAMENTO'))
       expect(q.couponError).toBe(ENDED)
       expect(q.totalCents).toBe(3299)
-      expect(await redeem(caio, ['mkt'], 'FOLYO100')).toMatchObject({ ok: false, message: ENDED })
+      expect(await redeem(caio, ['mkt'], 'LANCAMENTO')).toMatchObject({ ok: false, message: ENDED })
       const state = ok(await rpc<{ active: boolean }>(db, { uid: caio }, 'select public.launch_promo_state() as r'))
       expect(state.active).toBe(false)
       ok(await rpc(db, OWNER(), 'select public.admin_set_launch_promo(true) as r'))
@@ -285,14 +285,14 @@ describe.skipIf(!migrations)('cupom de lançamento (SQL)', () => {
     })
 
     test('promoção fora do prazo ou no limite de usos também encerra', async () => {
-      await db.query(`update private.coupons set ends_at = now() - interval '1 day', starts_at = now() - interval '2 days' where code = 'FOLYO100'`)
-      expect(ok(await quote(caio, ['mkt'], 'FOLYO100')).couponError).toBe(ENDED)
-      await db.query(`update private.coupons set ends_at = null, starts_at = null, max_redemptions = 2 where code = 'FOLYO100'`)
+      await db.query(`update private.coupons set ends_at = now() - interval '1 day', starts_at = now() - interval '2 days' where code = 'LANCAMENTO'`)
+      expect(ok(await quote(caio, ['mkt'], 'LANCAMENTO')).couponError).toBe(ENDED)
+      await db.query(`update private.coupons set ends_at = null, starts_at = null, max_redemptions = 2 where code = 'LANCAMENTO'`)
       // Ana e Bia já usaram: Caio fica de fora; Bia (que já usou) ainda pode usar em outro curso.
-      expect(ok(await quote(caio, ['mkt'], 'FOLYO100')).couponError).toBe(ENDED)
-      expect(ok(await quote(bia, ['mkt'], 'FOLYO100')).couponError).toBeNull()
-      await db.query(`update private.coupons set max_redemptions = null where code = 'FOLYO100'`)
-      expect(ok(await quote(caio, ['mkt'], 'FOLYO100')).couponError).toBeNull()
+      expect(ok(await quote(caio, ['mkt'], 'LANCAMENTO')).couponError).toBe(ENDED)
+      expect(ok(await quote(bia, ['mkt'], 'LANCAMENTO')).couponError).toBeNull()
+      await db.query(`update private.coupons set max_redemptions = null where code = 'LANCAMENTO'`)
+      expect(ok(await quote(caio, ['mkt'], 'LANCAMENTO')).couponError).toBeNull()
     })
 
     test('liberação manual e remoção, com auditoria', async () => {

@@ -5,11 +5,11 @@ import { ID_PATTERN } from '@/lib/admin/catalog'
  * Carrinho, cupom de lançamento e pré-acesso: tipos, textos e formatação (navegador e servidor).
  *
  * ATENÇÃO: nada aqui decide preço, desconto ou acesso. Quem decide é o banco (quote_cart,
- * redeem_launch_coupon e has_course_access, em supabase/migrations/20261029000001_cupom_lancamento.sql).
+ * redeem_launch_coupon e has_course_access, em supabase/migrations/20261029000001_cupom_lancamento.sql; o código do cupom foi trocado em 20261030000003_cupom_lancamento_renomear.sql).
  * O navegador só manda ids de cursos e o código digitado. PROMO serve só para os textos da tela.
  */
 
-export const PROMO = { code: 'FOLYO100', days: 30 } as const
+export const PROMO = { code: 'LANCAMENTO', days: 30 } as const
 
 /** Máximo de cursos no carrinho (o banco recusa mais que isso). */
 export const CART_MAX = 50

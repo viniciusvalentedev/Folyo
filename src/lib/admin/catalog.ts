@@ -142,7 +142,7 @@ export type AdminCourse = {
   access: 'todos' | 'assinantes'
   /** Preço em centavos (null = gratuito). Curso com preço só abre para quem tem acesso liberado. */
   priceCents: number | null
-  /** "Liberar com cupom de lançamento?" (FOLYO100). */
+  /** "Liberar com cupom de lançamento?" (LANCAMENTO). */
   promo: boolean
   project: { title: string; brief: string; expected: string; steps: string[] }
   certificate: { enabled: boolean; hours: number | null; note: string }

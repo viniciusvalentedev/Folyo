@@ -2,7 +2,8 @@
 
 - **Aulas em sequência e continuar de onde parou:** logo abaixo. Rode o SQL **antes** de publicar o código.
 - **Concluir a aula só no final do vídeo:** logo abaixo. Sem SQL.
-- **Carrinho e cupom de lançamento (FOLYO100):** logo abaixo. Publique o código **antes** do SQL.
+- **Troca do código do cupom (FOLYO100 → LANCAMENTO):** logo abaixo. Rode o SQL junto com a publicação do código.
+- **Carrinho e cupom de lançamento (LANCAMENTO):** logo abaixo. Publique o código **antes** do SQL.
 - **Limite de pedidos (rate limit):** logo abaixo. Opcional, sem SQL.
 - **LGPD (baixar dados e excluir conta):** logo abaixo. Faça agora (depois de publicar o código novo).
 - **Verificação em duas etapas (MFA) do painel:** logo abaixo. Faça na ordem descrita lá.
@@ -87,9 +88,38 @@ drop function if exists private.lesson_completion_guard();
 
 ---
 
-# Carrinho e cupom de lançamento (FOLYO100)
+# Troca do código do cupom (FOLYO100 → LANCAMENTO)
 
-O aluno põe cursos pagos no carrinho, aplica o cupom `FOLYO100` e ganha **30 dias de pré-acesso** aos cursos
+O cupom de lançamento agora é **`LANCAMENTO`** (o `FOLYO100` deixa de existir). Os textos do site (aviso de lançamento,
+carrinho, finalizar, editor de curso e configurações) já usam o código novo. O banco também precisa trocar.
+
+## 1. Rodar o SQL
+No Supabase → **SQL Editor**, rode `supabase/migrations/20261030000003_cupom_lancamento_renomear.sql`
+(pode rodar de novo sem problema). Ele:
+- cria o `LANCAMENTO` com as **mesmas regras** do `FOLYO100` (desconto, dias, ligado/desligado, datas e limite de usos);
+- passa para o código novo **todos os pré-acessos já liberados** (ninguém perde acesso nem validade);
+- apaga o `FOLYO100` (digitar o código antigo passa a dar "cupom não existe");
+- troca as funções que ligam/desligam a promoção para olharem o código novo.
+
+> **Ordem:** rode o SQL **junto** com a publicação do código. Com o código novo e o SQL antigo, o site mostra
+> `LANCAMENTO`, mas o banco só aceita `FOLYO100`; com o SQL novo e o código antigo, o inverso. O aviso de lançamento
+> aparece de novo uma vez para quem tinha fechado o antigo (o código mudou).
+
+## 2. Testar (com uma conta de teste)
+1. Carrinho: aplique `lancamento` (minúsculas e espaços valem): o total vira R$ 0,00. `FOLYO100` dá "cupom não existe".
+2. Quem já tinha pré-acesso continua assistindo ao curso, com a mesma validade.
+3. Painel › Configurações: "Promoção de lançamento ativa (cupom LANCAMENTO)" liga e desliga normalmente.
+
+## Como desfazer
+Para voltar ao código antigo, faça a mesma troca ao contrário: crie o `FOLYO100` com as regras do `LANCAMENTO`, mova
+`course_access.coupon_code` para ele, apague o `LANCAMENTO`, refaça as duas funções do SQL de troca com o código antigo e
+volte `PROMO.code` em `src/lib/cart.ts`.
+
+---
+
+# Carrinho e cupom de lançamento (LANCAMENTO)
+
+O aluno põe cursos pagos no carrinho, aplica o cupom `LANCAMENTO` e ganha **30 dias de pré-acesso** aos cursos
 marcados com "Liberar com cupom". **Não existe pagamento:** nenhuma cobrança, gateway ou dado de cartão.
 Preço, desconto e liberação são calculados **no banco**; o navegador só manda ids de cursos e o código.
 
@@ -110,7 +140,7 @@ O que ele cria:
 
 - **`courses.price_cents`** (preço em centavos; vazio = gratuito) e **`courses.promo_launch_eligible`**
   ("Liberar com cupom de lançamento?", desligado por padrão). Todos os cursos que já existem continuam gratuitos.
-- **`private.coupons`**, fora da API, com o `FOLYO100` (100%, 30 dias, ligado). Ninguém lê pelo site.
+- **`private.coupons`**, fora da API, com o `LANCAMENTO` (100%, 30 dias, ligado). Ninguém lê pelo site.
 - **`course_access`**: quem pode assistir a cada curso pago (`cupom`, `manual` ou `compra`). O aluno só **lê** as
   próprias linhas; não existe regra de gravação para ele. Só as funções do banco gravam.
 - **`quote_cart`** (preço do carrinho), **`redeem_launch_coupon`** (libera o pré-acesso; não renova o mês),
@@ -125,11 +155,11 @@ O que ele cria:
 ## 2. Configurar e testar (com uma conta de teste)
 
 1. **Painel › Cursos ›** um curso publicado **› Publicação e acesso › Venda**: preço `32,99` e ligue
-   **"Liberar com cupom de lançamento (FOLYO100)?"**. Salve.
+   **"Liberar com cupom de lançamento (LANCAMENTO)?"**. Salve.
 2. **Painel › Configurações › Catálogo**: confira que **"Promoção de lançamento ativa"** está ligada.
 3. Entre com um aluno de teste: aparece o **aviso de lançamento** (uma vez só). Em **Explorar cursos**, o curso
    mostra "Curso pago", o preço e **Adicionar**. Abrir uma aula dele leva para a página de compra.
-4. **Carrinho**: aplique `folyo100` (minúsculas e espaços valem): o total vira **R$ 0,00**. Um código errado
+4. **Carrinho**: aplique `lancamento` (minúsculas e espaços valem): o total vira **R$ 0,00**. Um código errado
    mostra "Este cupom não existe ou não é válido." e o total não muda.
 5. **Prosseguir com a compra › Continuar para o pré-acesso**: aparece "Seu pré-acesso está liberado." com a data
    (hoje + 30 dias). O curso ganha o selo **Pré-acesso** e as aulas abrem.
@@ -148,7 +178,7 @@ migrations anteriores (lidas do histórico do git).
 - Desligar a promoção encerra **na hora** todos os pré-acessos por cupom; religar devolve os que ainda estão no prazo.
 - Liberação manual (painel) não tem prazo e não depende da promoção.
 - Para mudar o cupom (prazo, limite de usos, dias), use o SQL Editor, por exemplo:
-  `update private.coupons set ends_at = '2026-12-31 23:59-03', max_redemptions = 500 where code = 'FOLYO100';`
+  `update private.coupons set ends_at = '2026-12-31 23:59-03', max_redemptions = 500 where code = 'LANCAMENTO';`
 
 ## Como desfazer
 

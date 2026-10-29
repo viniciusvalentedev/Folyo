@@ -48,15 +48,15 @@ describe('carrinho: operações', () => {
   })
 
   test('cupom: normaliza e descarta código fora do formato', () => {
-    expect(cartOps.setCoupon(EMPTY_CART, '  folyo100 ').coupon).toBe('FOLYO100')
-    const withCoupon = { ids: [], coupon: 'FOLYO100' }
+    expect(cartOps.setCoupon(EMPTY_CART, '  lancamento ').coupon).toBe('LANCAMENTO')
+    const withCoupon = { ids: [], coupon: 'LANCAMENTO' }
     expect(cartOps.setCoupon(withCoupon, 'x; drop').coupon).toBeNull()
     expect(cartOps.clearCoupon(withCoupon).coupon).toBeNull()
-    expect(cartOps.clear({ ids: ['a'], coupon: 'FOLYO100' })).toBe(EMPTY_CART)
+    expect(cartOps.clear({ ids: ['a'], coupon: 'LANCAMENTO' })).toBe(EMPTY_CART)
   })
 
   test('lê do navegador só o que está no formato', () => {
-    expect(parseStoredCart('["mkt","mkt","../x",3,"design"]', 'FOLYO100')).toEqual({ ids: ['mkt', 'design'], coupon: 'FOLYO100' })
+    expect(parseStoredCart('["mkt","mkt","../x",3,"design"]', 'LANCAMENTO')).toEqual({ ids: ['mkt', 'design'], coupon: 'LANCAMENTO' })
     expect(parseStoredCart('{nao é json', '<script>')).toBe(EMPTY_CART)
     expect(parseStoredCart(null, null)).toBe(EMPTY_CART)
   })
@@ -85,11 +85,11 @@ describe('carrinho: guardado no navegador', () => {
   test('guarda só ids e cupom, separado por conta', () => {
     const store = cartStore('user-a-' + Math.random())
     store.update((s) => cartOps.add(s, 'mkt'))
-    store.update((s) => cartOps.setCoupon(s, 'folyo100'))
+    store.update((s) => cartOps.setCoupon(s, 'lancamento'))
     const keys = [...data.keys()]
     expect(keys.some((k) => k.startsWith('folyo-carrinho-v1:user-a-'))).toBe(true)
     expect(keys.some((k) => k.startsWith('folyo-cupom-v1:user-a-'))).toBe(true)
-    expect([...data.values()]).toEqual(['["mkt"]', 'FOLYO100'])
+    expect([...data.values()]).toEqual(['["mkt"]', 'LANCAMENTO'])
   })
 
   test('outra aba mudou: a store recarrega e avisa', () => {
@@ -183,7 +183,7 @@ describe('resposta do servidor', () => {
     subtotalCents: 3299,
     discountCents: 3299,
     totalCents: 0,
-    coupon: 'FOLYO100',
+    coupon: 'LANCAMENTO',
     couponError: null,
     percentOff: 100,
     accessDays: 30,
