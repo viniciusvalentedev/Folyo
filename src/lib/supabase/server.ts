@@ -1,6 +1,7 @@
 import 'server-only'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { connection } from 'next/server'
 import { authCookieOptions, supabaseEnv } from './config'
 
 /**
@@ -9,6 +10,11 @@ import { authCookieOptions, supabaseEnv } from './config'
  * com base no cookie de sessão. Crie um novo a cada uso (nunca compartilhe).
  */
 export async function createSupabaseServerClient({ clientIp }: { clientIp?: string | null } = {}) {
+  // Só no pedido de verdade. Com Cache Components + Partial Prefetching, o Next pré-renderiza a
+  // "casca" das rotas já com os cookies da sessão; o cliente do Supabase confere a validade do
+  // token com Date.now(), e o Next aborta essa pré-renderização (a página do painel ficava em
+  // branco). connection() para a pré-renderização aqui, antes de qualquer consulta.
+  await connection()
   const cookieStore = await cookies()
   const { url, key } = supabaseEnv()
   return createServerClient(url, key, {
