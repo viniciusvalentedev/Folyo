@@ -168,7 +168,7 @@ describe('portfolioFromState (pré-visualização = página pública)', () => {
     summary: '', outcomes: [], skills: [], project: { title: '', brief: '', expected: '' },
     modules: [{ id: 'm1', title: 'M', lessons: [{ id: 'a1', title: 'A', min: 5 }] }],
   } as Course
-  const catalog: Catalog = { courses: [course], categories: [] }
+  const catalog: Catalog = { courses: [course], categories: [], trails: [] }
   const work = (over: Partial<Work>): Work => ({
     id: ID, courseId: null, kind: 'link', title: 'Meu site', desc: '', url: 'https://exemplo.com', file: null,
     public: true, inCV: false, createdAt: '2026-10-20T10:00:00Z', updatedAt: '2026-10-20T10:00:00Z', ...over,
