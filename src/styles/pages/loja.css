@@ -63,7 +63,7 @@
 .buy-learn ul { list-style: none; padding: 0; display: grid; gap: 10px; }
 .buy-learn li { display: flex; gap: 10px; align-items: flex-start; padding: 14px 16px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); }
 .buy-learn li .ico { color: var(--lime-ink); flex: none; margin-top: 2px; }
-.buy-card { position: sticky; top: 24px; display: grid; gap: 16px; padding: 26px; border-radius: 26px; background: var(--ink); color: #F3F2F8; box-shadow: 0 30px 60px -30px rgba(11,11,18,.6); overflow: hidden; isolation: isolate; }
+.buy-card { position: sticky; top: 24px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 26px; border-radius: 26px; background: var(--ink); color: #F3F2F8; box-shadow: 0 30px 60px -30px rgba(11,11,18,.6); overflow: hidden; isolation: isolate; }
 .buy-card::after, .cart-summary::after { content: ""; position: absolute; right: -40px; top: -30px; width: 220px; height: 300px; background: var(--magenta); opacity: .14; -webkit-mask: var(--mark-mask) center / contain no-repeat; mask: var(--mark-mask) center / contain no-repeat; z-index: -1; pointer-events: none; }
 .buy-card .eyebrow { margin: 0; }
 .buy-card-head { display: flex; gap: 14px; align-items: center; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,.1); }
@@ -103,7 +103,7 @@
 .cart-more-plus { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border-radius: 10px; background: var(--magenta-soft); color: var(--magenta-deep); }
 .cart-more-text { flex: 1; display: grid; gap: 2px; }
 .cart-more-text small { color: var(--mute); }
-.cart-summary { position: sticky; top: 24px; display: grid; gap: 16px; padding: 26px; border-radius: 26px; background: var(--ink); color: #F3F2F8; box-shadow: 0 30px 60px -30px rgba(11,11,18,.55); overflow: hidden; isolation: isolate; }
+.cart-summary { position: sticky; top: 24px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 26px; border-radius: 26px; background: var(--ink); color: #F3F2F8; box-shadow: 0 30px 60px -30px rgba(11,11,18,.55); overflow: hidden; isolation: isolate; }
 .cart-summary .eyebrow { margin: 0; }
 .sum-lines { list-style: none; padding: 0; display: grid; gap: 10px; }
 .sum-lines li { display: flex; justify-content: space-between; gap: 12px; font-size: 15px; }
@@ -112,11 +112,11 @@
 .sum-foot { text-align: center; font-size: 13.5px; color: #B9B7CC; }
 
 /* Cupom */
-.coupon-box { display: grid; gap: 10px; padding: 16px; border-radius: 16px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); }
+.coupon-box { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 10px; padding: 16px; border-radius: 16px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); }
 .coupon-title { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 15px; }
 .coupon-title .ico { color: var(--lime); }
 .coupon-row { display: flex; gap: 8px; }
-.coupon-input { flex: 1; min-width: 0; height: 46px; padding: 0 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.16); background: var(--ink-3); color: #fff; font: 600 15px/1 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; }
+.coupon-input { flex: 1 1 0; width: 0; min-width: 0; height: 46px; padding: 0 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.16); background: var(--ink-3); color: #fff; font: 600 15px/1 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; }
 .coupon-input::placeholder { font-family: var(--f-ui); letter-spacing: 0; text-transform: none; font-weight: 400; color: #8D8BA3; }
 .coupon-input:focus-visible { outline: 2px solid var(--blue-on-dark); outline-offset: 1px; }
 .coupon-input.bad { border-color: var(--err); }
@@ -124,10 +124,10 @@
 .coupon-input.shake-b { animation: shakeB .36s var(--ease); }
 @keyframes shakeA { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
 @keyframes shakeB { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
-.coupon-apply { height: 46px; min-width: 128px; }
+.coupon-apply { height: 46px; min-width: 128px; flex: none; }
 .coupon-err { display: flex; align-items: flex-start; gap: 6px; color: #FF9DAE; font-size: 13.5px; }
 .coupon-err .ico { flex: none; margin-top: 2px; }
-.coupon-ok { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start; padding: 16px; border-radius: 16px; background: rgba(201,226,63,.08); border: 1px solid rgba(201,226,63,.45); animation: popIn .3s var(--ease); }
+.coupon-ok { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 16px; border-radius: 16px; background: rgba(201,226,63,.08); border: 1px solid rgba(201,226,63,.45); animation: popIn .3s var(--ease); }
 .coupon-ok-ico { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 10px; background: var(--lime); color: var(--ink); }
 .coupon-ok-text { display: grid; gap: 4px; font-size: 13.5px; color: #C9C7DA; }
 .coupon-ok-text b { font: 600 15.5px/1.25 var(--f-display); color: #fff; }
@@ -172,7 +172,7 @@
 
 /* ---------- /finalizar ---------- */
 .fin-grid { display: grid; grid-template-columns: minmax(0, 1fr) 460px; gap: 56px; align-items: start; }
-.fin-main { display: grid; gap: 18px; justify-items: start; }
+.fin-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; justify-items: start; }
 .fin-badge { display: inline-flex; align-items: center; gap: 8px; padding: 7px 14px; border-radius: 99px; border: 1px solid rgba(201,226,63,.4); background: rgba(201,226,63,.08); color: var(--lime); font: 600 12px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; }
 .fin-h { color: #fff; max-width: 14ch; }
 .fin-lead { margin: 0; color: #C9C7DA; font-size: 18px; }
@@ -187,7 +187,7 @@
 .fin-actions .btn { min-height: 50px; }
 .fin-note { font-size: 13.5px; color: #9E9CB2; }
 .fin-clock { width: 52px; height: 52px; display: grid; place-items: center; border-radius: 14px; background: rgba(242,169,59,.14); color: var(--warn); }
-.fin-sum { display: grid; gap: 14px; padding: 24px; border-radius: 26px; background: #fff; color: var(--ink); box-shadow: 0 30px 70px -30px rgba(0,0,0,.6); }
+.fin-sum { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 24px; border-radius: 26px; background: #fff; color: var(--ink); box-shadow: 0 30px 70px -30px rgba(0,0,0,.6); }
 .fin-sum .eyebrow { margin: 0; }
 .fin-items { list-style: none; padding: 0; display: grid; gap: 10px; }
 .fin-items li { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 14px; background: var(--paper); }
@@ -210,8 +210,8 @@
 .pre-ok-h { color: #fff; outline: none; }
 .pre-ok-lead { margin: 0 auto; color: #C9C7DA; }
 .pre-ok-lead b { color: #fff; }
-.pre-ok-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px; width: 100%; margin-top: 18px; text-align: left; }
-.pre-panel { display: grid; gap: 12px; align-content: start; padding: 22px; border-radius: 22px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); }
+.pre-ok-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 18px; width: 100%; margin-top: 18px; text-align: left; }
+.pre-panel { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 12px; align-content: start; padding: 22px; border-radius: 22px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1); }
 .pre-panel-h { font: 600 16px/1.3 var(--f-display); color: #fff; }
 .pre-list { list-style: none; padding: 0; display: grid; gap: 10px; }
 .pre-list li { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 14px; background: rgba(255,255,255,.05); }
@@ -225,6 +225,9 @@
 .pre-terms { display: grid; gap: 6px; padding-left: 18px; color: #C9C7DA; font-size: 14px; }
 .pre-how { color: #C9C7DA; font-size: 14px; line-height: 1.7; }
 .pre-how b { color: #fff; }
+/* O selo "Pré-acesso" é um .plan (feito para ficar sobre a capa do card, com desfoque de fundo).
+   No meio de um texto ele quebrava em duas linhas e o desfoque borrava as palavras ao redor. */
+.pre-how .plan { display: inline-block; white-space: nowrap; vertical-align: 1px; margin: 0 2px; backdrop-filter: none; -webkit-backdrop-filter: none; }
 
 /* ---------- Aviso de lançamento (modal) ---------- */
 .launch-scrim { position: fixed; inset: 0; z-index: 88; display: grid; place-items: center; overflow-y: auto; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); background: rgba(6,6,12,.7); backdrop-filter: blur(6px); animation: fadeIn .25s ease; }
@@ -276,6 +279,7 @@
   .cart-item-price { margin-left: 78px; justify-items: start; grid-auto-flow: column; align-items: center; gap: 8px; }
   .cart-trash { margin-left: auto; }
   .coupon-row { flex-direction: column; }
+  .coupon-input { flex: none; width: 100%; }
   .coupon-apply { width: 100%; }
   .coupon-ok { grid-template-columns: auto 1fr; }
   .coupon-ok .coupon-chip { grid-column: 2; justify-self: start; }
