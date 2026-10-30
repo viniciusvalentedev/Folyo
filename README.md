@@ -50,7 +50,19 @@ Onde estamos:
   "Liberar com cupom"; preço, desconto e liberação são calculados **no banco**. **Não existe pagamento**: sem cupom,
   `/finalizar` avisa que o pagamento online ainda não está disponível. Curso pago sem acesso não entrega vídeo nem
   materiais. Exige um SQL novo, rodado **depois** de publicar o código (veja [`supabase/README.md`](supabase/README.md)).
-- **Próxima fase do 2.0:** certificados e PDF de verdade; pagamentos.
+- **Aulas em sequência, "continuar de onde parou" e conclusão só no fim do vídeo** ✅ o aluno só abre uma aula depois
+  de concluir as anteriores (conferido no servidor); o ponto em que parou o vídeo é salvo e vale em qualquer aparelho;
+  "Próxima aula" e "concluir" só liberam quando o vídeo chega ao final. Exige um SQL novo, rodado **antes** de publicar
+  o código (veja [`supabase/README.md`](supabase/README.md)).
+- **Trilhas de carreira no painel** ✅ as trilhas de Objetivos são cadastradas em `/admin/trilhas` (criar, editar,
+  ordenar, ativar/desativar, escolher os cursos à mão). Sem o SQL, valem as 7 de reserva do código.
+- **No ar e no Google** ✅ o site roda na Vercel em **https://www.usefolyo.com** (`usefolyo.com` redireciona para o
+  `www`). Só a landing, `/termos` e `/privacidade` aparecem no Google (`robots.txt` e `sitemap.xml`, só em produção;
+  previews e desenvolvimento ficam fechados). Todo o resto é `noindex`. Detalhes em `src/lib/seo.ts`.
+- **Testes e CI** ✅ `npm run check` roda lint, tipos e testes (Vitest, com Postgres de verdade em memória para as
+  regras do banco). O GitHub Actions (`.github/workflows/ci.yml`) repete tudo a cada push e confere se o site compila.
+- **Próximas fases:** **pagamentos** (Mercado Pago; hoje só há o cupom), **certificados e currículo em PDF de verdade**
+  e a **revisão jurídica** dos Termos e da Privacidade.
 
 **Configurar o Supabase pela primeira vez:** siga o passo a passo em [`supabase/README.md`](supabase/README.md).
 
@@ -77,10 +89,14 @@ Outros comandos úteis:
 | ------------------- | ------------------------------------------------------- |
 | `npm run build`     | Gera a versão de produção (é o que a Vercel roda)       |
 | `npm run start`     | Roda a versão de produção depois do build               |
-| `npm run check`     | Procura erros de código (lint) e de tipos (TypeScript)  |
+| `npm run lint`      | Procura erros de código (ESLint)                        |
+| `npm run typecheck` | Confere os tipos (TypeScript)                           |
+| `npm run test`      | Roda os testes (Vitest); `npm run test:watch` reroda ao salvar |
+| `npm run check`     | Lint + tipos + testes de uma vez (rode antes do `git push`) |
 
-> Tudo o que o aluno faz fica salvo na conta dele. Os cursos agora vêm do banco: o catálogo começa **vazio** (só com as
-> categorias padrão) até a equipe cadastrar o primeiro curso em `/admin/cursos`. Os certificados ainda são demonstração.
+> Tudo o que o aluno faz fica salvo na conta dele. Os cursos vêm do banco: um banco novo começa **vazio** (só com as
+> categorias padrão e as 7 trilhas) até a equipe cadastrar o primeiro curso em `/admin/cursos`. Em produção o primeiro
+> curso já está publicado (grátis). Os certificados ainda são demonstração.
 
 ---
 
@@ -100,10 +116,15 @@ src/
 │  │  ├─ privacidade/        → /privacidade  (Política de Privacidade, LGPD)
 │  │  └─ termos/             → /termos  (Termos de Uso)
 │  ├─ (public)/u/[slug]/     → /u/<endereço>  (perfil público: aberto a qualquer pessoa, noindex)
+│  ├─ page.tsx               → / (landing page, aberta ao Google)
+│  ├─ robots.ts, sitemap.ts  → /robots.txt e /sitemap.xml  (opengraph-image.tsx = imagem de compartilhamento)
 │  ├─ (app)/                 ← área do aluno (tudo "depois do login")
 │  │  ├─ layout.tsx          → carrega o catálogo e os dados do aluno
 │  │  ├─ primeiro-acesso/    → /primeiro-acesso (primeiro acesso em 3 passos)
 │  │  ├─ publico/            → /publico  (pré-visualização do perfil público)
+│  │  ├─ (checkout)/         → /carrinho, /comprar/[curso] e /finalizar  (carrinho e cupom; sem pagamento ainda)
+│  │  ├─ admin/              → /admin  (painel da equipe: visão geral, usuários, permissões, cursos, aulas, categorias,
+│  │  │                         trilhas, mídia, audiência, relatórios e configurações)
 │  │  ├─ (main)/             ← páginas com menu lateral + barra do topo
 │  │  │  ├─ inicio/          → /inicio
 │  │  │  ├─ objetivos/       → /objetivos
@@ -117,6 +138,8 @@ src/
 │  │  │  └─ configuracoes/   → /configuracoes
 │  │  └─ (classroom)/aula/   → /aula/[curso]/[aula]  (sala de aula, menu compacto)
 │  ├─ api/trabalhos/[id]/arquivo/ → ★ entrega o PDF de um trabalho (só para o dono, conferindo o login)
+│  ├─ api/materiais/[id]/    → ★ entrega o PDF de material de aula (confere o login; o banco só mostra materiais de aulas publicadas)
+│  ├─ api/admin/             → rotas do painel: audiência ao vivo e mídia (o banco confere o papel da equipe)
 │  ├─ api/u/[slug]/trabalhos/[id]/ → ★ entrega o PDF de um trabalho PÚBLICO (sem login; o banco confere tudo)
 │  ├─ layout.tsx             → HTML base, fontes e estilos
 │  └─ not-found.tsx          → página "não encontrada"
@@ -126,6 +149,9 @@ src/
 │  ├─ course/                → cards de curso
 │  ├─ dashboard/             → blocos do Início e do Progresso (números, bolhas de skills, gráficos)
 │  ├─ works/                 → trabalhos: cartões, formulário (PDF/link) e visualizador de PDF
+│  ├─ cart/                  → carrinho, cupom e confirmação de pré-acesso
+│  ├─ landing/               → landing page pública
+│  ├─ admin/                 → telas do painel (catálogo, mídia, audiência, relatórios, configurações)
 │  ├─ brand/                 → logotipo da Folyo
 │  └─ providers/AppState.tsx → estado do aluno + todas as AÇÕES (concluir aula, salvar projeto…)
 ├─ proxy.ts                 → roda antes de cada página: renova a sessão e manda quem não entrou para /entrar
@@ -137,6 +163,10 @@ src/
 │  │                           objetivos), works.ts (trabalhos e PDFs), admin.ts (usuários), catalog.ts (cursos,
 │  │                           categorias, tags), shared.ts e admin-shared.ts (peças comuns das ações)
 │  ├─ trails.ts              → tipo das trilhas, as 7 de reserva (DEFAULT_TRAILS), etapas de vida e metas do primeiro acesso
+│  ├─ cart.ts, cart-store.ts → preço, cupom e carrinho (o valor final é sempre calculado no banco)
+│  ├─ bunny.ts, media*.ts    → vídeo no Bunny Stream (token e envio) e biblioteca de mídia
+│  ├─ security/              → limite de pedidos por IP (e Redis opcional da Upstash)
+│  ├─ seo.ts, legal.ts       → endereço oficial/Google e dados legais (CNPJ, encarregado, foro) dos textos legais
 │  ├─ pdf-file.ts            → limites e conferência de PDF (tamanho e assinatura %PDF-)
 │  ├─ admin/catalog*.ts      → cadastro de cursos do painel: formato, limites e regras de publicação (navegador e servidor)
 │  ├─ domain/                → regras/cálculos (progresso, tempo estudado, certificados, objetivos)
@@ -145,10 +175,16 @@ src/
 │  └─ format.ts              → datas, plural, minutos…
 └─ styles/                   → visual (cores, fontes, componentes e uma folha por página)
 supabase/
-├─ README.md                 → ★ passo a passo para configurar o Supabase
+├─ README.md                 → ★ passo a passo para configurar o Supabase (e a ordem de cada SQL)
 ├─ migrations/               → SQL do banco (tabelas + regras RLS)
 └─ templates/                → modelos dos e-mails (confirmar conta, senha nova)
+tests/                       ← testes (Vitest); tests/sql/ roda o SQL num Postgres de verdade (PGlite)
+.github/workflows/ci.yml     ← CI: lint, tipos, testes e build a cada push
 ```
+
+**Serviços usados:** Vercel (site), Supabase (login, banco e arquivos), Bunny Stream (vídeo das aulas), Cloudflare
+Turnstile (CAPTCHA), Zoho Mail (e-mail `contato@usefolyo.com` e envio dos e-mails do login) e, opcional, Upstash Redis
+(limite de pedidos). Domínios: `usefolyo.com` (GoDaddy) e `portf.com.br` (Registro.br, reservado).
 
 **Padrão das páginas:** cada pasta tem um `page.tsx` (curtinho, roda no servidor) e um `…View.tsx`
 (a tela de verdade, roda no navegador). Quer mudar a tela de Início? Abra `src/app/(app)/(main)/inicio/DashboardView.tsx`.
@@ -232,7 +268,9 @@ supabase/
 - **React escapa todo texto** exibido (não usamos `dangerouslySetInnerHTML`), o que evita injeção de HTML.
 - **Fontes servidas pelo próprio site** (sem Google Fonts no navegador do aluno): mais privacidade e uma CSP mais rígida.
 - **Erros não vazam detalhes técnicos** para o usuário (`error.tsx`).
-- **Robôs de busca bloqueados** (`noindex`) enquanto o site é uma demonstração.
+- **Google só vê o que é público de propósito:** landing, `/termos` e `/privacidade`, e só em produção. Todas as outras
+  páginas (inclusive o perfil público `/u/...`) são `noindex`, e o `robots.txt` pede para o Google nem visitar a área
+  do aluno, o painel e a API. Uma página nova nunca vai para o Google sem alguém ligar isso de propósito.
 - Dependências de produção sem vulnerabilidades conhecidas (`npm audit --omit=dev`). O aviso que aparece no
   `npm install` vem só de ferramentas de desenvolvimento (lint) e não vai para o site.
 
@@ -287,10 +325,11 @@ supabase/
 | **Painel admin** | ✅ Papéis, visão geral, usuários, permissões, auditoria e (Fase 2) **cursos, categorias, módulos e aulas** no banco. Papel e regras ficam no banco; a tela só esconde o que não se pode usar | Certificado emitido pelo servidor |
 | **Player de aula** | ✅ Vídeo hospedado no Bunny Stream (player com token) ou link `.mp4`/`.webm`, ambos medidos na audiência; YouTube/Vimeo abrem no site deles. Sem vídeo: aviso | Legendas e capítulos |
 | **Capas e imagens dos cursos** | ✅ Capa, miniatura e banner enviados pela biblioteca de mídia, com ponto de foco; sem imagem, arte padrão | Recorte automático por IA |
-| **Currículo em PDF e certificados** | Só visual ("Certificados a caminho"). Hoje "aula concluída" é marcada pelo próprio aluno | Certificado emitido pelo servidor (conferindo aulas e trabalho) + código de verificação |
+| **Currículo em PDF e certificados** | Só visual ("Certificados a caminho"). A conclusão da aula só libera no fim do vídeo e as aulas são em sequência, mas é conferido na tela (o banco não sabe o ponto do vídeo) | Certificado emitido pelo servidor (conferindo aulas e trabalho) + código de verificação |
 | **Perfil público** | ✅ `/u/<endereço>` aberto sem login, com controle de privacidade; `/publico` é a pré-visualização. Não é indexado pelo Google (`noindex`) | Opção "aparecer no Google" e subdomínio (`nome.usefolyo.com`) |
 | **Objetivos com recomendação** | ✅ Trilhas cadastradas no painel (Trilhas), com as 7 de `src/lib/trails.ts` de reserva; as recomendações usam os cursos do banco (publicados e visíveis) | Refinar com os dados de audiência |
-| **Pagamentos (Plano Pro)** | Só o selo "Pro" | Mercado Pago / Stripe / Pagar.me |
+| **Pagamentos** | Só o cupom `LANCAMENTO` (30 dias de pré-acesso). `/finalizar` avisa que o pagamento online ainda não está disponível | Mercado Pago (conta de Pessoa Física aberta; ainda sem CNPJ): Checkout/Pix + webhook, com preço e liberação conferidos no banco |
+| **Textos legais** | `/termos` e `/privacidade` no ar com aviso "versão em revisão" | Preencher `src/lib/legal.ts` (CNPJ/CPF, endereço, encarregado, foro), revisão de advogado e trocar `reviewed` para `true` |
 
 ### Como os dados vão para o banco
 
@@ -308,15 +347,19 @@ supabase/
 A pasta já está ligada ao repositório `viniciusvalentedev/Folyo`. Para enviar:
 
 ```bash
+npm run check        # lint + tipos + testes: só suba se passar
 git add -A
-git commit -m "Folyo 2.0 · Fase 2: cursos, categorias e aulas no painel"
+git commit -m "Descreva o que mudou"
 git push
 ```
 
-A Vercel publica sozinha a cada `git push`. As variáveis do Supabase ficam em **Settings → Environment Variables**
+A Vercel publica sozinha a cada `git push` na `main`, e o GitHub Actions roda o CI. **Cuidado com a ordem:** algumas
+mudanças pedem o SQL **antes** do código e outras **depois**. Confira a ordem em [`supabase/README.md`](supabase/README.md)
+antes de dar o push. As variáveis do Supabase ficam em **Settings → Environment Variables**
 (veja [`supabase/README.md`](supabase/README.md)). O `.env.local` nunca vai para o GitHub.
 
 ---
 
-Feito com Next.js 16 (App Router, Cache Components), React 19, TypeScript, Supabase (`@supabase/ssr`), lucide (ícones) e zod (validação).
+Feito com Next.js 16 (App Router, Cache Components), React 19, TypeScript, Supabase (`@supabase/ssr`), lucide (ícones),
+zod (validação) e Vitest (testes).
 Design: protótipo da Gigi.

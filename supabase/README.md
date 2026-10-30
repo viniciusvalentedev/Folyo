@@ -637,7 +637,7 @@ No SQL Editor, troque pelo e-mail com que você faz login na Folyo e rode:
 ```sql
 insert into private.staff_roles (user_id, role)
 select id, 'proprietario' from auth.users
-where email = lower('vinigvalente01@gmail.com') and email_confirmed_at is not null
+where email = lower('seu-email@exemplo.com') and email_confirmed_at is not null
 on conflict (user_id) do update set role = excluded.role;
 ```
 
