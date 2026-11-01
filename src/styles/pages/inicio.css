@@ -144,18 +144,23 @@
 .dash-skills { padding: 4px 0 0; }
 .dash-skills .panel-head { margin-bottom: 6px; }
 .sbl { display: grid; gap: 14px; }
-.sbl-stage { position: relative; width: 100%; border-radius: 28px; overflow: hidden; isolation: isolate; background: radial-gradient(70% 80% at 50% 55%, rgba(45,36,200,.16), rgba(45,36,200,0) 70%), radial-gradient(40% 50% at 78% 20%, rgba(221,51,207,.08), rgba(221,51,207,0) 70%); }
+.sbl-stage { position: relative; width: 100%; border-radius: 28px; overflow: hidden; isolation: isolate; user-select: none; -webkit-user-select: none; background: radial-gradient(70% 80% at 50% 55%, rgba(45,36,200,.16), rgba(45,36,200,0) 70%), radial-gradient(40% 50% at 78% 20%, rgba(221,51,207,.08), rgba(221,51,207,0) 70%); }
 .sbl-svg { position: absolute; inset: 0; display: block; opacity: 0; transition: opacity 1s var(--ease); }
 .sbl.in .sbl-svg { opacity: 1; }
 .sbl-speck { fill: rgba(255,255,255,.35); }
 .sbl-c { transition: opacity .35s var(--ease), filter .35s var(--ease); }
 .sbl.has-active .sbl-c:not(.on) { opacity: .62; }
 .sbl-c.on { filter: brightness(1.12) saturate(1.05); }
-.sbl-b { position: absolute; left: 0; top: 0; border-radius: 50%; border: 0; padding: 0; background: transparent; display: grid; place-items: center; cursor: pointer; will-change: transform; opacity: 0; transition: opacity .6s var(--ease) calc(var(--d, 0ms) + 300ms); }
+.sbl-c.grab { filter: brightness(1.2) saturate(1.1); }
+.sbl-b { position: absolute; left: 0; top: 0; border-radius: 50%; border: 0; padding: 0; background: transparent; display: grid; place-items: center; cursor: grab; will-change: transform; opacity: 0; transition: opacity .6s var(--ease) calc(var(--d, 0ms) + 300ms); }
 .sbl.in .sbl-b { opacity: 1; }
 .sbl-b:focus-visible { outline: 2px solid #fff; outline-offset: 5px; }
 .sbl.has-active .sbl-b:not(.on) .sbl-label { opacity: .7; }
-.sbl-label { display: grid; justify-items: center; gap: 2px; text-align: center; padding: 0 16%; line-height: 1.15; pointer-events: none; transition: opacity .3s var(--ease); }
+/* Segurar: a bolha vem para a frente e o texto "levanta" com mola (saída em ease-in). */
+.sbl-b.grabbing { z-index: 2; cursor: grabbing; }
+.sbl-stage.dragging, .sbl-stage.dragging * { cursor: grabbing; }
+.sbl-b.grabbing .sbl-label { transform: scale(1.07); transition: opacity .3s var(--ease), transform .5s var(--spring); }
+.sbl-label { display: grid; justify-items: center; gap: 2px; text-align: center; padding: 0 16%; line-height: 1.15; pointer-events: none; transition: opacity .3s var(--ease), transform .22s var(--ease-in); }
 .sbl-label b { font-family: var(--f-display); font-weight: 600; letter-spacing: -0.03em; line-height: 1; }
 .sbl-label span { font-weight: 600; letter-spacing: -0.005em; }
 .sbl-label small { opacity: .72; font-weight: 500; }

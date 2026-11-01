@@ -19,6 +19,9 @@
   --f-mono: var(--font-jetbrains-mono), 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
   --r-s: 8px; --r-m: 12px; --r-l: 18px; --r-xl: 24px;
   --ease: cubic-bezier(.2, .7, .2, 1); --t: 260ms;
+  /* Entradas: ease-out (--ease). Saídas: ease-in. Interface: mola com overshoot leve. Nada linear. */
+  --ease-in: cubic-bezier(.5, 0, .9, .4);
+  --spring: cubic-bezier(.34, 1.4, .64, 1);
   --side: 248px;
   color-scheme: dark;
   --bg: var(--ink); --fg: #F3F2F8; --mute: #9E9CB2; --line: rgba(255,255,255,.08); --line-2: rgba(255,255,255,.15);
@@ -45,4 +48,9 @@
   --warn-c: var(--warn-ink); --warn-bg: var(--warn-soft); --err-c: var(--err-ink); --err-bg: var(--err-soft);
   --shadow: 0 1px 2px rgba(11,11,18,.05), 0 8px 24px -14px rgba(11,11,18,.18);
   color-scheme: light;
+}
+
+/* Mola de verdade (amortecimento 0,7, overshoot ~4,6%) onde o navegador aceita linear(). */
+@supports (transition-timing-function: linear(0, 1)) {
+  :root { --spring: linear(0, 0.076, 0.244, 0.44, 0.624, 0.776, 0.89, 0.968, 1.014, 1.038, 1.046, 1.044, 1.037, 1.028, 1.019, 1.012, 1.006, 1.002, 1, 0.998, 0.998, 1); }
 }

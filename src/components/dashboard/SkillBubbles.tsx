@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react'
 import { useApp } from '@/components/providers/AppState'
 import { Icon } from '@/components/ui/Icon'
 import { sameText } from '@/lib/domain/catalog'
@@ -107,6 +107,21 @@ function fitCircles(circles: Circle[], width: number, height: number, padding: n
 const calm = () =>
   typeof matchMedia !== 'undefined' && (matchMedia('(prefers-reduced-motion: reduce)').matches || document.documentElement.classList.contains('calm'))
 
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
+
+/** Mola da interface (amortecimento 0,7 → overshoot leve, ~4,6%). Nada de movimento linear. */
+const SPRING_K = 130
+const SPRING_C = 2 * 0.7 * Math.sqrt(SPRING_K)
+/** Quanto o cursor precisa andar (px) para o gesto contar como arraste, e não como clique. */
+const GRAB_SLOP = 4
+/** Velocidade máxima (px/s) com que a bolha é solta, para a mola não lançá-la longe demais. */
+const MAX_THROW = 520
+/** Duração (ms) da atração ao entrar (ease-out) e ao sair (ease-in) da janela. */
+const PULL_IN = 480
+const PULL_OUT = 360
+
+type Grab = { i: number; dx: number; dy: number; sx: number; sy: number; moved: boolean }
+
 /** Pontinhos decorativos ao fundo (posição relativa). */
 const SPECKS: [number, number][] = [
   [0.08, 0.18], [0.22, 0.86], [0.35, 0.07], [0.52, 0.93], [0.66, 0.12], [0.79, 0.78],
@@ -144,7 +159,13 @@ export function SkillBubbles({ compact }: { compact?: boolean }) {
   const [entered, setEntered] = useState(false)
   const circleRefs = useRef<(SVGCircleElement | null)[]>([])
   const buttonRefs = useRef<(HTMLButtonElement | null)[]>([])
-  const motion = useRef({ t: 0, last: 0, speed: 1, target: 1, visible: false, enter: 0 })
+  const motion = useRef({ t: 0, last: 0, speed: 1, target: 1, visible: false, enter: 0, att: { w: 0, from: 0, to: 0, t0: 0 } })
+  // Interação com o mouse: bolha segurada, posição do cursor na janela e deslocamento (mola) de cada bolha.
+  const [grabbed, setGrabbed] = useState<number | null>(null)
+  const pointer = useRef({ x: 0, y: 0, inside: false })
+  const drag = useRef<Grab | null>(null)
+  const springs = useRef({ ox: [] as number[], oy: [] as number[], vx: [] as number[], vy: [] as number[] })
+  const suppressClick = useRef(false)
   useEffect(() => {
     motion.current.target = shown !== null ? 0 : 1
   }, [shown])
@@ -168,7 +189,7 @@ export function SkillBubbles({ compact }: { compact?: boolean }) {
     return () => observer.disconnect()
   }, [stage])
 
-  // Flutuação suave das bolhas (parada quando a aba está escondida ou fora da tela).
+  // Flutuação suave das bolhas, atração leve pelo cursor e bolha segurada (parada quando a aba está escondida ou fora da tela).
   useEffect(() => {
     if (!circles.length) return
     const still = calm()
@@ -176,6 +197,18 @@ export function SkillBubbles({ compact }: { compact?: boolean }) {
     const amp = circles.map((c) => Math.min(extra, c.r * 0.3 + 4, reach * 0.62 + 3))
     const phase = circles.map((_, i) => [i * 1.7, i * 2.3 + 1, i * 0.9 + 2, i * 1.3 + 3])
     const freq = circles.map((_, i) => [0.055 + (i % 3) * 0.014, 0.035 + (i % 4) * 0.01, 0.048 + (i % 2) * 0.016, 0.03 + (i % 5) * 0.008])
+    // Atração: bolhas menores são mais leves e se deixam puxar um pouco mais.
+    const biggest = Math.max(...circles.map((c) => c.r))
+    const maxPull = circles.map((c) => Math.min(extra * 0.7 * clamp(Math.sqrt(biggest / c.r), 0.7, 1.5), reach * 0.55 + 2))
+    const sp = springs.current
+    circles.forEach((_, i) => {
+      if (sp.ox[i] === undefined) {
+        sp.ox[i] = 0
+        sp.oy[i] = 0
+        sp.vx[i] = 0
+        sp.vy[i] = 0
+      }
+    })
     let raf = 0
     const place = (x: number, y: number, i: number) => {
       circleRefs.current[i]?.setAttribute('cx', x.toFixed(2))
@@ -191,10 +224,58 @@ export function SkillBubbles({ compact }: { compact?: boolean }) {
       if (!still) m.t += dt * m.speed
       m.enter = Math.min(1, m.enter + dt / 1.1)
       const eased = 1 - Math.pow(1 - m.enter, 3)
+
+      // Peso da atração: entra com ease-out e sai com ease-in (nada linear).
+      const att = m.att
+      const want = pointer.current.inside ? 1 : 0
+      if (want !== att.to) {
+        att.from = att.w
+        att.to = want
+        att.t0 = time
+      }
+      const p = clamp((time - att.t0) / (want ? PULL_IN : PULL_OUT), 0, 1)
+      att.w = att.from + (att.to - att.from) * (want ? 1 - Math.pow(1 - p, 3) : p * p * p)
+
+      const held = drag.current
+      const steps = dt > 1 / 40 ? 2 : 1
+      const h = dt / steps
       circles.forEach((c, i) => {
         const dx = still ? 0 : amp[i] * (0.65 * Math.sin(m.t * freq[i][0] * 6.283 + phase[i][0]) + 0.35 * Math.sin(m.t * freq[i][1] * 6.283 + phase[i][1]))
         const dy = still ? 0 : amp[i] * (0.65 * Math.cos(m.t * freq[i][2] * 6.283 + phase[i][2]) + 0.35 * Math.sin(m.t * freq[i][3] * 6.283 + phase[i][3]))
-        place(width / 2 + (c.x + dx - width / 2) * (0.55 + 0.45 * eased), height / 2 + (c.y + dy - height / 2) * (0.55 + 0.45 * eased), i)
+        const nx = width / 2 + (c.x + dx - width / 2) * (0.55 + 0.45 * eased)
+        const ny = height / 2 + (c.y + dy - height / 2) * (0.55 + 0.45 * eased)
+        if (held && held.i === i) {
+          // Segurada: fica colada no cursor (mantendo o ponto onde foi pega) e guarda a velocidade para soltar com a mola.
+          const tx = clamp(pointer.current.x + held.dx, c.r, width - c.r)
+          const ty = clamp(pointer.current.y + held.dy, c.r, height - c.r)
+          if (dt > 0) {
+            sp.vx[i] += ((tx - nx - sp.ox[i]) / dt - sp.vx[i]) * 0.4
+            sp.vy[i] += ((ty - ny - sp.oy[i]) / dt - sp.vy[i]) * 0.4
+          }
+          sp.ox[i] = tx - nx
+          sp.oy[i] = ty - ny
+        } else {
+          // Alvo da mola: um empurrãozinho em direção ao cursor (zero quando o cursor está sobre o centro).
+          let tx = 0
+          let ty = 0
+          if (att.w > 0.001) {
+            const ddx = pointer.current.x - nx
+            const ddy = pointer.current.y - ny
+            const len = Math.hypot(ddx, ddy)
+            if (len > 1) {
+              const mag = maxPull[i] * Math.tanh(len / 160) * att.w
+              tx = (ddx / len) * mag
+              ty = (ddy / len) * mag
+            }
+          }
+          for (let s = 0; s < steps; s++) {
+            sp.vx[i] += (SPRING_K * (tx - sp.ox[i]) - SPRING_C * sp.vx[i]) * h
+            sp.vy[i] += (SPRING_K * (ty - sp.oy[i]) - SPRING_C * sp.vy[i]) * h
+            sp.ox[i] += sp.vx[i] * h
+            sp.oy[i] += sp.vy[i] * h
+          }
+        }
+        place(clamp(nx + sp.ox[i], c.r, width - c.r), clamp(ny + sp.oy[i], c.r, height - c.r), i)
       })
       if (m.visible && document.visibilityState === 'visible') raf = requestAnimationFrame(frame)
       else {
@@ -219,6 +300,50 @@ export function SkillBubbles({ compact }: { compact?: boolean }) {
       document.removeEventListener('visibilitychange', kick)
     }
   }, [circles, fitted.scale, entered, width, height, extra])
+
+  /** Acompanha o cursor dentro da janela das skills (só mouse e caneta; no toque a página continua rolando). */
+  const track = (e: ReactPointerEvent) => {
+    if (!stage || e.pointerType === 'touch') return null
+    const box = stage.getBoundingClientRect()
+    const x = e.clientX - box.left
+    const y = e.clientY - box.top
+    pointer.current = { x, y, inside: x >= 0 && y >= 0 && x <= box.width && y <= box.height }
+    return pointer.current
+  }
+  const grab = (e: ReactPointerEvent<HTMLButtonElement>, i: number) => {
+    if (e.pointerType === 'touch' || e.button !== 0 || calm()) return
+    const at = track(e)
+    const dot = circleRefs.current[i]
+    if (!at || !dot) return
+    drag.current = { i, dx: Number(dot.getAttribute('cx')) - at.x, dy: Number(dot.getAttribute('cy')) - at.y, sx: at.x, sy: at.y, moved: false }
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      // sem captura o arraste só acompanha enquanto o cursor estiver sobre a janela
+    }
+    setGrabbed(i)
+    setHover(i)
+  }
+  const drop = () => {
+    const held = drag.current
+    if (!held) return
+    drag.current = null
+    setGrabbed(null)
+    if (held.moved) {
+      // O clique que o navegador dispara depois de um arraste não deve fixar a bolha.
+      suppressClick.current = true
+      window.setTimeout(() => {
+        suppressClick.current = false
+      }, 80)
+    }
+    const sp = springs.current
+    const speed = Math.hypot(sp.vx[held.i] ?? 0, sp.vy[held.i] ?? 0)
+    if (speed > MAX_THROW) {
+      sp.vx[held.i] *= MAX_THROW / speed
+      sp.vy[held.i] *= MAX_THROW / speed
+    }
+    if (!pointer.current.inside) setHover(null)
+  }
 
   useEffect(() => {
     if (pinned === null) return
@@ -256,10 +381,23 @@ export function SkillBubbles({ compact }: { compact?: boolean }) {
   return (
     <div className={'sbl' + (compact ? ' sbl-compact' : '') + (entered ? ' in' : '') + (active ? ' has-active' : '')}>
       <div
-        className="sbl-stage"
+        className={'sbl-stage' + (grabbed !== null ? ' dragging' : '')}
         ref={setStage}
         style={{ height: height || 340 }}
-        onMouseLeave={() => setHover(null)}
+        onPointerEnter={(e) => {
+          track(e)
+        }}
+        onPointerMove={(e) => {
+          const at = track(e)
+          const held = drag.current
+          if (at && held && !held.moved && Math.hypot(at.x - held.sx, at.y - held.sy) > GRAB_SLOP) held.moved = true
+        }}
+        onPointerLeave={() => {
+          if (!drag.current) pointer.current.inside = false
+        }}
+        onMouseLeave={() => {
+          if (!drag.current) setHover(null)
+        }}
         role="group"
         aria-label={`Skills das ${plural(mix.counted, 'aula concluída', 'aulas concluídas')}. Use Tab para percorrer.`}
       >
@@ -293,7 +431,7 @@ export function SkillBubbles({ compact }: { compact?: boolean }) {
                   cy={c.y}
                   r={c.r}
                   fill={`url(#sbl-g${i})`}
-                  className={'sbl-c' + (shown === i ? ' on' : '')}
+                  className={'sbl-c' + (shown === i ? ' on' : '') + (grabbed === i ? ' grab' : '')}
                 />
               ))}
             </g>
@@ -310,14 +448,21 @@ export function SkillBubbles({ compact }: { compact?: boolean }) {
               ref={(el) => {
                 buttonRefs.current[i] = el
               }}
-              className={'sbl-b' + (shown === i ? ' on' : '')}
+              className={'sbl-b' + (shown === i ? ' on' : '') + (grabbed === i ? ' grabbing' : '')}
               aria-pressed={pinned === i}
               style={{ width: c.r * 2, height: c.r * 2, transform: `translate(${c.x - c.r}px, ${c.y - c.r}px)`, color: b.tone.ink, '--d': `${i * 90}ms` } as CSSProperties}
               aria-label={`${b.name}: ${b.pct}% das aulas concluídas, ${lessonsText(b.value)}`}
               onMouseEnter={() => setHover(i)}
               onFocus={() => setHover(i)}
               onBlur={() => setHover(null)}
-              onClick={() => togglePin(i)}
+              onPointerDown={(e) => grab(e, i)}
+              onPointerUp={drop}
+              onPointerCancel={drop}
+              onLostPointerCapture={drop}
+              onClick={() => {
+                if (suppressClick.current) return
+                togglePin(i)
+              }}
             >
               {showPct && (
                 <span className="sbl-label">
@@ -346,7 +491,7 @@ export function SkillBubbles({ compact }: { compact?: boolean }) {
             )}
           </>
         ) : (
-          <span className="sbl-hint">Passe o cursor ou toque numa bolha para ver de quais cursos vêm as aulas.</span>
+          <span className="sbl-hint">Passe o cursor ou toque numa bolha para ver de quais cursos vêm as aulas. No computador, você também pode segurar e arrastar.</span>
         )}
       </div>
 
@@ -375,7 +520,7 @@ export function SkillBubbles({ compact }: { compact?: boolean }) {
         <Icon name="Info" size={14} />
         <span>
           O tamanho de cada bolha mostra a parte das suas {plural(mix.counted, 'aula concluída', 'aulas concluídas')} em cada skill. Não é nota nem nível de domínio. As
-          bolhas se movem só para dar vida ao gráfico: o tamanho não muda.
+          bolhas se movem e reagem ao cursor só para dar vida ao gráfico: o tamanho não muda.
           {mix.uncounted ? ` ${plural(mix.uncounted, 'aula', 'aulas')} de cursos sem skill cadastrada não ${mix.uncounted === 1 ? 'entra' : 'entram'}.` : ''}
         </span>
       </p>
