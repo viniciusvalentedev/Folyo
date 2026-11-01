@@ -8,10 +8,12 @@ import { Field, Select, Toggle } from '@/components/ui/controls'
 import { Icon, type IconName } from '@/components/ui/Icon'
 import { PageHead } from '@/components/ui/PageHead'
 import { supportEmailOf } from '@/lib/app-config'
+import { THEME_OPTIONS } from '@/lib/theme'
 import type { Settings } from '@/lib/types'
 import { fieldErrors, personalDataSchema } from '@/lib/validation'
 import { AccountSection } from './AccountSection'
 import { PublicAddress } from './PublicAddress'
+import { ThemePicker } from './ThemePicker'
 
 type Section = 'dados' | 'privacidade' | 'notificacoes' | 'aprendizagem' | 'preferencias' | 'conta'
 
@@ -201,6 +203,14 @@ export function SettingsView() {
           {section === 'preferencias' && (
             <section className="set-sec">
               <h2>Preferências</h2>
+              <Field
+                label="Tema da plataforma"
+                hint="Vale para toda a área logada e fica salvo neste navegador. No Escuro, só a folha do currículo continua branca."
+              >
+                <ThemePicker
+                  onChange={(t) => toast(`Tema ${THEME_OPTIONS.find((o) => o.value === t)?.label.toLowerCase()} ativado.`, 'ok')}
+                />
+              </Field>
               <Toggle
                 id="st-rm"
                 label="Reduzir animações"

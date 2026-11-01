@@ -23,3 +23,23 @@
 .del-body p { margin: 0; }
 .del-body ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
 .del-body .alert { margin: 0; }
+
+/* Seletor de tema (Preferências). As miniaturas têm cores próprias: mostram cada tema, seja qual for o tema ativo. */
+.theme-pick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.theme-opt { position: relative; display: grid; gap: 12px; align-content: start; text-align: left; padding: 10px 10px 14px; border-radius: 16px; border: 1.5px solid var(--line-2); background: var(--card); color: var(--fg); transition: border-color var(--t), box-shadow var(--t), transform .2s var(--ease); }
+.theme-opt:hover { border-color: var(--fg); }
+.theme-opt.on { border-color: var(--blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 18%, transparent); }
+.theme-opt:active { transform: scale(.985); }
+.theme-prev { --tp-side: #0B0B12; --tp-main: #F5F4FA; --tp-card: #FFFFFF; --tp-bar: #CFCCE0; display: grid; grid-template-columns: 28% 1fr; height: 84px; border-radius: 10px; overflow: hidden; border: 1px solid rgba(127,127,150,.35); background: var(--tp-main); }
+.tp-side { display: block; background: var(--tp-side); }
+.tp-main { display: grid; align-content: center; gap: 7px; padding: 0 12px; }
+.tp-main b { display: block; height: 14px; border-radius: 5px; background: var(--tp-card); box-shadow: 0 0 0 1px var(--tp-bar); }
+.tp-main b:last-child { width: 62%; height: 8px; background: var(--tp-bar); box-shadow: none; }
+.theme-opt[data-t="padrao"] .theme-prev { --tp-side: #0B0B12; --tp-main: #F5F4FA; --tp-card: #12121B; --tp-bar: #CFCCE0; }
+.theme-opt[data-t="claro"] .theme-prev { --tp-side: #ECEBF4; --tp-main: #F5F4FA; --tp-card: #FFFFFF; --tp-bar: #CFCCE0; }
+.theme-opt[data-t="escuro"] .theme-prev { --tp-side: #0B0B12; --tp-main: #12121B; --tp-card: #1A1A26; --tp-bar: #34344A; }
+.theme-opt-t { display: grid; gap: 2px; padding: 0 4px; }
+.theme-opt-t b { font-weight: 600; font-size: 14.5px; }
+.theme-opt-t small { color: var(--mute); font-size: 12.5px; line-height: 1.35; }
+.theme-check { position: absolute; top: 18px; right: 18px; width: 24px; height: 24px; padding: 4px; border-radius: 50%; background: var(--blue); color: #fff; }
+@media (max-width: 560px) { .theme-pick { grid-template-columns: minmax(0, 1fr); } .theme-opt { grid-template-columns: 96px minmax(0, 1fr); align-items: center; } .theme-prev { height: 64px; } }

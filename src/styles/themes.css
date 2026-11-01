@@ -1,0 +1,401 @@
+/* Temas da plataforma: Claro e Escuro.
+
+   O tema Padrão não tem regra aqui: é o CSS original da Folyo, sem tirar nem pôr.
+   Cada regra abaixo só vale quando o <html> tem data-theme="claro" ou data-theme="escuro"
+   (ligado por src/components/providers/Theme.tsx, escolhido em Configurações › Preferências).
+
+   Como funciona:
+   - A Folyo pinta tudo com variáveis (--bg, --fg, --card, --line...). Cada "superfície" escolhe o seu
+     conjunto: .surface-ink (escuro) e .surface-paper (claro). Os temas trocam esses conjuntos.
+   - Claro: .surface-ink, menu lateral, topo, gaveta e barra do celular passam a usar as variáveis claras.
+   - Escuro: .surface-paper (e o miolo do painel admin) passam a usar as variáveis escuras.
+   - O que tem cor fixa no CSS original (branco sobre escuro, etc.) é corrigido pontualmente.
+   - A folha do currículo (.cv) e o certificado (.certsheet) são documentos: continuam brancos nos dois temas.
+
+   Arquivo gerado a partir de uma lista de regras: pode ser editado à mão, cada bloco é independente. */
+
+/* ========================================================================== */
+/* CLARO                                                                      */
+/* ========================================================================== */
+/* ---- Variáveis: tudo passa a usar o conjunto claro ---- */
+html[data-theme="claro"],
+html[data-theme="claro"] :is(.surface-ink, .sidebar, .topbar, .mobilenav, .drawer) { --bg: var(--paper); --fg: var(--ink); --mute: #5D5B72; --line: #E2E0EC; --line-2: #CFCCE0; --card: #FFFFFF; --card-2: var(--paper-3); --hover: rgba(45,36,200,.045); --link: var(--blue); --ring-track: #E4E2F0; --ring-track-dark: #D5D2E6; --input: #FFFFFF; --focus: var(--blue); --ok-ink: var(--lime-ink); --ok-soft: var(--lime-soft); --prog-ink: var(--blue); --prog-soft: var(--blue-soft); --warn-c: var(--warn-ink); --warn-bg: var(--warn-soft); --err-c: var(--err-ink); --err-bg: var(--err-soft); --shadow: 0 1px 2px rgba(11,11,18,.05), 0 8px 24px -14px rgba(11,11,18,.18); color-scheme: light; }
+html[data-theme="claro"] .course-hero { --bg: var(--ink); --fg: #F3F2F8; --mute: #9E9CB2; --line: rgba(255,255,255,.08); --line-2: rgba(255,255,255,.15); --card: var(--ink-2); --card-2: var(--ink-3); --hover: rgba(255,255,255,.045); --link: var(--blue-on-dark); --ring-track: rgba(255,255,255,.1); --ring-track-dark: rgba(255,255,255,.14); --input: var(--ink-3); --focus: var(--blue-on-dark); --ok-ink: var(--lime); --ok-soft: rgba(201,226,63,.12); --prog-ink: var(--blue-on-dark); --prog-soft: rgba(171,166,255,.12); --warn-c: var(--warn); --warn-bg: rgba(242,169,59,.12); --err-c: var(--err); --err-bg: rgba(255,107,132,.12); --shadow: none; --blue-soft: rgba(171,166,255,.14); --magenta-soft: rgba(221,51,207,.14); --lime-soft: rgba(201,226,63,.12); --warn-soft: rgba(242,169,59,.14); --err-soft: rgba(255,107,132,.14); --lime-ink: var(--lime); color-scheme: dark; }
+/* ---- Fundo e moldura ---- */
+html[data-theme="claro"],
+html[data-theme="claro"] body { background: var(--paper-3); color: var(--ink); }
+html[data-theme="claro"] body::before { background: var(--paper-3); }
+html[data-theme="claro"] .app,
+html[data-theme="claro"] .boot,
+html[data-theme="claro"] .ad-app { background: var(--paper-3); }
+html[data-theme="claro"] .page { border-top-left-radius: 22px; }
+html[data-theme="claro"] .classroom { background: var(--paper); }
+/* ---- Logotipo (o texto era branco e o "f" verde-limão: somem no claro) ---- */
+html[data-theme="claro"] .sidebar .wordmark path:last-of-type,
+html[data-theme="claro"] .topbar .wordmark path:last-of-type,
+html[data-theme="claro"] .drawer .wordmark path:last-of-type,
+html[data-theme="claro"] .ad-side .wordmark path:last-of-type,
+html[data-theme="claro"] .shop-dark .wordmark path:last-of-type { fill: var(--ink); }
+html[data-theme="claro"] .sidebar .wordmark path:first-of-type,
+html[data-theme="claro"] .topbar .wordmark path:first-of-type,
+html[data-theme="claro"] .drawer .wordmark path:first-of-type,
+html[data-theme="claro"] .ad-side .wordmark path:first-of-type,
+html[data-theme="claro"] .sidebar .mark path,
+html[data-theme="claro"] .topbar .mark path,
+html[data-theme="claro"] .drawer .mark path,
+html[data-theme="claro"] .ad-side .mark path,
+html[data-theme="claro"] .boot .mark path { fill: var(--blue); }
+/* ---- Menu lateral ---- */
+html[data-theme="claro"] .sidebar { background: var(--paper-3); border-right-color: var(--line); }
+html[data-theme="claro"] .brand { color: var(--ink); }
+html[data-theme="claro"] .nav-label { color: #7B7992; }
+html[data-theme="claro"] .nav-item { color: #3E3C55; }
+html[data-theme="claro"] .nav-item:hover { background: rgba(45,36,200,.06); color: var(--ink); }
+html[data-theme="claro"] .nav-item.on { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(11,11,18,.06), 0 0 0 1px var(--line); }
+html[data-theme="claro"] .nav-badge { background: rgba(45,36,200,.08); color: #3E3C55; }
+html[data-theme="claro"] .nav-admin { color: var(--lime-ink) !important; }
+html[data-theme="claro"] .sidebar-foot { border-top-color: var(--line); }
+html[data-theme="claro"] .user-chip:hover { background: rgba(45,36,200,.06); }
+html[data-theme="claro"] .user-meta b { color: var(--ink); }
+html[data-theme="claro"] .user-meta small { color: var(--mute); }
+html[data-theme="claro"] .menu,
+html[data-theme="claro"] .gsearch-pop,
+html[data-theme="claro"] .notif-pop { background: #fff; border-color: var(--line); box-shadow: 0 18px 40px -16px rgba(11,11,18,.28); }
+html[data-theme="claro"] .menu button,
+html[data-theme="claro"] .gsearch-pop button { color: var(--ink); }
+html[data-theme="claro"] .menu button:hover { background: var(--hover); }
+html[data-theme="claro"] .menu hr { border-top-color: var(--line); }
+/* ---- Topo ---- */
+html[data-theme="claro"] .topbar { background: rgba(236,235,244,.92); }
+html[data-theme="claro"] .gsearch { background: #fff; border-color: var(--line-2); color: var(--mute); }
+html[data-theme="claro"] .gsearch:focus-within { border-color: var(--blue); background: #fff; }
+html[data-theme="claro"] .gsearch input { color: var(--ink); }
+html[data-theme="claro"] .gsearch input::placeholder { color: #8A88A0; }
+html[data-theme="claro"] kbd { color: var(--mute); border-color: var(--line-2); }
+html[data-theme="claro"] .gsearch-pop button em,
+html[data-theme="claro"] .notif-item small { color: var(--mute); }
+html[data-theme="claro"] .gsearch-pop button.on { background: var(--hover); }
+html[data-theme="claro"] .gsearch-empty { color: var(--mute); }
+html[data-theme="claro"] .notif .dot { box-shadow: 0 0 0 2px var(--paper-3); }
+html[data-theme="claro"] .notif-pop header { color: var(--ink); }
+html[data-theme="claro"] .notif-item { color: #3E3C55; }
+html[data-theme="claro"] .notif-item:hover { background: var(--hover); }
+html[data-theme="claro"] .notif-item.unread { color: var(--ink); }
+html[data-theme="claro"] .cart-count { box-shadow: 0 0 0 2px var(--paper-3); }
+/* ---- Celular: barra de atalhos e gaveta ---- */
+html[data-theme="claro"] .mobilenav { background: rgba(255,255,255,.96); border-top-color: var(--line); }
+html[data-theme="claro"] .mobilenav a,
+html[data-theme="claro"] .mobilenav button { color: var(--mute); }
+html[data-theme="claro"] .mobilenav a.on { color: var(--ink); }
+html[data-theme="claro"] .drawer { background: var(--paper-3); }
+html[data-theme="claro"] .drawer-x { color: var(--ink); }
+/* ---- Componentes compartilhados ---- */
+html[data-theme="claro"] .hl,
+html[data-theme="claro"] .txt-lime,
+html[data-theme="claro"] .eyebrow.lime,
+html[data-theme="claro"] .icon-btn.on { color: var(--lime-ink); }
+html[data-theme="claro"] .btn-done { background: var(--lime-soft); color: var(--lime-ink); border-color: rgba(78,97,0,.35); }
+html[data-theme="claro"] .btn-quiet-dark { background: #fff; color: var(--ink); border-color: var(--line-2); }
+html[data-theme="claro"] .btn-quiet-dark:hover:not(:disabled) { background: var(--hover); border-color: var(--ink); }
+html[data-theme="claro"] .muted-on-dark { color: var(--mute); }
+html[data-theme="claro"] .chip-dark { background: var(--blue-soft); color: var(--blue); }
+html[data-theme="claro"] .coupon-chip { border-color: var(--lime-ink); color: var(--lime-ink); }
+html[data-theme="claro"] .coupon-chip.magenta { border-color: var(--magenta); color: var(--magenta-deep); }
+html[data-theme="claro"] .progress.tone-lime span { background: var(--lime-ink); }
+html[data-theme="claro"] .course-hero .progress.tone-lime span { background: var(--lime); }
+html[data-theme="claro"] .ccard .progress.tone-lime span,
+html[data-theme="claro"] .crow .progress.tone-lime span { background: var(--blue); }
+html[data-theme="claro"] .countup.flash { color: var(--magenta-deep); }
+html[data-theme="claro"] .modal.surface-ink { background: #fff; }
+html[data-theme="claro"] .skel-l { background: linear-gradient(90deg, rgba(11,11,18,.05), rgba(11,11,18,.1), rgba(11,11,18,.05)); background-size: 200% 100%; }
+/* Regras que existiam só para o fundo escuro (.surface-ink): no claro voltam ao visual claro */
+html[data-theme="claro"] .surface-ink .progress.tone-blue span { background: var(--blue); }
+html[data-theme="claro"] .surface-ink .seg button.on { background: var(--card); box-shadow: 0 1px 2px rgba(11,11,18,.1), 0 0 0 1px var(--line); }
+html[data-theme="claro"] .surface-ink .toggle input:checked + .toggle-ui { background: var(--blue); }
+html[data-theme="claro"] .surface-ink .toggle input:checked + .toggle-ui::after { background: #fff; }
+html[data-theme="claro"] .surface-ink .pill-blue,
+html[data-theme="claro"] .surface-ink .chip { background: var(--blue-soft); color: var(--blue); }
+html[data-theme="claro"] .surface-ink .chip-toggle { background: var(--card); }
+html[data-theme="claro"] .surface-ink .chip-toggle.on { background: var(--blue-soft); color: var(--blue); }
+html[data-theme="claro"] .surface-ink .eyebrow.blue { color: var(--blue); }
+html[data-theme="claro"] .surface-ink .cworks-drop { border-color: var(--line-2); }
+html[data-theme="claro"] .surface-ink .work { background: var(--card); }
+html[data-theme="claro"] .surface-ink .cart-skel,
+html[data-theme="claro"] .cart-summary .cart-skel { background: linear-gradient(90deg, var(--card-2) 25%, var(--hover) 50%, var(--card-2) 75%); background-size: 200% 100%; }
+/* ---- Início ---- */
+html[data-theme="claro"] .dash-top .lead { color: var(--mute); }
+html[data-theme="claro"] .dec-ico { background: var(--lime-soft); color: var(--lime-ink); }
+html[data-theme="claro"] .jstat-aulas .jstat-ico,
+html[data-theme="claro"] .jstat-iniciados .jstat-ico { background: var(--blue-soft); color: var(--blue); }
+html[data-theme="claro"] .jstat-horas .jstat-ico { background: rgba(63,184,201,.16); color: #1B7F8E; }
+html[data-theme="claro"] .jstat-projetos .jstat-ico { background: var(--magenta-soft); color: var(--magenta-deep); }
+html[data-theme="claro"] .jstat-certificados .jstat-ico,
+html[data-theme="claro"] .jstat-concluidos .jstat-ico { background: var(--lime-soft); color: var(--lime-ink); }
+html[data-theme="claro"] .mini-bars i { background: rgba(11,11,18,.12); }
+html[data-theme="claro"] .pips i { border-color: rgba(11,11,18,.28); }
+html[data-theme="claro"] .jstat-projetos .pips i.on { background: var(--magenta); border-color: var(--magenta); }
+html[data-theme="claro"] .sbl-b:focus-visible { outline-color: var(--blue); }
+html[data-theme="claro"] .sbl-detail { background: rgba(11,11,18,.03); }
+html[data-theme="claro"] .sbl-detail span,
+html[data-theme="claro"] .sbl-keys button { color: #3E3C55; }
+html[data-theme="claro"] .sbl-keys button:hover,
+html[data-theme="claro"] .sbl-keys button.on { background: rgba(45,36,200,.06); }
+html[data-theme="claro"] .sbl-keys b { color: var(--ink); }
+html[data-theme="claro"] .soon-block.soon-ink { background: var(--card); border-color: var(--line); color: var(--ink); }
+html[data-theme="claro"] .soon-ink .soon-text p:not(.eyebrow) { color: var(--mute); }
+/* ---- Progresso ---- */
+html[data-theme="claro"] .panel-dark { background: var(--card); }
+html[data-theme="claro"] .cb-track { background: var(--ring-track); }
+html[data-theme="claro"] .tl-dot { background: var(--card-2); color: var(--mute); }
+/* ---- Certificados ---- */
+html[data-theme="claro"] .cert-card,
+html[data-theme="claro"] .otw { background: var(--card); }
+html[data-theme="claro"] .otw-card { background: var(--card-2); }
+html[data-theme="claro"] .otw-st.st-lime { background: var(--lime-soft); color: var(--lime-ink); }
+html[data-theme="claro"] .otw-st.st-magenta { background: var(--magenta-soft); color: var(--magenta-deep); }
+html[data-theme="claro"] .otw-st.st-blue { background: var(--blue-soft); color: var(--blue); }
+html[data-theme="claro"] .otw-st.st-muted { background: var(--card-2); color: var(--mute); }
+html[data-theme="claro"] .otw-req li { color: #3E3C55; }
+html[data-theme="claro"] .otw-go { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1px var(--line); }
+html[data-theme="claro"] .otw-go:hover { background: var(--lime); color: var(--ink); }
+html[data-theme="claro"] .certsheet { box-shadow: 0 0 0 1px var(--line), 0 14px 32px -20px rgba(11,11,18,.35); }
+/* ---- Sala de aula (o vídeo continua preto) ---- */
+html[data-theme="claro"] .class-top-prog { color: var(--mute); }
+html[data-theme="claro"] .player { border-color: var(--line); }
+html[data-theme="claro"] .class-actions .icon-btn { border-color: var(--line-2); }
+html[data-theme="claro"] .class-gate { background: var(--card-2); border-color: var(--line); color: #3E3C55; }
+html[data-theme="claro"] .class-gate .ico { color: var(--mute); }
+html[data-theme="claro"] .class-gate.ok { background: var(--lime-soft); border-color: rgba(78,97,0,.35); color: var(--ink); }
+html[data-theme="claro"] .prose,
+html[data-theme="claro"] .celebrate p,
+html[data-theme="claro"] .cp2-exp { color: #2A2940; }
+html[data-theme="claro"] .class-side { background: var(--card); }
+html[data-theme="claro"] .side-mod-t { color: var(--ink); }
+html[data-theme="claro"] .side-mod-t span,
+html[data-theme="claro"] .sl-m { color: var(--mute); }
+html[data-theme="claro"] .side-lesson { color: #3E3C55; }
+html[data-theme="claro"] .side-lesson:hover { background: var(--hover); }
+html[data-theme="claro"] .side-lesson.cur { background: var(--blue-soft); color: var(--blue); }
+html[data-theme="claro"] .sl-ico { color: var(--mute); border-color: var(--line-2); }
+html[data-theme="claro"] .side-lesson.cur .sl-ico { background: var(--blue); color: #fff; border-color: var(--blue); }
+html[data-theme="claro"] .side-lesson.done .sl-t { color: var(--mute); }
+html[data-theme="claro"] .side-project { color: var(--ink); }
+html[data-theme="claro"] .side-project small { color: var(--magenta-deep); }
+html[data-theme="claro"] .side-project:hover { background: rgba(221,51,207,.12); }
+html[data-theme="claro"] .notes textarea { background: var(--input); color: var(--ink); }
+html[data-theme="claro"] .class-materials a { background: var(--card); border-color: var(--line); color: var(--ink); }
+html[data-theme="claro"] .class-materials a:hover { background: var(--hover); }
+html[data-theme="claro"] .class-materials small { color: var(--mute); }
+/* ---- Compra, carrinho e finalizar ---- */
+html[data-theme="claro"] .shop-dark { background: radial-gradient(1000px 520px at 85% -10%, rgba(45,36,200,.10), transparent 60%), radial-gradient(800px 480px at -10% 110%, rgba(221,51,207,.08), transparent 60%), var(--paper); }
+html[data-theme="claro"] .launch-strip { background: #fff; color: var(--ink); box-shadow: 0 0 0 1px var(--line); }
+html[data-theme="claro"] .launch-strip-go { color: var(--blue); }
+html[data-theme="claro"] .buy-card,
+html[data-theme="claro"] .cart-summary { background: #fff; color: var(--ink); box-shadow: 0 0 0 1px var(--line), 0 30px 60px -38px rgba(11,11,18,.28); }
+html[data-theme="claro"] .buy-card::after,
+html[data-theme="claro"] .cart-summary::after { opacity: .07; }
+html[data-theme="claro"] .buy-card-head,
+html[data-theme="claro"] .buy-includes { border-bottom-color: var(--line); }
+html[data-theme="claro"] .buy-more { border-top-color: var(--line); }
+html[data-theme="claro"] .buy-card-head small,
+html[data-theme="claro"] .buy-soon { color: var(--mute); }
+html[data-theme="claro"] .buy-hint,
+html[data-theme="claro"] .sum-foot { color: var(--mute); }
+html[data-theme="claro"] .buy-includes .ico,
+html[data-theme="claro"] .coupon-title .ico { color: var(--lime-ink); }
+html[data-theme="claro"] .tag-soon { background: var(--warn-soft); color: var(--warn-ink); }
+html[data-theme="claro"] .coupon-box { background: var(--card-2); border-color: var(--line); }
+html[data-theme="claro"] .coupon-input { background: #fff; border-color: var(--line-2); color: var(--ink); }
+html[data-theme="claro"] .coupon-input::placeholder { color: #8A88A0; }
+html[data-theme="claro"] .coupon-input:focus-visible { outline-color: var(--blue); }
+html[data-theme="claro"] .coupon-err { color: var(--err-ink); }
+html[data-theme="claro"] .coupon-ok { background: var(--lime-soft); border-color: rgba(78,97,0,.35); }
+html[data-theme="claro"] .coupon-ok-text { color: #3E3C55; }
+html[data-theme="claro"] .coupon-ok-text b { color: var(--ink); }
+html[data-theme="claro"] .coupon-note { color: var(--warn-ink); }
+html[data-theme="claro"] .coupon-remove { color: var(--mute); }
+html[data-theme="claro"] .coupon-remove:hover { color: var(--ink); }
+html[data-theme="claro"] .totals.on-dark .totals-row { color: var(--mute); }
+html[data-theme="claro"] .totals.on-dark .totals-row b { color: var(--ink); }
+html[data-theme="claro"] .totals-row.discount,
+html[data-theme="claro"] .totals.on-dark .totals-row.discount,
+html[data-theme="claro"] .totals.on-dark .totals-row.discount b { color: var(--lime-ink); }
+html[data-theme="claro"] .totals.on-dark .totals-total { border-color: var(--line); }
+html[data-theme="claro"] .totals.on-dark .totals-k { color: var(--mute); }
+html[data-theme="claro"] .fin-badge { background: var(--lime-soft); border-color: rgba(78,97,0,.4); color: var(--lime-ink); }
+html[data-theme="claro"] .fin-h,
+html[data-theme="claro"] .pre-ok-h,
+html[data-theme="claro"] .pre-panel-h,
+html[data-theme="claro"] .pre-list-t b,
+html[data-theme="claro"] .pre-how b,
+html[data-theme="claro"] .pre-ok-lead b { color: var(--ink); }
+html[data-theme="claro"] .fin-lead,
+html[data-theme="claro"] .pre-ok-lead,
+html[data-theme="claro"] .pre-terms,
+html[data-theme="claro"] .pre-how { color: #3E3C55; }
+html[data-theme="claro"] .fin-month { background: linear-gradient(110deg, rgba(45,36,200,.12), rgba(221,51,207,.10)); border-color: var(--line-2); }
+html[data-theme="claro"] .fin-month b { color: var(--ink); }
+html[data-theme="claro"] .fin-month p { color: #3E3C55; }
+html[data-theme="claro"] .fin-note { color: var(--mute); }
+html[data-theme="claro"] .fin-clock { background: var(--warn-soft); color: var(--warn-ink); }
+html[data-theme="claro"] .fin-sum { box-shadow: 0 0 0 1px var(--line), 0 30px 60px -38px rgba(11,11,18,.28); }
+html[data-theme="claro"] .pre-ok-kicker,
+html[data-theme="claro"] .pre-list-t small { color: var(--lime-ink); }
+html[data-theme="claro"] .pre-panel { background: #fff; border-color: var(--line); }
+html[data-theme="claro"] .pre-list li { background: var(--card-2); }
+html[data-theme="claro"] .pre-left { color: var(--warn-ink); }
+html[data-theme="claro"] .launch-modal { background: radial-gradient(420px 260px at 100% 0%, rgba(45,36,200,.12), transparent 70%), #fff; border-color: var(--line); color: var(--ink); box-shadow: 0 40px 90px -36px rgba(11,11,18,.45); }
+html[data-theme="claro"] .launch-glyph { opacity: .18; }
+html[data-theme="claro"] .launch-x { background: #fff; border-color: var(--line-2); color: var(--ink); }
+html[data-theme="claro"] .launch-x:hover { background: var(--hover); }
+html[data-theme="claro"] .launch-badge { border-color: rgba(78,97,0,.5); color: var(--lime-ink); }
+html[data-theme="claro"] .launch-badge i { background: var(--lime-ink); box-shadow: 0 0 0 3px rgba(78,97,0,.18); }
+html[data-theme="claro"] .launch-h { color: var(--ink); }
+html[data-theme="claro"] .launch-d { color: #3E3C55; }
+html[data-theme="claro"] .launch-ticket::before,
+html[data-theme="claro"] .launch-ticket::after { background: #fff; }
+html[data-theme="claro"] .launch-tip { color: var(--ink); }
+html[data-theme="claro"] .launch-later { color: var(--mute); }
+html[data-theme="claro"] .launch-later:hover { color: var(--ink); }
+/* ---- Painel admin: o menu lateral fica claro (o miolo já era claro) ---- */
+html[data-theme="claro"] .ad-side { background: var(--paper-3); color: var(--ink); border-right-color: var(--line); }
+html[data-theme="claro"] .ad-brand-link { color: var(--ink); }
+html[data-theme="claro"] .ad-brand-tag { background: var(--lime-soft); color: var(--lime-ink); }
+html[data-theme="claro"] .ad-nav { color: #3E3C55; }
+html[data-theme="claro"] .ad-nav:hover { background: rgba(45,36,200,.06); color: var(--ink); }
+html[data-theme="claro"] .ad-nav.on { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(11,11,18,.06), 0 0 0 1px var(--line); }
+html[data-theme="claro"] .ad-side-foot { border-top-color: var(--line); }
+html[data-theme="claro"] .ad-side-x { color: var(--ink); }
+html[data-theme="claro"] .ad-side.open { box-shadow: 0 0 60px rgba(11,11,18,.25); }
+
+/* ========================================================================== */
+/* ESCURO                                                                     */
+/* ========================================================================== */
+/* ---- Variáveis: o que era "papel" passa a usar o conjunto escuro ---- */
+html[data-theme="escuro"] .surface-paper,
+html[data-theme="escuro"] .ad-main-col { --bg: var(--ink); --fg: #F3F2F8; --mute: #9E9CB2; --line: rgba(255,255,255,.08); --line-2: rgba(255,255,255,.15); --card: var(--ink-2); --card-2: var(--ink-3); --hover: rgba(255,255,255,.045); --link: var(--blue-on-dark); --ring-track: rgba(255,255,255,.1); --ring-track-dark: rgba(255,255,255,.14); --input: var(--ink-3); --focus: var(--blue-on-dark); --ok-ink: var(--lime); --ok-soft: rgba(201,226,63,.12); --prog-ink: var(--blue-on-dark); --prog-soft: rgba(171,166,255,.12); --warn-c: var(--warn); --warn-bg: rgba(242,169,59,.12); --err-c: var(--err); --err-bg: rgba(255,107,132,.12); --shadow: none; --blue-soft: rgba(171,166,255,.14); --magenta-soft: rgba(221,51,207,.14); --lime-soft: rgba(201,226,63,.12); --warn-soft: rgba(242,169,59,.14); --err-soft: rgba(255,107,132,.14); --lime-ink: var(--lime); color-scheme: dark; }
+html[data-theme="escuro"] .ad-main-col { --warn-ink: var(--warn); --err-ink: #FF8FA3; --ok-soft: rgba(201,226,63,.12); }
+html[data-theme="escuro"] .ad-main-col { background: var(--ink); color: var(--fg); }
+html[data-theme="escuro"] .modal.surface-paper { background: var(--ink-2); }
+/* ---- Componentes: as regras que existiam para .surface-ink agora valem também para .surface-paper ---- */
+html[data-theme="escuro"] .surface-paper .progress.tone-blue span { background: var(--blue-on-dark); }
+html[data-theme="escuro"] .surface-paper .progress.tone-lime span,
+html[data-theme="escuro"] .surface-paper .ccard .progress.tone-lime span,
+html[data-theme="escuro"] .surface-paper .crow .progress.tone-lime span { background: var(--lime); }
+html[data-theme="escuro"] .surface-paper .countup.flash { color: var(--lime); }
+html[data-theme="escuro"] .surface-paper .pill-blue,
+html[data-theme="escuro"] .surface-paper .chip { background: rgba(171,166,255,.14); color: var(--blue-on-dark); }
+html[data-theme="escuro"] .surface-paper .chip button:hover { background: rgba(255,255,255,.1); }
+html[data-theme="escuro"] .surface-paper .seg button.on { background: var(--ink-4); box-shadow: none; }
+html[data-theme="escuro"] .surface-paper .toggle input:checked + .toggle-ui { background: var(--lime); }
+html[data-theme="escuro"] .surface-paper .toggle input:checked + .toggle-ui::after { background: var(--ink); }
+html[data-theme="escuro"] .surface-paper .chip-toggle { background: transparent; }
+html[data-theme="escuro"] .surface-paper .chip-toggle.on { background: rgba(201,226,63,.12); color: var(--lime); }
+html[data-theme="escuro"] .surface-paper .eyebrow.blue { color: var(--blue-on-dark); }
+html[data-theme="escuro"] .surface-paper .cart-skel { background: linear-gradient(90deg, rgba(255,255,255,.06) 25%, rgba(255,255,255,.12) 50%, rgba(255,255,255,.06) 75%); background-size: 200% 100%; }
+html[data-theme="escuro"] .surface-paper .cworks-drop { border-color: rgba(255,255,255,.14); }
+html[data-theme="escuro"] .surface-paper .work { background: rgba(255,255,255,.05); }
+html[data-theme="escuro"] .surface-paper :where(.skp-count, .rec-skills i, .trail-ico, .trail-skills span.on, .work-ico.link, .cworks-ext-ico, .ll-tag, .area-tile .ico, .buy-eyebrow, .buy-chips .ico, .onb-stage .ico, .onb3-ico, .onb3-chip .ico, .onb3-hint.ok, .suggest-box .eyebrow, .u-mark, .chip-static.link:hover) { color: var(--blue-on-dark); }
+html[data-theme="escuro"] .surface-paper :where(.filter-fav.on, .cart-more-plus, .fin-pre, .coupon-chip.magenta) { color: #F07FE6; }
+html[data-theme="escuro"] .btn-danger { background: #B8173A; }
+html[data-theme="escuro"] .btn-danger:hover { background: #9C1030; }
+html[data-theme="escuro"] .surface-paper :where(.onb3-card.on, .onb3-want.on, .onb-stage.on, .apply-modes label.on, .cworks-drop.drag, .trail-card.current, .skp-chip:hover, .area-tile:hover) { border-color: var(--blue-on-dark); }
+html[data-theme="escuro"] .surface-paper :where(.onb3-card.on, .onb3-want.on, .onb-stage.on) { box-shadow: 0 0 0 3px rgba(171,166,255,.2); }
+html[data-theme="escuro"] .surface-paper .onb3-card.on { background: linear-gradient(180deg, var(--ink-3), var(--ink-2)); }
+html[data-theme="escuro"] .theme-opt.on { border-color: var(--blue-on-dark); box-shadow: 0 0 0 3px rgba(171,166,255,.2); }
+html[data-theme="escuro"] .theme-check { background: var(--blue-on-dark); color: var(--ink); }
+/* ---- Explorar e curso ---- */
+html[data-theme="escuro"] .explore-search { background: var(--input); }
+html[data-theme="escuro"] .explore-search:focus-within { border-color: var(--blue-on-dark); box-shadow: 0 0 0 4px rgba(171,166,255,.16); }
+html[data-theme="escuro"] .cat-chip.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+html[data-theme="escuro"] .feature,
+html[data-theme="escuro"] .project-brief { background: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); }
+/* ---- Currículo: o editor fica escuro, a folha continua branca ---- */
+html[data-theme="escuro"] .resume-preview-wrap { background: var(--ink-3); }
+html[data-theme="escuro"] .cv { color-scheme: light; }
+/* ---- Compra e finalizar ---- */
+html[data-theme="escuro"] .fin-sum { background: var(--ink-2); color: var(--fg); box-shadow: inset 0 0 0 1px var(--line-2); }
+html[data-theme="escuro"] .fin-sum .totals-v b { color: var(--fg); }
+html[data-theme="escuro"] .shop-top.dark .shop-cart { background: var(--card); color: var(--fg); }
+html[data-theme="escuro"] .fin-items li { background: var(--ink-3); }
+html[data-theme="escuro"] .cart-empty-art { color: var(--fg); }
+html[data-theme="escuro"] .cart-empty-art .ico { background: var(--ink-3); }
+html[data-theme="escuro"] .plan.bought { background: var(--ink-4); color: #fff; }
+html[data-theme="escuro"] .buy-card,
+html[data-theme="escuro"] .cart-summary { background: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line-2), 0 30px 60px -30px rgba(0,0,0,.6); }
+html[data-theme="escuro"] .launch-strip { background: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); }
+html[data-theme="escuro"] .cart-add.on { background: rgba(201,226,63,.12); color: var(--lime); border-color: rgba(201,226,63,.42); }
+html[data-theme="escuro"] .cart-add.on:hover,
+html[data-theme="escuro"] .cart-add.on:focus-visible { background: rgba(255,107,132,.14); color: var(--err); border-color: rgba(255,107,132,.4); }
+/* ---- Painel admin: o miolo claro vira escuro ---- */
+html[data-theme="escuro"] .ad-top { background: rgba(11,11,18,.92); }
+html[data-theme="escuro"] .ad-search { background: var(--ink-3); }
+html[data-theme="escuro"] .ad-search:focus-within { border-color: var(--blue-on-dark); box-shadow: 0 0 0 3px rgba(171,166,255,.16); }
+html[data-theme="escuro"] .ad-pop,
+html[data-theme="escuro"] .ad-metric,
+html[data-theme="escuro"] .ad-fs,
+html[data-theme="escuro"] .ad-mod,
+html[data-theme="escuro"] .ad-rc,
+html[data-theme="escuro"] .ad-order li,
+html[data-theme="escuro"] .ad-lib-grid button,
+html[data-theme="escuro"] .ad-icon-grid button,
+html[data-theme="escuro"] .ad-media-grid button,
+html[data-theme="escuro"] .ad-rep-nav button { background: var(--ink-2); }
+html[data-theme="escuro"] .ad-pop { box-shadow: 0 18px 44px -18px rgba(0,0,0,.7); }
+html[data-theme="escuro"] .ad-mod.archived { background: var(--ink-3); }
+html[data-theme="escuro"] .ad-bar-track { background: rgba(255,255,255,.08); }
+html[data-theme="escuro"] .ad-table th { background: var(--ink-3); }
+html[data-theme="escuro"] .ad-table tr.click:hover td,
+html[data-theme="escuro"] .ad-table tr.click:focus-within td { background: rgba(255,255,255,.04); }
+html[data-theme="escuro"] .ad-demo,
+html[data-theme="escuro"] .ad-badge { background: var(--ink-3); }
+html[data-theme="escuro"] .ad-badge-ok { background: rgba(31,163,106,.16); color: #5BD69C; }
+html[data-theme="escuro"] .ad-badge-info { background: rgba(171,166,255,.14); color: var(--blue-on-dark); }
+html[data-theme="escuro"] .ad-badge-warn { background: rgba(242,169,59,.14); color: var(--warn); }
+html[data-theme="escuro"] .ad-badge-err { background: rgba(255,107,132,.14); color: var(--err); }
+html[data-theme="escuro"] .ad-now,
+html[data-theme="escuro"] .ad-matrix .ico,
+html[data-theme="escuro"] .ad-metric-f em.up { color: #5BD69C; }
+html[data-theme="escuro"] .ad-metric-f em.down { color: var(--err); }
+html[data-theme="escuro"] .ad-save-state.ok { color: #5BD69C; }
+html[data-theme="escuro"] .ad-save-state.busy { color: var(--blue-on-dark); }
+html[data-theme="escuro"] .ad-mode-chip,
+html[data-theme="escuro"] .ad-mode { background: rgba(171,166,255,.14); color: var(--blue-on-dark); }
+html[data-theme="escuro"] .ad-mode-chip.local,
+html[data-theme="escuro"] .ad-mode.local { background: rgba(242,169,59,.14); color: var(--warn); }
+html[data-theme="escuro"] .ad-mode.ro { background: rgba(255,107,132,.14); color: var(--err); }
+html[data-theme="escuro"] .ad-notice { background: rgba(171,166,255,.14); color: var(--blue-on-dark); }
+html[data-theme="escuro"] .ad-notice-warn { background: rgba(242,169,59,.14); color: var(--warn); }
+html[data-theme="escuro"] .ad-notice-err { background: rgba(255,107,132,.14); color: var(--err); }
+html[data-theme="escuro"] .ad-notice-ok { background: rgba(201,226,63,.12); color: var(--lime); }
+html[data-theme="escuro"] .ad-feed-ico,
+html[data-theme="escuro"] .ad-cat-ico { background: rgba(171,166,255,.14); color: var(--blue-on-dark); }
+html[data-theme="escuro"] .ad-link,
+html[data-theme="escuro"] .ad-alert.info .ico { color: var(--blue-on-dark); }
+html[data-theme="escuro"] .ad-savebar { background: rgba(18,18,27,.95); }
+html[data-theme="escuro"] .ad-focus,
+html[data-theme="escuro"] .ad-thumb,
+html[data-theme="escuro"] .ad-media-prev,
+html[data-theme="escuro"] .ad-mthumb,
+html[data-theme="escuro"] .ad-media-preview { background: var(--ink-3); }
+html[data-theme="escuro"] .ad-lessons li { background: var(--ink-3); }
+html[data-theme="escuro"] .ad-l-main:hover { background: var(--ink-4); }
+html[data-theme="escuro"] .ad-switch input:not(:checked) { background: #3A3950; }
+html[data-theme="escuro"] .ad-drop.drag,
+html[data-theme="escuro"] .ad-drop:hover,
+html[data-theme="escuro"] .ad-drop:focus-within,
+html[data-theme="escuro"] .ad-lib-wrap.drag { border-color: var(--blue-on-dark); background: rgba(171,166,255,.12); }
+html[data-theme="escuro"] .ad-rc.on,
+html[data-theme="escuro"] .ad-icon-grid button.on,
+html[data-theme="escuro"] .ad-rep-nav button.on { border-color: var(--blue-on-dark); background: rgba(171,166,255,.14); color: var(--blue-on-dark); }
+html[data-theme="escuro"] .ad-rc.on { box-shadow: 0 0 0 3px rgba(171,166,255,.18); }
+html[data-theme="escuro"] .ad-grid { stroke: rgba(255,255,255,.08); }
+html[data-theme="escuro"] .ad-axis { fill: #9E9CB2; }
+html[data-theme="escuro"] .ad-dot { stroke: var(--ink); }
+html[data-theme="escuro"] .ad-cross { stroke: #6E6C82; }
+html[data-theme="escuro"] .ad-tip { background: var(--ink-4); box-shadow: 0 10px 24px -10px rgba(0,0,0,.7); }
+html[data-theme="escuro"] .ad-media-use.none { background: rgba(11,11,18,.85); color: var(--mute); }
+html[data-theme="escuro"] .ad-app .seg a.on { background: var(--ink-4); box-shadow: none; }
+html[data-theme="escuro"] .suspended-page,
+html[data-theme="escuro"] .ad-denied { background: var(--ink); color: var(--fg); }
+html[data-theme="escuro"] .suspended-page p { color: var(--mute); }

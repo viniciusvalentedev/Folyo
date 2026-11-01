@@ -27,6 +27,7 @@ import '@/styles/pages/legal.css'
 import '@/styles/pages/loja.css'
 import '@/styles/responsive.css'
 import '@/styles/motion.css'
+import '@/styles/themes.css'
 
 /*
  * Fontes servidas pelo próprio site (arquivos em src/app/fonts).
@@ -82,7 +83,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${poppins.variable} ${mono.variable}`}>
+    <html lang="pt-BR" suppressHydrationWarning className={`${inter.variable} ${poppins.variable} ${mono.variable}`}>
       <body>{children}</body>
     </html>
   )
