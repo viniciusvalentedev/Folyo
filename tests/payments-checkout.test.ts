@@ -530,3 +530,19 @@ describe('checkPaymentAction ("conferir pagamento")', () => {
     expect(results.filter((r) => r.ok)).toHaveLength(15)
   })
 })
+
+describe('payOrderAction: recusa que o Mercado Pago devolve como erro HTTP (402)', () => {
+  beforeEach(setup)
+  afterEach(teardown)
+
+  test('402 com a ordem em `data`: mostra o motivo da recusa e não trata como falha técnica', async () => {
+    userRpc.mockResolvedValueOnce(begun())
+    const failed = gw('failed', 'failed', { status_detail: undefined })
+    fetchMock.mockResolvedValueOnce(
+      json({ errors: [{ code: 'failed', message: 'The following transactions failed', details: ['PAY01TESTE: insufficient_amount'] }], data: failed }, 402),
+    )
+    const r = await payOrderAction(card)
+    expect(r).toMatchObject({ ok: false, error: expect.stringMatching(/limite/) })
+    expect(recorded()[0]).toMatchObject({ p_status: 'recusado', p_status_detail: 'insufficient_amount', p_open_minutes: 1 })
+  })
+})

@@ -268,6 +268,19 @@ function errorCode(body: unknown): string | undefined {
   return parsed.success ? parsed.data.errors[0].code : undefined
 }
 
+/** A ordem que o Mercado Pago anexa em `data` nas respostas de erro (ex.: pagamento recusado). */
+function dataOf(body: unknown): unknown {
+  return typeof body === 'object' && body !== null && 'data' in body ? body.data : null
+}
+
+/** Motivo da recusa em errors[0].details (ex.: "PAY01...: rejected_by_issuer"): só o código final, nunca o texto. */
+function declineReason(body: unknown): string | undefined {
+  const parsed = z.object({ errors: z.array(z.object({ details: z.array(z.string().max(300)).min(1) })).min(1) }).safeParse(body)
+  if (!parsed.success) return undefined
+  const match = /(?:^|[:\s])([a-z][a-z0-9_]{2,60})$/i.exec(parsed.data.errors[0].details[0].trim())
+  return match?.[1].toLowerCase()
+}
+
 /**
  * Cria a ordem de pagamento (cartão ou Pix) a partir do VALOR DO PEDIDO NO BANCO.
  *
@@ -285,8 +298,13 @@ export async function createGatewayOrder(cfg: MercadoPagoConfig, input: NewGatew
     },
   })
   const body: unknown = await response.json().catch(() => null)
-  const order = parseGatewayOrder(body)
-  if (order && (response.ok || order.externalReference === input.orderId)) return order
+  // Pagamento recusado volta como erro HTTP (402), com a ordem em `data` e o motivo em errors[].details.
+  const order = parseGatewayOrder(body) ?? parseGatewayOrder(dataOf(body))
+  if (order && (response.ok || order.externalReference === input.orderId)) {
+    const reason = declineReason(body)
+    if (reason && order.payment && !order.payment.statusDetail) order.payment.statusDetail = reason
+    return order
+  }
   if (!response.ok) throw new GatewayError('Mercado Pago recusou a criação do pagamento', response.status, errorCode(body))
   throw new GatewayError('Resposta inesperada do Mercado Pago')
 }
@@ -295,13 +313,14 @@ export type OrderLookup = { kind: 'ok'; order: GatewayOrder } | { kind: 'not_fou
 
 /**
  * Consulta a ordem direto na API (com o NOSSO token). É dela, e não do corpo da notificação, que vêm status, valor e pedido.
- * Uma ordem de outra conta não aparece aqui. 404 = não existe (ex.: notificação de teste); qualquer outra falha lança
+ * Uma ordem de outra conta não aparece aqui. 404/400 = não existe (ex.: notificação de teste); qualquer outra falha lança
  * GatewayError (o webhook responde erro e o Mercado Pago tenta de novo).
  */
 export async function fetchGatewayOrder(cfg: MercadoPagoConfig, providerOrderId: string): Promise<OrderLookup> {
   if (!ID.test(providerOrderId)) throw new GatewayError('Id de ordem inválido')
   const response = await call(cfg, `/v1/orders/${providerOrderId}`, { method: 'GET' })
-  if (response.status === 404) return { kind: 'not_found' }
+  // 404 = não existe; 400 = id que o Mercado Pago nem reconhece (a notificação de teste do painel usa um id inventado).
+  if (response.status === 404 || response.status === 400) return { kind: 'not_found' }
   if (!response.ok) throw new GatewayError('Mercado Pago recusou a consulta', response.status, undefined)
   const order = parseGatewayOrder(await response.json().catch(() => null))
   if (!order || order.id !== providerOrderId) throw new GatewayError('Resposta inesperada do Mercado Pago')

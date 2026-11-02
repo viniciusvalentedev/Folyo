@@ -206,6 +206,20 @@ describe('createGatewayOrder', () => {
     expect(order).toMatchObject({ status: 'failed', statusDetail: 'rejected_by_issuer' })
   })
 
+  test('402 com a ordem em `data` e o motivo em errors[].details: volta como ordem recusada, com o motivo', async () => {
+    const failed = mpOrder({ status: 'failed', status_detail: 'failed', transactions: { payments: [{ id: 'PAY01TESTE', status: 'failed', amount: '82.89' }] } })
+    fetchMock.mockResolvedValue(
+      json({ errors: [{ code: 'failed', message: 'The following transactions failed', details: ['PAY01TESTE: rejected_by_issuer'] }], data: failed }, 402),
+    )
+    const order = await createGatewayOrder(cfg, card)
+    expect(order).toMatchObject({ status: 'failed', payment: { id: 'PAY01TESTE', statusDetail: 'rejected_by_issuer' } })
+  })
+
+  test('402 com `data` de OUTRO pedido nunca é aceito', async () => {
+    fetchMock.mockResolvedValue(json({ errors: [{ code: 'failed' }], data: mpOrder({ external_reference: '00000000-0000-4000-8000-000000000000' }) }, 402))
+    await expect(createGatewayOrder(cfg, card)).rejects.toMatchObject({ status: 402, code: 'failed' })
+  })
+
   test('ordem de OUTRO pedido em resposta de erro nunca é aceita', async () => {
     fetchMock.mockResolvedValue(json(mpOrder({ external_reference: '00000000-0000-4000-8000-000000000000' }), 402))
     await expect(createGatewayOrder(cfg, card)).rejects.toMatchObject({ status: 402 })
@@ -261,6 +275,11 @@ describe('fetchGatewayOrder', () => {
 
   test('404 = ordem não existe (notificação de teste)', async () => {
     fetchMock.mockResolvedValue(json({}, 404))
+    expect(await fetchGatewayOrder(cfg, 'ORD01TESTE')).toEqual({ kind: 'not_found' })
+  })
+
+  test('400 = id que o Mercado Pago não reconhece (notificação de teste do painel): ordem inexistente', async () => {
+    fetchMock.mockResolvedValue(json({ errors: [{ code: 'invalid_id' }] }, 400))
     expect(await fetchGatewayOrder(cfg, 'ORD01TESTE')).toEqual({ kind: 'not_found' })
   })
 
