@@ -246,6 +246,8 @@ export async function payOrderAction(input: unknown): Promise<PayResult> {
     case 'processando':
       return { ok: true, state }
     case 'recusado':
+      // Recusa é um resultado normal, mas o motivo ajuda a entender testes e fraudes (só códigos, nada de dado pessoal).
+      console.warn('Pagamento recusado', { orderId: started.orderId, method: pay.method, status: gateway.status, detail })
       return { ok: false, error: declineMessage(detail) }
     default:
       return { ok: false, error: CHECKOUT_FAILED }

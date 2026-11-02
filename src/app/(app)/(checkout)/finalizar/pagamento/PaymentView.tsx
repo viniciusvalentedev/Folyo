@@ -176,7 +176,9 @@ export function PaymentView({ orderId, publicKey }: { orderId: string | null; pu
   const open = order?.status === 'pendente' && attempt?.open === true
   const pix = open && attempt?.method === 'pix' ? (attempt.pix ?? localPix) : attempt && !attempt.open ? null : localPix
   const declined: string | null =
-    order?.status === 'pendente' && attempt && !attempt.open && attempt.status === 'recusado' && attempt.method === 'cartao' ? declineMessage(attempt.statusDetail) : null
+    order?.status === 'pendente' && attempt && !attempt.open && attempt.status === 'recusado' && attempt.method === 'cartao' && method === 'cartao'
+      ? declineMessage(attempt.statusDetail)
+      : null
 
   return (
     <div className="shop shop-dark surface-ink">
@@ -415,7 +417,7 @@ function CardForm({ order, orderId, publicKey, onResult }: { order: OrderStatusI
     try {
       const token = await mp.current.fields.createCardToken({ cardholderName: holder, identificationType: 'CPF', identificationNumber: onlyDigits(cpf) })
       const result = await payOrderAction({ method: 'cartao', orderId, token: token.id, paymentMethodId: brand, installments, cpf, deviceId: deviceId() })
-      if (!result.ok) setError(result.error)
+      // O motivo da recusa aparece no aviso do topo (handleResult); aqui só os erros de preenchimento.
       await onResult(result)
     } catch {
       // createCardToken recusa dados de cartão inválidos; não mostramos o texto cru deles.
@@ -505,7 +507,7 @@ function PixForm({ order, orderId, onResult }: { order: OrderStatusInfo; orderId
     setError(null)
     try {
       const result = await payOrderAction({ method: 'pix', orderId, cpf, deviceId: deviceId() })
-      if (!result.ok) setError(result.error)
+      // O motivo da recusa aparece no aviso do topo (handleResult); aqui só os erros de preenchimento.
       await onResult(result)
     } catch {
       setError(GENERIC_ERROR)
