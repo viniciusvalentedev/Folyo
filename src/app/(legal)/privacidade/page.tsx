@@ -51,6 +51,11 @@ export default async function PrivacyPage() {
         <h3>Os que surgem quando você usa a Folyo</h3>
         <ul>
           <li>Progresso nos cursos, aulas concluídas e favoritos.</li>
+          <li>
+            Pedidos de compra: cursos, valor, data, situação do pedido e o código do pagamento no Mercado Pago. Os dados
+            do cartão e os documentos que você informa para pagar ficam só com o Mercado Pago. O recibo da compra é enviado
+            ao e-mail da sua conta.
+          </li>
           <li>Tempo assistido e visualizações das aulas: data, aula, tempo e tipo de aparelho (computador, celular ou tablet).</li>
           <li>Sessões de vídeo em andamento (somem sozinhas quando o sinal para de chegar) e a hora em que você leu as notificações.</li>
         </ul>
@@ -82,6 +87,14 @@ export default async function PrivacyPage() {
               <tr>
                 <td>Mostrar o seu perfil público, projetos e e-mail quando você liga essas opções</td>
                 <td>Consentimento (I): você desliga quando quiser em Configurações → Privacidade</td>
+              </tr>
+              <tr>
+                <td>Processar a compra de cursos, liberar o acesso e tratar estornos</td>
+                <td>Execução do contrato (V)</td>
+              </tr>
+              <tr>
+                <td>Guardar os registros financeiros das compras</td>
+                <td>Obrigação legal (II)</td>
               </tr>
               <tr>
                 <td>Segurança da conta, prevenção de fraude e abuso, limites de uso</td>
@@ -127,7 +140,11 @@ export default async function PrivacyPage() {
             <b>Cloudflare:</b> verificação anti-robô na entrada.
           </li>
           <li>
-            <b>Zoho:</b> envio dos e-mails da conta (confirmação e nova senha).
+            <b>Zoho:</b> envio dos e-mails da conta (confirmação e nova senha) e do recibo da compra (seu nome, seu e-mail e os cursos e o valor do pedido).
+          </li>
+          <li>
+            <b>Mercado Pago:</b> processamento dos pagamentos. Você paga na página dele; ele nos avisa se o pagamento foi
+            aprovado, o valor e a qual pedido ele se refere.
           </li>
         </ul>
         <p>
@@ -153,6 +170,10 @@ export default async function PrivacyPage() {
           <li>
             <b>Visualizações das aulas:</b> removidas automaticamente depois de um prazo que a equipe define (padrão:{' '}
             {DEFAULT_CONFIG.analytics.retentionDays} dias; nunca mais que {CONFIG_LIMITS.retentionDays.max}).
+          </li>
+          <li>
+            <b>Pedidos e pagamentos:</b> se você excluir a conta, os pedidos pagos ficam sem ligação com você, só com
+            valor, data e código do pagamento, pelo prazo que a lei exigir para registros financeiros.
           </li>
           <li>
             <b>Histórico de segurança do painel da equipe:</b> registra quem fez o quê em contas (por exemplo, uma

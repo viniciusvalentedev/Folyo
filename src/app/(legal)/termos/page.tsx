@@ -90,10 +90,34 @@ export default async function TermsPage() {
       </Section>
 
       <Section id="planos" title="8. Planos e pagamentos">
-        <p>
-          Se a Folyo passar a ter planos pagos, os preços, a forma de cobrança, o cancelamento e o direito de
-          arrependimento (CDC, art. 49) serão informados antes da compra e farão parte destes Termos.
-        </p>
+        <ul>
+          <li>
+            <b>Cursos pagos:</b> o preço de cada curso aparece antes da compra e vale o que estava na tela quando você
+            fez o pedido.
+          </li>
+          <li>
+            <b>Como pagar:</b> o pagamento é feito no ambiente do Mercado Pago (cartão, Pix e outras formas que ele
+            oferecer). A Folyo não recebe nem guarda os dados do seu cartão.
+          </li>
+          <li>
+            <b>Liberação:</b> o acesso ao curso comprado é liberado quando o Mercado Pago confirma o pagamento. Pix e
+            boleto podem levar alguns minutos.
+          </li>
+          <li>
+            <b>Desistência:</b> você pode desistir da compra em até 7 dias corridos depois do pagamento (CDC, art. 49),
+            escrevendo para <a href={`mailto:${email}`}>{email}</a>. Devolvemos o valor pago pelo mesmo meio de pagamento
+            e o acesso àquele curso é encerrado. Em caso de estorno ou contestação do pagamento, o acesso também é
+            encerrado.
+          </li>
+          <li>
+            <b>Promoções e cupons:</b> o pré-acesso de lançamento é gratuito e por prazo limitado; ao fim dele, o acesso
+            só continua com a compra do curso.
+          </li>
+          <li>
+            <b>Assinaturas:</b> se a Folyo passar a ter planos com cobrança recorrente, as regras de cobrança e de
+            cancelamento serão informadas antes da contratação e farão parte destes Termos.
+          </li>
+        </ul>
       </Section>
 
       <Section id="encerramento" title="9. Suspensão e encerramento">

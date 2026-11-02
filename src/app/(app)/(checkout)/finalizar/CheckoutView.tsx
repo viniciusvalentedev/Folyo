@@ -11,17 +11,20 @@ import { useShop } from '@/components/providers/Shop'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import { redeemCouponAction } from '@/lib/actions/cart'
+import { startCheckoutAction } from '@/lib/actions/checkout'
 import { formatBRL, REDEEM_FAILED, type CartQuote, type PreAccess } from '@/lib/cart'
 import { findCourse } from '@/lib/domain/catalog'
+import { CHECKOUT_FAILED, isMercadoPagoUrl } from '@/lib/payments/order'
 import { plural } from '@/lib/format'
 
 type Done = { courses: PreAccess[]; leftover: number }
 
 /**
  * Próxima etapa do carrinho. Com o cupom de lançamento válido: oferta de pré-acesso (o servidor
- * libera; nada é cobrado). Sem cupom: aviso de que o pagamento online ainda não existe.
+ * libera; nada é cobrado). Sem cupom: pagamento no Mercado Pago (quando a venda está ligada no servidor)
+ * ou aviso de que o pagamento online ainda não está disponível.
  */
-export function CheckoutView() {
+export function CheckoutView({ paymentsEnabled }: { paymentsEnabled: boolean }) {
   const { cart } = useShop()
   const router = useRouter()
   const [done, setDone] = useState<Done | null>(null)
@@ -91,6 +94,8 @@ export function CheckoutView() {
             router.refresh()
           }}
         />
+      ) : paymentsEnabled && quote.totalCents > 0 ? (
+        <CheckoutPay quote={quote} />
       ) : (
         <CheckoutUnavailable quote={quote} />
       )}
@@ -179,6 +184,74 @@ function LaunchOffer({ quote, onDone }: { quote: CartQuote; onDone: (r: { course
         <p className="fin-note">Nenhum pagamento é realizado. O desconto é uma condição promocional de lançamento.</p>
       </section>
       <SummaryCard quote={quote} launch />
+    </div>
+  )
+}
+
+/**
+ * Pagamento no Mercado Pago. O servidor cria o pedido (preço calculado no banco) e devolve o link; o aluno é levado
+ * para a página do Mercado Pago, onde paga com cartão, Pix etc. (com ou sem conta lá). Nada é liberado aqui: o acesso
+ * chega quando o Mercado Pago confirma o pagamento para o servidor.
+ */
+function CheckoutPay({ quote }: { quote: CartQuote }) {
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const pay = async () => {
+    if (pending) return
+    setPending(true)
+    setError(null)
+    try {
+      // Só os ids: o preço é recalculado pelo servidor.
+      const r = await startCheckoutAction({ courseIds: quote.items.map((i) => i.courseId) })
+      if (!r.ok || !isMercadoPagoUrl(r.url)) {
+        setError(r.ok ? CHECKOUT_FAILED : r.error)
+        setPending(false)
+        return
+      }
+      window.location.assign(r.url)
+    } catch {
+      setError(CHECKOUT_FAILED)
+      setPending(false)
+    }
+  }
+
+  return (
+    <div className="fin-grid">
+      <section className="fin-main" aria-labelledby="fin-h">
+        <span className="fin-clock" aria-hidden="true">
+          <Icon name="Lock" size={22} />
+        </span>
+        <h1 id="fin-h" className="display-xl fin-h">
+          Falta só o pagamento.
+        </h1>
+        <p className="lead fin-lead">
+          Você vai pagar no ambiente seguro do Mercado Pago, com cartão, Pix ou outras formas disponíveis, com ou sem conta lá. A Folyo não vê nem guarda os
+          dados do seu cartão. O acesso aos cursos é liberado assim que o pagamento for confirmado.
+        </p>
+        {error && (
+          <p className="alert alert-err" role="alert">
+            <Icon name="CircleAlert" size={18} />
+            <span>{error}</span>
+          </p>
+        )}
+        <div className="fin-actions">
+          <Button variant="go" size="lg" iconRight={pending ? undefined : 'ArrowRight'} onClick={pay} disabled={pending} aria-busy={pending}>
+            {pending ? (
+              <>
+                <span className="cart-spin" aria-hidden="true" /> Abrindo o pagamento…
+              </>
+            ) : (
+              'Pagar com Mercado Pago'
+            )}
+          </Button>
+          <ButtonLink href="/carrinho" variant="ghost-on-dark" size="lg">
+            Voltar ao carrinho
+          </ButtonLink>
+        </div>
+        <p className="fin-note">Você só é cobrado depois de confirmar o pagamento na página do Mercado Pago.</p>
+      </section>
+      <SummaryCard quote={quote} />
     </div>
   )
 }

@@ -39,6 +39,9 @@ const LIMITS = {
 const AUTH_POST_PATHS = ['/entrar', '/esqueci-senha', '/redefinir-senha', '/seguranca/mfa', '/auth/confirmar']
 const isAuthPost = (pathname: string) => AUTH_POST_PATHS.some((p) => pathname === p || pathname.startsWith(p + '/'))
 
+/** Rotas de webhook (serviços de fora chamam sem login; cada rota confere a assinatura). */
+const WEBHOOK_PREFIX = '/api/webhooks/'
+
 /** IP real só na Vercel (ela reescreve o x-forwarded-for). Fora dela: sem limite por IP. */
 function requestIp(request: NextRequest) {
   if (process.env.VERCEL !== '1') return null
@@ -66,6 +69,10 @@ export async function proxy(request: NextRequest) {
   if (ip && !reading && isAuthPost(request.nextUrl.pathname)) {
     if (!limiter.allow('a:' + ip, LIMITS.auth) || !(await sharedAllow('proxy-auth:' + ip, LIMITS.auth))) return tooMany()
   }
+
+  // Webhooks de serviços de fora (hoje, o do Mercado Pago): não há sessão de aluno. A autenticação é a assinatura da
+  // notificação, conferida na própria rota; o limite por IP acima continua valendo.
+  if (request.nextUrl.pathname.startsWith(WEBHOOK_PREFIX)) return NextResponse.next()
 
   let response = NextResponse.next({ request })
   const { url, key } = supabaseEnv()

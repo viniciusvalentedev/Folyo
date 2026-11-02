@@ -50,6 +50,13 @@ Onde estamos:
   "Liberar com cupom"; preço, desconto e liberação são calculados **no banco**. **Não existe pagamento**: sem cupom,
   `/finalizar` avisa que o pagamento online ainda não está disponível. Curso pago sem acesso não entrega vídeo nem
   materiais. Exige um SQL novo, rodado **depois** de publicar o código (veja [`supabase/README.md`](supabase/README.md)).
+- **Pagamentos com Mercado Pago (Checkout Pro)** ✅ código pronto, **desligado por padrão** (`PAYMENTS_ENABLED`).
+  O aluno paga na página do Mercado Pago (cartão, Pix etc., com ou sem conta lá); a Folyo nunca vê dado de cartão.
+  O **banco** cria o pedido e calcula o preço (`create_order`); só o **webhook** (`/api/webhooks/mercadopago`) libera o
+  curso: confere a assinatura, consulta o pagamento na API do Mercado Pago e chama `apply_payment` (valor e moeda
+  conferidos, idempotente; estorno tira o acesso). Depois de pago, o aluno recebe o **recibo por e-mail** (pela Zoho, uma vez por
+  pedido, com o link para o curso) e vê o pedido em **Minhas compras** (`/compras`). Exige dois SQL novos e a configuração do
+  Mercado Pago e do e-mail da Zoho (veja [`supabase/README.md`](supabase/README.md), "Pagamentos").
 - **Aulas em sequência, "continuar de onde parou" e conclusão só no fim do vídeo** ✅ o aluno só abre uma aula depois
   de concluir as anteriores (conferido no servidor); o ponto em que parou o vídeo é salvo e vale em qualquer aparelho;
   "Próxima aula" e "concluir" só liberam quando o vídeo chega ao final. Exige um SQL novo, rodado **antes** de publicar
@@ -61,8 +68,8 @@ Onde estamos:
   previews e desenvolvimento ficam fechados). Todo o resto é `noindex`. Detalhes em `src/lib/seo.ts`.
 - **Testes e CI** ✅ `npm run check` roda lint, tipos e testes (Vitest, com Postgres de verdade em memória para as
   regras do banco). O GitHub Actions (`.github/workflows/ci.yml`) repete tudo a cada push e confere se o site compila.
-- **Próximas fases:** **pagamentos** (Mercado Pago; hoje só há o cupom), **certificados e currículo em PDF de verdade**
-  e a **revisão jurídica** dos Termos e da Privacidade.
+- **Próximas fases:** **assinatura mensal** (cobrança recorrente), **certificados e currículo em PDF de verdade**
+  e a **revisão jurídica** dos Termos e da Privacidade (os textos de pagamento são um rascunho para o advogado).
 
 **Configurar o Supabase pela primeira vez:** siga o passo a passo em [`supabase/README.md`](supabase/README.md).
 
@@ -328,7 +335,7 @@ Turnstile (CAPTCHA), Zoho Mail (e-mail `contato@usefolyo.com` e envio dos e-mail
 | **Currículo em PDF e certificados** | Só visual ("Certificados a caminho"). A conclusão da aula só libera no fim do vídeo e as aulas são em sequência, mas é conferido na tela (o banco não sabe o ponto do vídeo) | Certificado emitido pelo servidor (conferindo aulas e trabalho) + código de verificação |
 | **Perfil público** | ✅ `/u/<endereço>` aberto sem login, com controle de privacidade; `/publico` é a pré-visualização. Não é indexado pelo Google (`noindex`) | Opção "aparecer no Google" e subdomínio (`nome.usefolyo.com`) |
 | **Objetivos com recomendação** | ✅ Trilhas cadastradas no painel (Trilhas), com as 7 de `src/lib/trails.ts` de reserva; as recomendações usam os cursos do banco (publicados e visíveis) | Refinar com os dados de audiência |
-| **Pagamentos** | Só o cupom `LANCAMENTO` (30 dias de pré-acesso). `/finalizar` avisa que o pagamento online ainda não está disponível | Mercado Pago (conta de Pessoa Física aberta; ainda sem CNPJ): Checkout/Pix + webhook, com preço e liberação conferidos no banco |
+| **Pagamentos** | ✅ Curso avulso pelo Mercado Pago (Checkout Pro), pedido e preço no banco, liberação só pelo webhook assinado. Recibo por e-mail e página Minhas compras. Desligado até `PAYMENTS_ENABLED=true` (e o cupom `LANCAMENTO` segue valendo) | Assinatura mensal; notas fiscais/CNPJ |
 | **Textos legais** | `/termos` e `/privacidade` no ar com aviso "versão em revisão" | Preencher `src/lib/legal.ts` (CNPJ/CPF, endereço, encarregado, foro), revisão de advogado e trocar `reviewed` para `true` |
 
 ### Como os dados vão para o banco

@@ -239,7 +239,9 @@ describe.skipIf(!migrations)('cupom de lançamento (SQL)', () => {
       const again = await redeem(ana, ['mkt'], 'LANCAMENTO')
       expect(again).toMatchObject({ ok: false, code: 'FC422' })
       const q = ok(await quote(ana, ['mkt'], 'LANCAMENTO'))
-      expect(q.dropped).toEqual([{ courseId: 'mkt', reason: 'ja_possui' }])
+      // Pré-acesso NÃO impede a compra: o curso segue no carrinho a preço cheio e o cupom não vale de novo.
+      expect(q.dropped).toEqual([])
+      expect(q.items[0]).toMatchObject({ courseId: 'mkt', eligible: false, priceCents: 3299, finalCents: 3299 })
       const after = (await db.query<{ e: string }>(`select expires_at::text as e from public.course_access where user_id = $1 and course_id = 'mkt'`, [ana])).rows[0].e
       expect(after).toBe(before)
     })

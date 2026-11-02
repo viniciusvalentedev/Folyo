@@ -882,3 +882,104 @@ O envio de e-mails já usa o SMTP próprio (Zoho, `contato@usefolyo.com`), entã
 - **Certificados de verdade** (com código de verificação): hoje "aula concluída" é marcada pelo próprio aluno.
   Antes de emitir certificado que vale como credencial, ele precisa ser gerado pelo servidor, conferindo as aulas
   (de preferência com registro de que o vídeo foi assistido) e o projeto.
+
+---
+
+# Pagamentos (Mercado Pago)
+
+O aluno paga um curso avulso na página do **Mercado Pago** (Checkout Pro): cartão, Pix etc., com ou sem conta lá. A
+Folyo **nunca** vê dado de cartão. O **banco** cria o pedido e calcula o preço; **só o webhook** libera o curso.
+
+> A venda nasce **desligada**: sem `PAYMENTS_ENABLED=true` (e as chaves do Mercado Pago), `/finalizar` continua dizendo
+> que o pagamento online ainda não está disponível. Pode publicar o código e rodar o SQL sem risco de cobrar ninguém.
+
+## 1. Rodar o SQL
+
+Supabase → **SQL Editor** → cole `supabase/migrations/20261102000001_pagamentos.sql` → **Run**, e **depois**
+`supabase/migrations/20261102000002_compras_recibo.sql` → **Run** (cada um uma vez; podem repetir). Eles **não apagam nada**.
+
+O segundo (`..._compras_recibo.sql`) cria a página "Minhas compras" e o controle do e-mail de recibo:
+**`my_orders()`** (o aluno lê as PRÓPRIAS compras: pagas, estornadas e o pagamento ainda em aberto) e, só para o
+`service_role`, **`claim_order_receipt`** / **`finish_order_receipt`**, que garantem **um único recibo por pedido pago**,
+mesmo que o Mercado Pago avise várias vezes ou dois avisos cheguem juntos (se o envio falhar, a reserva é devolvida e o
+aviso seguinte tenta de novo). Sem esse SQL o site continua funcionando: "Minhas compras" fica vazia e nenhum recibo sai.
+
+O primeiro (`..._pagamentos.sql`) faz:
+
+- **`private.orders`**, **`order_items`** e **`payment_events`**, fora da API (ninguém lê nem grava pelo site). O pedido
+  guarda uma **foto** do título e do preço de cada curso. `payment_events` é o histórico do que o webhook aplicou.
+- **`course_access.order_id`**: qual pedido liberou o acesso (o aluno não lê essa coluna).
+- **`create_order(ids)`**: o banco recalcula o carrinho com a conta de quem está logado. **`attach_order_checkout`**:
+  guarda o link (só `mercadopago.com`/`.com.br`). **`order_status`**: o aluno vê o status do PRÓPRIO pedido.
+- **`apply_payment`**: confirma ou desfaz um pagamento. **Só o `service_role`** (a chave secreta) executa. Confere valor e
+  moeda contra o pedido, é idempotente (o mesmo pagamento de novo não muda nada), registra pagamento duplicado e
+  **estorno/chargeback tira o acesso** daquele pedido.
+- Quem tem **pré-acesso** do cupom **pode comprar** o curso (antes caía em "já possui"). `redeem_launch_coupon` passa a
+  recusar cupom com menos de 100%.
+- LGPD: os pedidos entram no "Baixar meus dados". Ao excluir a conta, o pedido fica **sem dono** (o registro financeiro
+  não é apagado).
+
+## 2. Configurar o Mercado Pago (teste primeiro)
+
+1. Mercado Pago → **Suas integrações** → criar aplicação (**Checkout Pro**). Pegue as credenciais de **teste**.
+2. Crie dois **usuários de teste** (vendedor e comprador) no próprio painel do Mercado Pago.
+3. **Webhooks → Configurar notificações:** URL `https://www.usefolyo.com/api/webhooks/mercadopago`, evento **Pagamentos**.
+   Copie a **chave secreta** que aparece depois de salvar.
+4. Vercel → **Environment Variables** (nunca no GitHub, nunca em conversa): `MERCADOPAGO_ACCESS_TOKEN`,
+   `MERCADOPAGO_WEBHOOK_SECRET`, `SUPABASE_SECRET_KEY` e, para testar, `MERCADOPAGO_USE_SANDBOX_URL=true` e
+   `PAYMENTS_ENABLED=true`. **Teste só em Preview/Development; produção só em Production.** Para testar o webhook num
+   preview, ele precisa ser alcançável pelo Mercado Pago (desligue a proteção do preview ou use o domínio de produção
+   com credenciais de teste) e `NEXT_PUBLIC_SITE_URL` deve apontar para esse endereço.
+
+### E-mail de recibo (Zoho)
+
+O recibo (agradecimento, itens, total e o link para acessar o curso) sai pelo **SMTP da Zoho**, a mesma conta que o Supabase
+já usa para os e-mails de login. Não precisa de serviço novo nem de DNS novo. Para ligar, na Vercel (Production):
+
+| Variável | O que colocar |
+|---|---|
+| `SMTP_HOST` | o mesmo servidor de Supabase → Authentication → SMTP (ex.: `smtp.zoho.com`) |
+| `SMTP_PORT` | `465` (padrão) ou `587` |
+| `SMTP_USER` / `SMTP_PASSWORD` | e-mail da conta Zoho e a senha (com verificação em duas etapas, a "senha de aplicativo") |
+| `EMAIL_FROM` | `Folyo <contato@usefolyo.com>`. A Zoho só aceita o endereço da própria conta (ou um alias dela) |
+
+Sem essas variáveis o recibo simplesmente não sai; a venda e a liberação do curso não dependem dele. A Zoho tem limite diário
+de envios por conta (confira o do seu plano); como o recibo é um por compra, costuma sobrar folga.
+
+O e-mail só sai depois de o pagamento ser confirmado e o curso liberado. Se a Zoho falhar, o webhook responde 200 do mesmo
+jeito (o curso já foi liberado) e o próximo aviso do Mercado Pago tenta enviar de novo.
+
+## 3. Testar (com contas de teste)
+
+1. Um curso com preço → **Adicionar** → carrinho → **Prosseguir** → **Pagar com Mercado Pago**.
+2. Pague com os dados de cartão de teste do Mercado Pago, logado como o comprador de teste (e também como convidado).
+3. Volte para o site: `/finalizar/retorno` mostra "Pagamento confirmado" e o curso abre. Em **Painel › Alunos** o aluno
+   aparece com o curso. Se demorar, é o webhook ainda não chegado (a página continua conferindo). O recibo chega no e-mail
+   da conta e o pedido aparece em **Minhas compras** (menu lateral, `/compras`).
+4. Confira no Mercado Pago (Webhooks → histórico) que a notificação teve resposta **200**.
+5. Teste um **estorno** no painel do Mercado Pago: o acesso ao curso daquele pedido deve sumir.
+
+## 4. Antes de cobrar de verdade
+
+- Preencha `src/lib/legal.ts` e mande **Termos (seção 8)** e **Privacidade** para um advogado; troque `reviewed` para `true`.
+- Credenciais de **produção** só na Vercel/Production, e `MERCADOPAGO_USE_SANDBOX_URL=false`.
+- Faça uma compra real de valor baixo com um curso de teste e confira a liberação e o estorno.
+- Defina com um contador a emissão de nota (a conta hoje é de Pessoa Física).
+
+## Como desligar ou desfazer
+
+- **Desligar a venda na hora:** `PAYMENTS_ENABLED=false` na Vercel (e novo deploy). Os webhooks de pedidos já criados
+  continuam sendo processados, porque o dinheiro que entrou não pode ficar sem curso.
+- O SQL só **acrescenta** (tabelas e funções novas) e troca três funções (`cart_quote`, `redeem_launch_coupon`,
+  `export_my_data`). Para voltar ao comportamento antigo delas, rode de novo essas três do arquivo
+  `20261029000001_cupom_lancamento.sql`. Não apague as tabelas de pedido se já houver pagamentos.
+
+## Limitações conhecidas
+
+- Só curso **avulso**. Assinatura mensal (cobrança recorrente) não existe ainda.
+- O recibo é um comprovante da compra, **não é nota fiscal**. O e-mail não é reenviado pela tela (só pelo próximo aviso do
+  Mercado Pago, se o primeiro envio falhou). "Minhas compras" não mostra pedidos cancelados ou vencidos sem pagamento.
+- Estorno **parcial** não tira acesso (só estorno total e chargeback). Pagamento duplicado do mesmo pedido fica
+  registrado em `private.payment_events` como `pagamento_duplicado` e precisa de reembolso manual.
+- O histórico do painel (auditoria) não mostra compras: elas ficam em `private.payment_events` e `private.orders`.
+

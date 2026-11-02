@@ -58,6 +58,7 @@ export const PRIVATE_PATHS = [
   '/auth',
   '/certificados',
   '/competencias',
+  '/compras',
   '/configuracoes',
   '/conta-suspensa',
   '/cursos',
