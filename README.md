@@ -1,5 +1,5 @@
 # Folyo
-
+TRIGGER
 **Aprenda. Pratique. Demonstre.** Plataforma de cursos práticos que terminam em projetos reais e viram um currículo.
 
 Onde estamos:
