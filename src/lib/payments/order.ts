@@ -178,7 +178,7 @@ const cpfField = z
   .transform(onlyDigits)
   .refine(isValidCpf, 'CPF inválido')
 /** Identificador do dispositivo que o MercadoPago.js gera (antifraude). Opcional: sem ele o pagamento segue. */
-const deviceField = z.string().regex(/^[A-Za-z0-9_-]{8,200}$/).optional()
+const deviceField = z.string().regex(/^[A-Za-z0-9._-]{8,200}$/).optional()
 
 const cardInput = z.object({
   method: z.literal('cartao'),

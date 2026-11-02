@@ -50,6 +50,8 @@ describe('payInputSchema (o que o navegador pode mandar para pagar)', () => {
   test('Pix válido; sem id do dispositivo também vale', () => {
     expect(payInputSchema.safeParse({ method: 'pix', orderId: ORDER, cpf: CPF }).success).toBe(true)
     expect(payInputSchema.safeParse({ method: 'pix', orderId: ORDER, cpf: CPF, deviceId: 'device-abc-12345' }).success).toBe(true)
+    // O MercadoPago.js gera ids com ponto (ex.: armor.abc123...).
+    expect(payInputSchema.safeParse({ method: 'pix', orderId: ORDER, cpf: CPF, deviceId: 'armor.2c1b9f0a7d3e4b5c' }).success).toBe(true)
   })
 
   test('valor, total, itens e qualquer campo extra mandados pelo navegador são descartados', () => {

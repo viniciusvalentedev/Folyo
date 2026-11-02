@@ -91,6 +91,21 @@ const CARD_DATA_ERRORS = new Set(['bad_filled_card_data', 'invalid_card_token', 
 
 type Service = ReturnType<typeof createSupabaseServiceClient>
 
+type UserDb = NonNullable<Awaited<ReturnType<typeof actionContext>>>['supabase']
+
+/** Nome e data de cadastro da conta (ajudam o antifraude a aprovar). Se não der para ler, o pagamento segue sem eles. */
+async function readPayerProfile(supabase: UserDb, userId: string): Promise<{ name: string | null; since: string | null }> {
+  try {
+    const { data } = await supabase.from('profiles').select('name, created_at').eq('id', userId).maybeSingle()
+    return {
+      name: typeof data?.name === 'string' ? data.name : null,
+      since: typeof data?.created_at === 'string' ? data.created_at : null,
+    }
+  } catch {
+    return { name: null, since: null }
+  }
+}
+
 /** Deixa o recibo para depois da resposta (o e-mail é cortesia e não pode atrasar a tela). */
 function sendReceiptLater(supabase: Service, orderId: string) {
   try {
@@ -176,6 +191,8 @@ export async function payOrderAction(input: unknown): Promise<PayResult> {
     if (r.error) console.error('Falha ao gravar a tentativa de pagamento', { code: r.error.code })
   }
 
+  const { name: payerName, since: payerSince } = await readPayerProfile(ctx.supabase, ctx.user.id)
+
   // 2. Cria o pagamento no Mercado Pago com o VALOR DO PEDIDO NO BANCO.
   let gateway: GatewayOrder
   try {
@@ -186,6 +203,9 @@ export async function payOrderAction(input: unknown): Promise<PayResult> {
       email: started.email,
       cpf: pay.cpf,
       description: `Folyo: ${started.items.length} ${started.items.length === 1 ? 'curso' : 'cursos'}`,
+      items: started.items,
+      payerName,
+      payerSince,
       deviceId: pay.deviceId,
       payment: pay.method === 'pix' ? { kind: 'pix' } : { kind: 'card', token: pay.token, paymentMethodId: pay.paymentMethodId, installments: pay.installments },
     })

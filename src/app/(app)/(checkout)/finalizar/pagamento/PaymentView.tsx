@@ -75,7 +75,7 @@ function loadSdk(): Promise<void> {
 }
 
 /** Identificador do dispositivo que o MercadoPago.js gera (antifraude). Sem ele o pagamento segue. */
-const deviceId = () => (typeof window !== 'undefined' && /^[A-Za-z0-9_-]{8,200}$/.test(window.MP_DEVICE_SESSION_ID ?? '') ? window.MP_DEVICE_SESSION_ID : undefined)
+const deviceId = () => (typeof window !== 'undefined' && /^[A-Za-z0-9._-]{8,200}$/.test(window.MP_DEVICE_SESSION_ID ?? '') ? window.MP_DEVICE_SESSION_ID : undefined)
 
 const GENERIC_ERROR = 'Não foi possível concluir agora. Nada foi cobrado. Tente de novo em instantes.'
 const CARD_DATA_ERROR = 'Confira os dados do cartão (número, validade e código) e tente de novo.'

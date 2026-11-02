@@ -9,7 +9,13 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 const userRpc = vi.fn()
 const serviceRpc = vi.fn()
-let session: { user: { id: string }; supabase: { rpc: typeof userRpc } } | null = null
+let profileRow: { name: unknown; created_at: unknown } | null = { name: 'Ana Maria Souza', created_at: '2026-03-10T12:30:00.000Z' }
+let profileFails = false
+const profileTable = {
+  select: () => ({ eq: () => ({ maybeSingle: async () => { if (profileFails) throw new Error('banco fora do ar'); return { data: profileRow, error: null } } }) }),
+}
+type TestDb = { rpc: typeof userRpc; from: (table: string) => typeof profileTable }
+let session: { user: { id: string }; supabase: TestDb } | null = null
 vi.mock('@/lib/actions/shared', () => ({ actionContext: async () => session }))
 vi.mock('@/lib/supabase/service', () => ({ createSupabaseServiceClient: () => ({ rpc: serviceRpc }) }))
 const receipts = vi.fn(async () => {})
@@ -32,7 +38,7 @@ const ITEMS = [
   { courseId: 'design', title: 'Design', priceCents: 4990 },
 ]
 let n = 0
-const newUser = () => ({ user: { id: 'user-' + ++n }, supabase: { rpc: userRpc } })
+const newUser = () => ({ user: { id: 'user-' + ++n }, supabase: { rpc: userRpc, from: () => profileTable } })
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
 const FAIL_TEXT = 'Não foi possível iniciar o pagamento'
 
@@ -64,6 +70,8 @@ function env() {
 }
 function setup() {
   env()
+  profileRow = { name: 'Ana Maria Souza', created_at: '2026-03-10T12:30:00.000Z' }
+  profileFails = false
   session = newUser()
   userRpc.mockReset()
   serviceRpc.mockReset()
@@ -233,6 +241,35 @@ describe('payOrderAction: cartão', () => {
   beforeEach(setup)
   afterEach(teardown)
 
+  test('manda ao Mercado Pago os itens do banco, o nome e a data de cadastro da conta, e o descritivo da fatura', async () => {
+    userRpc.mockResolvedValueOnce(begun())
+    fetchMock.mockResolvedValueOnce(json(gw('processed', 'accredited')))
+    await payOrderAction({ ...card, items: [{ title: 'inventado', unit_price: '0.01' }], name: 'Outra Pessoa' })
+    const body = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)
+    expect(body.items).toEqual([
+      { title: 'Marketing', unit_price: '32.99', quantity: 1, category_id: 'learnings' },
+      { title: 'Design', unit_price: '49.90', quantity: 1, category_id: 'learnings' },
+    ])
+    expect(body.payer).toMatchObject({ first_name: 'Ana', last_name: 'Maria Souza' })
+    expect(body.additional_info).toEqual({ payer: { registration_date: '2026-03-10T12:30:00.000Z' } })
+    expect(body.transactions.payments[0].payment_method.statement_descriptor).toBe('FOLYO')
+    expect(JSON.stringify(body)).not.toMatch(/inventado|Outra Pessoa/)
+  })
+
+  test('sem conseguir ler o perfil (erro ou nome vazio), o pagamento segue sem nome e sem data', async () => {
+    for (const broken of [() => (profileFails = true), () => (profileRow = null), () => (profileRow = { name: '', created_at: 5 })]) {
+      setup()
+      broken()
+      userRpc.mockResolvedValueOnce(begun())
+      fetchMock.mockResolvedValueOnce(json(gw('processed', 'accredited')))
+      expect(await payOrderAction(card)).toEqual({ ok: true, state: 'aprovado' })
+      const body = JSON.parse((fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)
+      expect(body.payer).toEqual({ email: 'ana@exemplo.com', identification: { type: 'CPF', number: '52998224725' } })
+      expect(body.additional_info).toBeUndefined()
+      teardown()
+    }
+  })
+
   test('aprovado: cobra o VALOR DO BANCO, aplica o pagamento, manda o recibo e nunca vaza CPF/token', async () => {
     userRpc.mockResolvedValueOnce(begun())
     fetchMock.mockResolvedValueOnce(json(gw('processed', 'accredited')))
@@ -308,7 +345,8 @@ describe('payOrderAction: cartão', () => {
 
   test('Mercado Pago recusa os dados (4xx): nada foi cobrado, libera na hora e não vaza o token', async () => {
     userRpc.mockResolvedValueOnce(begun())
-    fetchMock.mockResolvedValueOnce(json({ errors: [{ code: 'invalid_card_token', message: `token ${TOKEN} inválido` }] }, 400))
+    const refused = () => json({ errors: [{ code: 'invalid_card_token', message: `token ${TOKEN} inválido` }] }, 400)
+    fetchMock.mockResolvedValueOnce(refused()).mockResolvedValueOnce(refused())
     const r = await payOrderAction(card)
     expect(r).toMatchObject({ ok: false, error: expect.stringMatching(/cartão/) })
     expect(recorded()[0]).toMatchObject({ p_status: 'erro', p_open_minutes: 1 })
@@ -317,7 +355,8 @@ describe('payOrderAction: cartão', () => {
 
   test('erro 4xx desconhecido: mensagem genérica, código sem caracteres estranhos', async () => {
     userRpc.mockResolvedValueOnce(begun())
-    fetchMock.mockResolvedValueOnce(json({ errors: [{ code: 'qualquer_coisa', message: 'detalhe interno' }] }, 422))
+    const refused = () => json({ errors: [{ code: 'qualquer_coisa', message: 'detalhe interno' }] }, 422)
+    fetchMock.mockResolvedValueOnce(refused()).mockResolvedValueOnce(refused())
     const r = await payOrderAction(card)
     expect(r).toEqual({ ok: false, error: expect.stringContaining(FAIL_TEXT) })
     expect(JSON.stringify(r)).not.toContain('detalhe interno')
@@ -538,9 +577,10 @@ describe('payOrderAction: recusa que o Mercado Pago devolve como erro HTTP (402)
   test('402 com a ordem em `data`: mostra o motivo da recusa e não trata como falha técnica', async () => {
     userRpc.mockResolvedValueOnce(begun())
     const failed = gw('failed', 'failed', { status_detail: undefined })
-    fetchMock.mockResolvedValueOnce(
-      json({ errors: [{ code: 'failed', message: 'The following transactions failed', details: ['PAY01TESTE: insufficient_amount'] }], data: failed }, 402),
-    )
+    const declined = () =>
+      json({ errors: [{ code: 'failed', message: 'The following transactions failed', details: ['PAY01TESTE: insufficient_amount'] }], data: failed }, 402)
+    // O SDK lê o 402 (e perde o corpo); a releitura com a mesma chave de idempotência traz a ordem e o motivo.
+    fetchMock.mockResolvedValueOnce(declined()).mockResolvedValueOnce(declined())
     const r = await payOrderAction(card)
     expect(r).toMatchObject({ ok: false, error: expect.stringMatching(/limite/) })
     expect(recorded()[0]).toMatchObject({ p_status: 'recusado', p_status_detail: 'insufficient_amount', p_open_minutes: 1 })
