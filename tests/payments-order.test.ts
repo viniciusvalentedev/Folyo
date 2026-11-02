@@ -87,6 +87,7 @@ describe('declineMessage', () => {
     expect(declineMessage('bad_filled_card_data')).toMatch(/dados do cartão/)
     expect(declineMessage('high_risk')).toMatch(/segurança/)
     expect(declineMessage('3ds_challenge_expired')).toMatch(/demorou/)
+    expect(declineMessage('3ds_challenge_failed')).toMatch(/confirmação com o banco/)
   })
 
   test('código desconhecido, vazio ou malicioso vira a frase padrão (nunca o código cru)', () => {
@@ -104,6 +105,7 @@ describe('endereços do Mercado Pago', () => {
     'https://secure.mercadolibre.com/x',
     'https://http2.mlstatic.com/a.js',
     'https://www.mercadolivre.com.br/a',
+    'https://www.mercadolivre.com/jms/mlb/lgz/fingerprint/medium/armor.png',
   ])('3D Secure aceita %s', (url) => expect(isThreeDsUrl(url)).toBe(true))
 
   test.each([

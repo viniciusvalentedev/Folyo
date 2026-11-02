@@ -57,7 +57,7 @@ export function isMercadoPagoUrl(value: unknown): value is string {
 }
 
 /** Domínios do Mercado Pago de onde a confirmação do banco (3D Secure) pode vir. A CSP da página de pagamento libera os mesmos. */
-export const MERCADO_PAGO_DOMAINS = ['mercadopago.com', 'mercadopago.com.br', 'mercadolibre.com', 'mercadolivre.com.br', 'mlstatic.com'] as const
+export const MERCADO_PAGO_DOMAINS = ['mercadopago.com', 'mercadopago.com.br', 'mercadolibre.com', 'mercadolivre.com', 'mercadolivre.com.br', 'mlstatic.com'] as const
 
 /** O servidor de um endereço (sem caminho), em minúsculas, ou null se não for um endereço https válido. */
 function httpsHost(value: string): string | null {
@@ -218,6 +218,7 @@ const DECLINE_MESSAGES: Record<string, string> = {
   amount_limit_exceeded: 'O valor passou do limite do cartão. Tente outro cartão ou pague com Pix.',
   invalid_installments: 'Este parcelamento não está disponível para o cartão. Escolha outro número de parcelas.',
   cc_rejected_3ds_challenge: 'A confirmação com o banco não foi concluída. Tente de novo.',
+  '3ds_challenge_failed': 'A confirmação com o banco não foi concluída. Nada foi cobrado. Tente de novo ou pague com Pix.',
   '3ds_challenge_expired': 'A confirmação com o banco demorou demais. Tente de novo.',
   processing_error: 'Houve um erro ao processar o pagamento. Nada foi cobrado. Tente de novo em instantes.',
 }

@@ -972,8 +972,10 @@ jeito (o curso já foi liberado) e o próximo aviso do Mercado Pago tenta enviar
 ## 3. Testar (com contas de teste)
 
 1. Um curso com preço → **Adicionar** → carrinho → **Prosseguir**. Abre `/finalizar/pagamento`, com as abas **Cartão** e **Pix**.
-2. **Cartão:** use os cartões de teste do Mercado Pago (um aprovado, um recusado e um que peça confirmação do banco,
-   o 3D Secure), com o CPF de teste indicado na documentação. Troque as parcelas e confira que o total mostrado é o do pedido.
+2. **Cartão:** use um cartão de teste do Mercado Pago (lista "Cartões de teste" na documentação) e um CPF válido. Com o 3D Secure
+   ligado, **o resultado depende do nome do titular**: `APRO-AUTH` aprova direto; `APRO-CHOK` abre o quadro "Confirme com o seu
+   banco" e aprova ao clicar em **Confirmar**; `OTHE-NAUT` e `OTHE-CHNO` são recusados; qualquer outro nome (inclusive só `APRO`)
+   é recusado pelo 3D Secure. Troque as parcelas e confira que o total mostrado é o do pedido.
 3. **Pix:** gere o QR Code, copie o código e simule o pagamento pelo painel de testes do Mercado Pago. A tela muda
    sozinha para "Pagamento confirmado" e o curso abre. Em **Painel › Alunos** o aluno aparece com o curso. O recibo chega
    no e-mail da conta e o pedido aparece em **Minhas compras** (menu lateral, `/compras`).

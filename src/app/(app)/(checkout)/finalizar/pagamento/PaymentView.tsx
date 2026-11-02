@@ -387,7 +387,9 @@ function CardForm({ order, orderId, publicKey, onResult }: { order: OrderStatusI
         number.on('binChange', (data) => void onBin(instance, data.bin ?? ''))
         setReady(true)
       })
-      .catch(() => {
+      .catch((error: unknown) => {
+        // Só o tipo e a mensagem do erro (sem dados do aluno), para quem abrir o console entender o que falhou.
+        console.error('MercadoPago.js não carregou', error instanceof Error ? error.message : 'erro desconhecido')
         if (!cancelled) setSdkFailed(true)
       })
 

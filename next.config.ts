@@ -39,7 +39,7 @@ const BUNNY_UPLOAD = 'https://video.bunnycdn.com'
  * Secure) abre em outro iframe do Mercado Pago. Por isso esta página, e SÓ ela, libera os domínios do Mercado Pago em
  * script, conexão, iframe e imagem. O resto do site continua sem nenhum deles.
  */
-const MERCADO_PAGO = ['mercadopago.com', 'mercadopago.com.br', 'mercadolibre.com', 'mercadolivre.com.br', 'mlstatic.com'].map((d) => `https://*.${d}`).join(' ')
+const MERCADO_PAGO = ['mercadopago.com', 'mercadopago.com.br', 'mercadolibre.com', 'mercadolivre.com', 'mercadolivre.com.br', 'mlstatic.com'].map((d) => `https://*.${d}`).join(' ')
 const PAYMENT_ROUTE = 'finalizar/pagamento'
 
 const buildCsp = (extra: { script?: string; connect?: string; frame?: string; img?: string } = {}) =>

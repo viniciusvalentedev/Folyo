@@ -47,6 +47,7 @@ describe('cabeçalhos de segurança (next.config.ts)', () => {
       for (const name of ['script-src', 'connect-src', 'frame-src', 'img-src']) {
         expect(directive(name), name).toContain('https://*.mercadopago.com')
         expect(directive(name), name).toContain('https://*.mlstatic.com')
+        expect(directive(name), name).toContain('https://*.mercadolivre.com ')
       }
       for (const name of ['default-src', 'style-src', 'font-src', 'media-src', 'object-src', 'base-uri', 'form-action', 'frame-ancestors']) {
         expect(directive(name), name).not.toMatch(/mercado|mlstatic/)
