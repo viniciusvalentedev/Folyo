@@ -115,6 +115,7 @@ export const AUDIT_LABELS: Record<string, { label: string; icon: string }> = {
   'cupom.alterado': { label: 'Promoção de lançamento alterada', icon: 'Ticket' },
   'acesso.liberado': { label: 'Acesso a curso liberado', icon: 'Lock' },
   'acesso.removido': { label: 'Acesso a curso removido', icon: 'Lock' },
+  'pedido.estorno': { label: 'Estorno de compra', icon: 'Undo2' },
 }
 
 /** "aluno → editor" vira "Aluno → Editor de conteúdo". */

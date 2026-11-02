@@ -17,6 +17,9 @@
 .pay-code { font-family: var(--f-mono); font-size: 12.5px; text-overflow: ellipsis; }
 .pay-actions { display: flex; flex-wrap: wrap; gap: 12px; }
 .pay-3ds { width: 100%; }
+/* "Cancelar e tentar de novo": fica abaixo do Pix, da janela do banco ou da espera. */
+.pay-cancel { display: grid; gap: 10px; justify-items: start; width: 100%; padding-top: 14px; border-top: 1px solid var(--line); }
+.pay-cancel .alert { margin: 0; width: 100%; }
 .pay-3ds-frame { width: 100%; height: 560px; background: #fff; border: 1px solid var(--line-2); border-radius: 12px; }
 .fin-note .ico { vertical-align: -2px; }
 @media (max-width: 560px) { .pay-row { grid-template-columns: minmax(0, 1fr); } .pay-3ds-frame { height: 520px; } }

@@ -15,8 +15,11 @@ import { findCourse } from '@/lib/domain/catalog'
 import { plural } from '@/lib/format'
 import type { Course } from '@/lib/types'
 
-/** Carrinho: itens, cupom e totais. Todo valor mostrado aqui veio do servidor. */
-export function CartView() {
+/**
+ * Carrinho: itens, cupom e totais. Todo valor mostrado aqui veio do servidor.
+ * `previous` são as compras anteriores, montadas no servidor e mostradas embaixo (também com o carrinho vazio).
+ */
+export function CartView({ previous }: { previous?: React.ReactNode }) {
   const { catalog } = useApp()
   const { cart, forSale } = useShop()
   const router = useRouter()
@@ -58,6 +61,7 @@ export function CartView() {
       <Shell>
         {removed > 0 && <RemovedNotice n={removed} />}
         <EmptyCart />
+        {previous}
       </Shell>
     )
   }
@@ -140,6 +144,7 @@ export function CartView() {
           </p>
         </aside>
       </div>
+      {previous}
     </Shell>
   )
 }

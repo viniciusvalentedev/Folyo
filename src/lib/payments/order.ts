@@ -133,6 +133,23 @@ export const myOrderSchema = z.object({
 export const myOrdersSchema = z.array(myOrderSchema).max(100)
 export type MyOrder = z.infer<typeof myOrderSchema>
 
+/** Uma compra na ficha do aluno, no painel (resposta de admin_user_orders). `refundable`: pago pelo site, dá para estornar. */
+export const adminOrderSchema = z.object({
+  id: orderIdSchema,
+  status: z.enum(ORDER_STATUSES),
+  totalCents: z.number().int(),
+  createdAt: z.string().max(64),
+  paidAt: z.string().max(64).nullable(),
+  refundedAt: z.string().max(64).nullable(),
+  refundable: z.boolean(),
+  items: z.array(z.object({ courseId: z.string().max(40), title: z.string().max(200), priceCents: z.number().int() })),
+})
+export const adminOrdersSchema = z.array(adminOrderSchema).max(50)
+export type AdminOrder = z.infer<typeof adminOrderSchema>
+
+/** Resultado de estornar pelo painel. `done` = o acesso já foi retirado; senão o aviso do Mercado Pago conclui em instantes. */
+export type RefundResult = { ok: true; done: boolean } | { ok: false; error: string }
+
 /** "3F2B8C1E": o número do pedido que o aluno cita ao falar com o suporte (aparece na tela e no recibo). */
 export const orderNumber = (orderId: string) => orderId.slice(0, 8).toUpperCase()
 

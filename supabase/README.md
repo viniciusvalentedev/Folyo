@@ -902,8 +902,23 @@ Supabase → **SQL Editor** → rode **nesta ordem**, cada um em uma consulta no
 1. `supabase/migrations/20261102000001_pagamentos.sql`
 2. `supabase/migrations/20261102000002_compras_recibo.sql`
 3. `supabase/migrations/20261102000003_pagamento_transparente.sql`
+4. `supabase/migrations/20261103000001_estorno_painel.sql` (botão **Estornar** do painel; veja abaixo)
 
-Cada um pode ser repetido sem problema e nenhum **apaga dado**. O terceiro só funciona depois dos dois primeiros.
+Cada um pode ser repetido sem problema e nenhum **apaga dado**. O terceiro só funciona depois dos dois primeiros, e o
+quarto depois dos três.
+
+O quarto (`..._estorno_painel.sql`) é o do botão **Estornar** (Painel › Alunos › ficha do aluno › **Compras**). Cria duas
+funções, só para quem está logado (nunca `anon` nem `service_role`):
+
+- **`admin_user_orders(aluno)`**: as compras pagas e estornadas do aluno (até 50), com os itens e se dá para estornar.
+  Só **administrador ou proprietário**, com a verificação em duas etapas.
+- **`admin_refund_begin(pedido, motivo)`**: chamada ANTES de o servidor pedir o estorno ao Mercado Pago. O banco confere o
+  papel, confere que o pedido está **pago pelo site**, descobre a ordem dele no Mercado Pago e **registra no histórico do
+  painel** (`pedido.estorno`, filtro "Tudo") quem pediu e por quê. Ela não estorna nada: o dinheiro só volta pelo Mercado Pago,
+  e o **acesso ao curso só sai** quando o servidor lê o estorno na API deles (`apply_payment`, o mesmo caminho do aviso).
+
+Pode rodar **antes ou depois** de publicar o código. Sem ele, a ficha do aluno só não mostra o bloco "Compras" (nada quebra);
+os botões **Cancelar e tentar de novo** e **Minhas compras** em Configurações **não dependem de SQL novo**.
 
 O terceiro (`..._pagamento_transparente.sql`) troca o link de pagamento pelo pagamento dentro do site: cria a tabela
 `private.payment_attempts` (cada tentativa de pagamento; fora da API) e as funções **`begin_payment_attempt`** (o aluno
@@ -978,14 +993,21 @@ jeito (o curso já foi liberado) e o próximo aviso do Mercado Pago tenta enviar
    é recusado pelo 3D Secure. Troque as parcelas e confira que o total mostrado é o do pedido.
 3. **Pix:** gere o QR Code, copie o código e simule o pagamento pelo painel de testes do Mercado Pago. A tela muda
    sozinha para "Pagamento confirmado" e o curso abre. Em **Painel › Alunos** o aluno aparece com o curso. O recibo chega
-   no e-mail da conta e o pedido aparece em **Minhas compras** (menu lateral, `/compras`).
+   no e-mail da conta e o pedido aparece em **Configurações › Minhas compras** (e em "Compras anteriores", embaixo do
+   carrinho). O endereço antigo `/compras` leva para lá.
 4. Confira no Mercado Pago (Webhooks → histórico) que as notificações tiveram resposta **200**.
-5. Teste um **estorno** no painel do Mercado Pago: o acesso ao curso daquele pedido deve sumir.
+5. Teste um **estorno**: **Painel › Alunos › (aluno) › Compras › Estornar** (peça o motivo, confirme). O Mercado Pago devolve
+   o valor, o acesso ao curso daquele pedido some e o pedido passa a "Estornado" em Minhas compras. O pedido fica no histórico
+   do painel (**Estorno de compra**). Estornar pelo painel do Mercado Pago continua funcionando do mesmo jeito.
+   Para testar o **Cancelar e tentar de novo**: gere um Pix (ou um cartão de teste que peça a confirmação do banco), clique em
+   **Cancelar e tentar de novo** e confira que a tela volta ao formulário de pagamento e que o Pix antigo não pode mais ser pago.
+   Se esse cancelamento for recusado pelo Mercado Pago no seu ambiente, a tela avisa e o pedido continua bloqueado (de propósito).
 6. Abra o **console do navegador** (F12) em `/finalizar/pagamento` durante os testes. Qualquer aviso de
    **Content Security Policy** (algo bloqueado) precisa ser corrigido antes de abrir a venda: anote o endereço bloqueado.
 
 Limites que valem a pena conhecer: só **cartão de crédito** e **Pix** (sem débito nem boleto); enquanto um Pix está em
-aberto (até 60 minutos) o mesmo pedido não aceita outro pagamento; ainda não existe "cancelar pedido".
+aberto (até 60 minutos) o mesmo pedido não aceita outro pagamento, a não ser que o aluno use **Cancelar e tentar de novo** na
+tela de espera (o cancelamento só vale depois que o Mercado Pago confirma; pagamento "em análise" não cancela).
 
 ## 4. Antes de cobrar de verdade
 
@@ -1002,12 +1024,16 @@ aberto (até 60 minutos) o mesmo pedido não aceita outro pagamento; ainda não 
 - O SQL só **acrescenta** (tabelas e funções novas) e troca três funções (`cart_quote`, `redeem_launch_coupon`,
   `export_my_data`). Para voltar ao comportamento antigo delas, rode de novo essas três do arquivo
   `20261029000001_cupom_lancamento.sql`. Não apague as tabelas de pedido se já houver pagamentos.
+- **Desfazer o botão Estornar:** o código funciona sem o SQL (o bloco "Compras" some da ficha). Se quiser remover as funções:
+  `drop function if exists public.admin_user_orders(uuid), public.admin_refund_begin(uuid, text);`. Estornos já feitos e
+  o histórico do painel continuam como estão.
 
 ## Limitações conhecidas
 
 - Só curso **avulso**. Assinatura mensal (cobrança recorrente) não existe ainda.
 - O recibo é um comprovante da compra, **não é nota fiscal**. O e-mail não é reenviado pela tela (só pelo próximo aviso do
   Mercado Pago, se o primeiro envio falhou). "Minhas compras" não mostra pedidos cancelados ou vencidos sem pagamento.
+- O botão **Estornar** faz sempre estorno **total** da compra. Estorno parcial continua sendo feito no painel do Mercado Pago.
 - Estorno **parcial** não tira acesso (só estorno total e chargeback). Pagamento duplicado do mesmo pedido fica
   registrado em `private.payment_events` como `pagamento_duplicado` e precisa de reembolso manual.
 - O histórico do painel (auditoria) não mostra compras: elas ficam em `private.payment_events` e `private.orders`.

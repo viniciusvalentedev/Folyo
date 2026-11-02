@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { useApp } from '@/components/providers/AppState'
 import { Button } from '@/components/ui/Button'
 import { Field, Select, Toggle } from '@/components/ui/controls'
-import { Icon, type IconName } from '@/components/ui/Icon'
+import { Icon } from '@/components/ui/Icon'
 import { PageHead } from '@/components/ui/PageHead'
 import { supportEmailOf } from '@/lib/app-config'
 import { THEME_OPTIONS } from '@/lib/theme'
@@ -13,23 +13,17 @@ import type { Settings } from '@/lib/types'
 import { fieldErrors, personalDataSchema } from '@/lib/validation'
 import { AccountSection } from './AccountSection'
 import { PublicAddress } from './PublicAddress'
+import { SECTIONS, type Section } from './sections'
 import { ThemePicker } from './ThemePicker'
 
-type Section = 'dados' | 'privacidade' | 'notificacoes' | 'aprendizagem' | 'preferencias' | 'conta'
-
-const SECTIONS: { id: Section; label: string; icon: IconName }[] = [
-  { id: 'dados', label: 'Dados pessoais', icon: 'User' },
-  { id: 'privacidade', label: 'Privacidade', icon: 'Shield' },
-  { id: 'notificacoes', label: 'Notificações', icon: 'Bell' },
-  { id: 'aprendizagem', label: 'Aprendizagem', icon: 'BookOpen' },
-  { id: 'preferencias', label: 'Preferências', icon: 'SlidersHorizontal' },
-  { id: 'conta', label: 'Conta', icon: 'LogOut' },
-]
-
-export function SettingsView() {
+/**
+ * `purchases` é a lista de "Minhas compras", montada no servidor (os pedidos vêm do banco) e entregue pronta para
+ * esta tela, que só decide quando mostrá-la. `initialSection` vem do `?secao=` da URL.
+ */
+export function SettingsView({ purchases, initialSection = 'dados' }: { purchases: React.ReactNode; initialSection?: Section }) {
   const { s, a, toast, config } = useApp()
   const supportEmail = supportEmailOf(config)
-  const [section, setSection] = useState<Section>('dados')
+  const [section, setSection] = useState<Section>(initialSection)
   const [name, setName] = useState(s.user.name)
   const [phone, setPhone] = useState(s.user.phone)
   const [city, setCity] = useState(s.user.city)
@@ -109,6 +103,8 @@ export function SettingsView() {
               </div>
             </section>
           )}
+
+          {section === 'compras' && purchases}
 
           {section === 'privacidade' && (
             <section className="set-sec">

@@ -427,6 +427,41 @@ export async function createGatewayOrder(cfg: MercadoPagoConfig, input: NewGatew
   throw new GatewayError('Resposta inesperada do Mercado Pago')
 }
 
+/**
+ * Cancela uma ordem que ainda não foi paga (Pix gerado ou confirmação do banco pendente) e devolve a ordem como ela ficou.
+ * É o Mercado Pago quem decide: se o pagamento acabou de ser aprovado, ele recusa (GatewayError com o status HTTP) e quem
+ * chamou confere a ordem de novo. Soltar o pedido só no nosso banco deixaria o Pix ou o 3DS ainda pagável lá: risco de cobrar duas vezes.
+ */
+export async function cancelGatewayOrder(cfg: MercadoPagoConfig, providerOrderId: string): Promise<GatewayOrder> {
+  if (!ID.test(providerOrderId)) throw new GatewayError('Id de ordem inválido')
+  let raw: unknown
+  try {
+    raw = await new Order(sdkConfig(cfg, 15_000)).cancel({ id: providerOrderId })
+  } catch (error) {
+    throw gatewayFailure(error, 'Mercado Pago recusou o cancelamento')
+  }
+  const order = parseGatewayOrder(raw)
+  if (!order || order.id !== providerOrderId) throw new GatewayError('Resposta inesperada do Mercado Pago')
+  return order
+}
+
+/**
+ * Estorno TOTAL de uma ordem paga (painel). Sem corpo, o Mercado Pago estorna todas as transações da ordem (a Folyo cria
+ * uma só). O acesso aos cursos NÃO sai daqui: quem chama aplica a ordem lida (apply_payment), como no aviso do Mercado Pago.
+ */
+export async function refundGatewayOrder(cfg: MercadoPagoConfig, providerOrderId: string): Promise<GatewayOrder> {
+  if (!ID.test(providerOrderId)) throw new GatewayError('Id de ordem inválido')
+  let raw: unknown
+  try {
+    raw = await new Order(sdkConfig(cfg, 25_000)).refund({ id: providerOrderId })
+  } catch (error) {
+    throw gatewayFailure(error, 'Mercado Pago recusou o estorno')
+  }
+  const order = parseGatewayOrder(raw)
+  if (!order || order.id !== providerOrderId) throw new GatewayError('Resposta inesperada do Mercado Pago')
+  return order
+}
+
 export type OrderLookup = { kind: 'ok'; order: GatewayOrder } | { kind: 'not_found' }
 
 /**

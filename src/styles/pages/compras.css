@@ -1,10 +1,14 @@
-/* Página: Minhas compras */
+/* Minhas compras (dentro de Configurações) e Compras anteriores (no carrinho) */
 
-.buy-page > * + * { margin-top: 24px; }
+.buy-section { display: grid; gap: 22px; }
+.buy-section h2 { font-size: 20px; }
+.buy-lead { margin: 4px 0 0; color: var(--mute); font-size: 14.5px; }
+.cart-prev { margin-top: 56px; padding-top: 32px; border-top: 1px solid var(--line); }
+.buy-prev-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .buy-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; max-width: 760px; }
 .buy-card { display: grid; gap: 18px; background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 24px; min-width: 0; }
 .buy-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
-.buy-head h2 { font-size: 18px; letter-spacing: .02em; }
+.buy-head h3 { font-size: 18px; letter-spacing: .02em; }
 .buy-date { margin: 4px 0 0; color: var(--mute); font-size: 13.5px; }
 .buy-items { list-style: none; margin: 0; padding: 0; display: grid; }
 .buy-items li { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-top: 1px solid var(--line); flex-wrap: wrap; }
@@ -17,10 +21,9 @@
 .buy-note { display: grid; gap: 12px; justify-items: start; }
 .buy-note p, .buy-note-line { margin: 0; display: flex; gap: 8px; align-items: flex-start; color: var(--mute); font-size: 13.5px; line-height: 1.5; }
 .buy-note p .ico, .buy-note-line .ico { flex: none; margin-top: 2px; }
-.buy-help { margin-top: 28px; color: var(--mute); font-size: 13.5px; max-width: 760px; }
+.buy-help { margin: 6px 0 0; color: var(--mute); font-size: 13.5px; max-width: 760px; }
 .buy-help a { color: var(--link); }
 .buy-skel { height: 168px; max-width: 760px; border-radius: 20px; background: var(--card); border: 1px solid var(--line); animation: buyPulse 1.4s ease-in-out infinite; }
-.buy-skel + .buy-skel { margin-top: 18px; }
 @keyframes buyPulse { 50% { opacity: .55; } }
 @media (prefers-reduced-motion: reduce) { .buy-skel { animation: none; } }
 @media (max-width: 560px) { .buy-card { padding: 18px; border-radius: 16px; } .buy-items li { gap: 8px 12px; } }

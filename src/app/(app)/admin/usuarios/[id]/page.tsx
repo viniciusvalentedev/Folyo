@@ -6,6 +6,7 @@ import { CourseAccessPanel } from '@/components/admin/CourseAccessPanel'
 import { SectionDenied, SectionLoading } from '@/components/admin/sections'
 import { AdminHead, Badge, fmtDate, fmtDateTime, fmtNum, Metric, Notice } from '@/components/admin/ui'
 import { RoleChanger, SuspendButton } from '@/components/admin/UserActions'
+import { UserOrders } from '@/components/admin/UserOrders'
 import { ButtonLink } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import { EmptyState, Progress } from '@/components/ui/indicators'
@@ -13,6 +14,7 @@ import { assignableRoles, canManage, ROLES } from '@/lib/admin/roles'
 import { allowed, getUserDetail } from '@/lib/data/admin'
 import { courseCounts } from '@/lib/admin/catalog'
 import { getFullCatalog, getTrails } from '@/lib/data/catalog'
+import { getUserOrders } from '@/lib/data/orders'
 import { getUserCourseAccess } from '@/lib/data/shop'
 import { findTrail, LIFE_STAGES } from '@/lib/trails'
 import { uuidSchema } from '@/lib/validation'
@@ -41,7 +43,7 @@ async function UserPage({ params }: { params: PageProps<'/admin/usuarios/[id]'>[
   const { id } = await params
   // Id com formato estranho nem chega ao banco.
   if (!uuidSchema.safeParse(id).success) return <NotFound />
-  const [u, catalog, access, { trails }] = await Promise.all([getUserDetail(id), getFullCatalog(), getUserCourseAccess(id), getTrails()])
+  const [u, catalog, access, { trails }, orders] = await Promise.all([getUserDetail(id), getFullCatalog(), getUserCourseAccess(id), getTrails(), getUserOrders(id)])
   if (!u) return <NotFound />
   const paid = catalog.courses.flatMap((c) => (c.priceCents ? [{ id: c.id, title: c.title, priceCents: c.priceCents }] : []))
 
@@ -160,6 +162,14 @@ async function UserPage({ params }: { params: PageProps<'/admin/usuarios/[id]'>[
           <p className="muted">Para ver e liberar cursos pagos, rode no Supabase o SQL do cupom de lançamento (veja supabase/README.md).</p>
         )}
       </section>
+      {orders && (
+        <section className="panel">
+          <header className="ad-sec-head">
+            <h2>Compras</h2>
+          </header>
+          <UserOrders orders={orders} />
+        </section>
+      )}
       <p className="ad-help">
         Por privacidade, a equipe vê só este resumo. Anotações, conteúdo dos projetos e currículo ficam visíveis apenas
         para o próprio aluno.

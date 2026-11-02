@@ -93,6 +93,10 @@ export const CART_LIMITS = {
   orderStatus: { max: 60, windowMs: 60_000 },
   /** Conferir o pagamento no Mercado Pago (a tela faz de vez em quando; cada uma é uma consulta à API deles). */
   payCheck: { max: 15, windowMs: 60_000 },
+  /** "Cancelar e tentar de novo" (cada pedido cancela a ordem no Mercado Pago): baixo. */
+  payCancel: { max: 6, windowMs: 60_000 },
+  /** Estornar uma compra pelo painel (mexe em dinheiro e fala com o Mercado Pago): baixo, por conta da equipe. */
+  refund: { max: 10, windowMs: 60_000 },
 } satisfies Record<string, Rule>
 
 /* Contagem em memória, por servidor (veja limiter.ts). */

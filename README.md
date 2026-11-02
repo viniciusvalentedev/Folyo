@@ -59,7 +59,9 @@ Onde estamos:
   ordem na API do Mercado Pago com o nosso token (pelo webhook `/api/webhooks/mercadopago`, logo após uma aprovação ou
   no botão "conferir pagamento"), chama `apply_payment` (valor e moeda conferidos, idempotente; estorno tira o acesso).
   Depois de pago, o aluno recebe o **recibo por e-mail** (pela Zoho, uma vez por pedido, com o link para o curso) e vê o
-  pedido em **Minhas compras** (`/compras`). Exige três SQL novos e a configuração do Mercado Pago e do e-mail da Zoho
+  pedido em **Configurações › Minhas compras** (e em "Compras anteriores", embaixo do carrinho). Na tela de espera do
+  banco há o botão **Cancelar e tentar de novo** (só vale depois que o Mercado Pago confirma o cancelamento) e, no painel,
+  o botão **Estornar** na ficha do aluno. Exige quatro SQL novos e a configuração do Mercado Pago e do e-mail da Zoho
   (veja [`supabase/README.md`](supabase/README.md), "Pagamentos").
 - **Aulas em sequência, "continuar de onde parou" e conclusão só no fim do vídeo** ✅ o aluno só abre uma aula depois
   de concluir as anteriores (conferido no servidor); o ponto em que parou o vídeo é salvo e vale em qualquer aparelho;

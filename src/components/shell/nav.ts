@@ -16,7 +16,6 @@ export const NAV_GROUPS: { group: string | null; items: NavItem[] }[] = [
     items: [
       { to: '/cursos', label: 'Explorar cursos', icon: 'Compass' },
       { to: '/progresso', label: 'Meu progresso', icon: 'ChartColumn' },
-      { to: '/compras', label: 'Minhas compras', icon: 'ShoppingBag' },
     ],
   },
   {

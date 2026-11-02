@@ -1,7 +1,7 @@
+import Link from 'next/link'
 import { ButtonLink } from '@/components/ui/Button'
 import { Icon } from '@/components/ui/Icon'
 import { EmptyState } from '@/components/ui/indicators'
-import { PageHead } from '@/components/ui/PageHead'
 import { formatBRL } from '@/lib/cart'
 import { FALLBACK_SUPPORT_EMAIL } from '@/lib/app-config'
 import { longDate, orderNumber, type MyOrder } from '@/lib/payments/order'
@@ -14,11 +14,20 @@ const STATUS: Record<MyOrder['status'], { label: string; pill: string }> = {
   expirado: { label: 'Vencido', pill: 'pill-neutral' },
 }
 
-/** "Minhas compras": os pedidos da própria conta, com o recibo de cada um e o caminho para os cursos. */
-export function PurchasesView({ orders }: { orders: MyOrder[] }) {
+/** Onde as compras ficam: Configurações › Minhas compras. */
+export const PURCHASES_HREF = '/configuracoes?secao=compras'
+
+/**
+ * "Minhas compras": os pedidos da própria conta, com o recibo de cada um e o caminho para os cursos.
+ * Aparece dentro de Configurações (a página /compras antiga leva para lá).
+ */
+export function PurchasesList({ orders }: { orders: MyOrder[] }) {
   return (
-    <div className="page surface-ink buy-page">
-      <PageHead eyebrow="Conta" title="Minhas compras" lead="Os cursos que você comprou, com o comprovante de cada pedido." />
+    <section className="buy-section" aria-labelledby="buy-h">
+      <div>
+        <h2 id="buy-h">Minhas compras</h2>
+        <p className="buy-lead">Os cursos que você comprou, com o comprovante de cada pedido.</p>
+      </div>
 
       {orders.length === 0 ? (
         <EmptyState
@@ -45,7 +54,34 @@ export function PurchasesView({ orders }: { orders: MyOrder[] }) {
       <p className="buy-help">
         Dúvida sobre uma compra? Escreva para <a href={`mailto:${FALLBACK_SUPPORT_EMAIL}`}>{FALLBACK_SUPPORT_EMAIL}</a> e cite o número do pedido.
       </p>
-    </div>
+    </section>
+  )
+}
+
+/**
+ * Compras anteriores no carrinho: só o que foi pago (ou estornado), as mais recentes, com o caminho para ver todas.
+ * Pedido em aberto fica de fora: o carrinho já é o caminho para pagá-lo.
+ */
+export function PreviousPurchases({ orders }: { orders: MyOrder[] }) {
+  const done = orders.filter((o) => o.status === 'pago' || o.status === 'reembolsado')
+  if (done.length === 0) return null
+  const shown = done.slice(0, 3)
+  return (
+    <section className="buy-section cart-prev" aria-labelledby="cart-prev-h">
+      <div className="buy-prev-head">
+        <h2 id="cart-prev-h">Compras anteriores</h2>
+        <Link href={PURCHASES_HREF} className="link-btn">
+          Ver todas as compras <Icon name="ArrowRight" size={14} />
+        </Link>
+      </div>
+      <ul className="buy-list">
+        {shown.map((order) => (
+          <li key={order.id}>
+            <OrderCard order={order} />
+          </li>
+        ))}
+      </ul>
+    </section>
   )
 }
 
@@ -70,7 +106,7 @@ function OrderCard({ order }: { order: MyOrder }) {
     <article className="buy-card" aria-labelledby={`pedido-${order.id}`}>
       <header className="buy-head">
         <div>
-          <h2 id={`pedido-${order.id}`}>Pedido {number}</h2>
+          <h3 id={`pedido-${order.id}`}>Pedido {number}</h3>
           {date && <p className="buy-date">{order.status === 'pendente' ? 'Criado em' : 'Pago em'} {date}</p>}
         </div>
         <span className={`pill ${status.pill}`}>{status.label}</span>
@@ -119,11 +155,7 @@ function OrderCard({ order }: { order: MyOrder }) {
 
 export function PurchasesSkeleton() {
   return (
-    <div className="page surface-ink buy-page" aria-busy="true" aria-label="Carregando suas compras">
-      <header className="pagehead">
-        <p className="eyebrow">Conta</p>
-        <h1>Minhas compras</h1>
-      </header>
+    <div className="buy-section" aria-busy="true" aria-label="Carregando suas compras">
       <div className="buy-skel" />
       <div className="buy-skel" />
     </div>

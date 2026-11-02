@@ -6,7 +6,7 @@ import { CheckoutHeader } from '@/components/cart/CartParts'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { Field, Tabs } from '@/components/ui/controls'
 import { Icon } from '@/components/ui/Icon'
-import { checkPaymentAction, orderStatusAction, payOrderAction } from '@/lib/actions/checkout'
+import { cancelPaymentAction, checkPaymentAction, orderStatusAction, payOrderAction } from '@/lib/actions/checkout'
 import { formatBRL } from '@/lib/cart'
 import { plural } from '@/lib/format'
 import {
@@ -79,6 +79,10 @@ const deviceId = () => (typeof window !== 'undefined' && /^[A-Za-z0-9._-]{8,200}
 
 const GENERIC_ERROR = 'Não foi possível concluir agora. Nada foi cobrado. Tente de novo em instantes.'
 const CARD_DATA_ERROR = 'Confira os dados do cartão (número, validade e código) e tente de novo.'
+const CANCEL_ERROR = 'Não foi possível cancelar agora. Tente de novo em instantes. Se você já pagou, aguarde: o curso é liberado sozinho.'
+
+/** O que os painéis de espera (Pix, banco, análise) precisam para oferecer "Cancelar e tentar de novo". */
+type CancelProps = { onCancel: () => void; busy: boolean; error: string | null }
 
 // ---------- Tela ----------
 
@@ -92,6 +96,9 @@ export function PaymentView({ orderId, publicKey }: { orderId: string | null; pu
   const [localPix, setLocalPix] = useState<PixInfo | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [checking, setChecking] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelError, setCancelError] = useState<string | null>(null)
+  const [cancelled, setCancelled] = useState(false)
   const loaded = useRef(false)
 
   const refresh = useCallback(
@@ -160,7 +167,36 @@ export function PaymentView({ orderId, publicKey }: { orderId: string | null; pu
     setChecking(false)
   }
 
+  /**
+   * "Cancelar e tentar de novo". O servidor cancela no Mercado Pago e só então solta o pedido; se o pagamento acabou de ser
+   * aprovado lá, o pedido vira "pago" e a tela segue para a confirmação sozinha.
+   */
+  const cancel = async () => {
+    if (cancelling || !orderId) return
+    setCancelling(true)
+    setCancelError(null)
+    try {
+      const r = await cancelPaymentAction(orderId)
+      if (!r.ok) {
+        setCancelError(r.error)
+        await refresh(false)
+        return
+      }
+      loaded.current = true
+      setThreeDs(null)
+      setLocalPix(null)
+      setNotice(null)
+      setOrder(r.order)
+      setCancelled(r.order.status === 'pendente' && r.order.attempt?.open !== true)
+    } catch {
+      setCancelError(CANCEL_ERROR)
+    } finally {
+      setCancelling(false)
+    }
+  }
+
   const handleResult = async (r: PayResult) => {
+    setCancelled(false)
     if (!r.ok) {
       setNotice(r.error)
       await refresh(false)
@@ -179,6 +215,10 @@ export function PaymentView({ orderId, publicKey }: { orderId: string | null; pu
     order?.status === 'pendente' && attempt && !attempt.open && attempt.status === 'recusado' && attempt.method === 'cartao' && method === 'cartao'
       ? declineMessage(attempt.statusDetail)
       : null
+  // Só Pix gerado ou confirmação do banco. "Em análise" pode ser aprovado a qualquer momento: esse só espera.
+  const awaitingAction = attempt?.open === true && (attempt.status === 'aguardando_pix' || attempt.status === 'aguardando_acao')
+  const cancelProps: CancelProps | null =
+    order?.status === 'pendente' && (awaitingAction || threeDs !== null || pix !== null) ? { onCancel: cancel, busy: cancelling, error: cancelError } : null
 
   return (
     <div className="shop shop-dark surface-ink">
@@ -222,13 +262,20 @@ export function PaymentView({ orderId, publicKey }: { orderId: string | null; pu
                       setThreeDs(null)
                       void refresh(true)
                     }}
+                    cancel={cancelProps}
                   />
                 ) : pix ? (
-                  <PixPanel pix={pix} checking={checking} onCheck={check} />
+                  <PixPanel pix={pix} checking={checking} onCheck={check} cancel={cancelProps} />
                 ) : open ? (
-                  <WaitingPanel review={attempt?.status === 'processando'} checking={checking} onCheck={check} />
+                  <WaitingPanel review={attempt?.status === 'processando'} checking={checking} onCheck={check} cancel={cancelProps} />
                 ) : (
                   <>
+                    {cancelled && !notice && !declined && (
+                      <p className="alert alert-info" role="status">
+                        <Icon name="Info" size={18} />
+                        <span>Pagamento cancelado. Nada foi cobrado. Escolha como você quer pagar.</span>
+                      </p>
+                    )}
                     <Tabs
                       label="Forma de pagamento"
                       value={method}
@@ -549,7 +596,25 @@ function minutesLeft(iso: string | null, now: number): number | null {
   return Number.isNaN(t) ? null : Math.max(0, Math.ceil((t - now) / 60_000))
 }
 
-function PixPanel({ pix, checking, onCheck }: { pix: PixInfo; checking: boolean; onCheck: () => void }) {
+/** "Cancelar e tentar de novo": libera a escolha de outra forma de pagar sem esperar o prazo do Pix ou do banco. */
+function CancelAttempt({ cancel, hint }: { cancel: CancelProps; hint: string }) {
+  return (
+    <div className="pay-cancel">
+      {cancel.error && (
+        <p className="alert alert-err" role="alert">
+          <Icon name="CircleAlert" size={18} />
+          <span>{cancel.error}</span>
+        </p>
+      )}
+      <Button variant="ghost" size="lg" icon="Undo2" onClick={cancel.onCancel} disabled={cancel.busy} aria-busy={cancel.busy}>
+        {cancel.busy ? 'Cancelando…' : 'Cancelar e tentar de novo'}
+      </Button>
+      <p className="pay-hint">{hint}</p>
+    </div>
+  )
+}
+
+function PixPanel({ pix, checking, onCheck, cancel }: { pix: PixInfo; checking: boolean; onCheck: () => void; cancel: CancelProps | null }) {
   const [copied, setCopied] = useState(false)
   const [now, setNow] = useState<number | null>(null)
   useEffect(() => {
@@ -602,13 +667,14 @@ function PixPanel({ pix, checking, onCheck }: { pix: PixInfo; checking: boolean;
           Abrir no Mercado Pago <Icon name="ExternalLink" size={13} />
         </a>
       )}
+      {cancel && <CancelAttempt cancel={cancel} hint="Quer pagar de outro jeito? Cancele este Pix e escolha de novo. Se você já pagou, não cancele: a confirmação chega sozinha." />}
     </div>
   )
 }
 
 // ---------- Confirmação do banco (3D Secure) e espera ----------
 
-function ThreeDsFrame({ url, onDone }: { url: string; onDone: () => void }) {
+function ThreeDsFrame({ url, onDone, cancel }: { url: string; onDone: () => void; cancel: CancelProps | null }) {
   const frame = useRef<HTMLIFrameElement>(null)
   const safe = isThreeDsUrl(url)
 
@@ -624,7 +690,7 @@ function ThreeDsFrame({ url, onDone }: { url: string; onDone: () => void }) {
     return () => window.removeEventListener('message', onMessage)
   }, [onDone])
 
-  if (!safe) return <WaitingPanel review={false} checking={false} onCheck={onDone} />
+  if (!safe) return <WaitingPanel review={false} checking={false} onCheck={onDone} cancel={cancel} />
   return (
     <div className="pay-3ds">
       <h2 className="pay-h2">Confirme com o seu banco</h2>
@@ -637,11 +703,12 @@ function ThreeDsFrame({ url, onDone }: { url: string; onDone: () => void }) {
         sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
         referrerPolicy="no-referrer"
       />
+      {cancel && <CancelAttempt cancel={cancel} hint="A janela do banco não abriu ou não dá para concluir? Cancele e escolha outra forma de pagar." />}
     </div>
   )
 }
 
-function WaitingPanel({ review, checking, onCheck }: { review: boolean; checking: boolean; onCheck: () => void }) {
+function WaitingPanel({ review, checking, onCheck, cancel }: { review: boolean; checking: boolean; onCheck: () => void; cancel: CancelProps | null }) {
   return (
     <div className="pay-wait" aria-live="polite">
       <span className="cart-spin" aria-hidden="true" />
@@ -649,16 +716,19 @@ function WaitingPanel({ review, checking, onCheck }: { review: boolean; checking
       <p className="pay-hint">
         {review
           ? 'O Mercado Pago está analisando o pagamento. Pode levar alguns minutos. Você pode fechar esta página: os cursos são liberados na sua conta assim que ele for aprovado.'
-          : 'Estamos confirmando com o banco. Esta tela atualiza sozinha. Se a janela do banco foi fechada, você poderá tentar de novo em alguns minutos.'}
+          : cancel
+            ? 'Estamos confirmando com o banco. Esta tela atualiza sozinha. Se a janela do banco foi fechada, cancele e tente de novo.'
+            : 'Estamos confirmando com o banco. Esta tela atualiza sozinha. Se a janela do banco foi fechada, você poderá tentar de novo em alguns minutos.'}
       </p>
       <div className="pay-actions">
         <Button variant="quiet" size="lg" icon="RefreshCw" onClick={onCheck} disabled={checking} aria-busy={checking}>
           {checking ? 'Conferindo…' : 'Conferir pagamento'}
         </Button>
-        <ButtonLink href="/compras" variant="ghost" size="lg">
+        <ButtonLink href="/configuracoes?secao=compras" variant="ghost" size="lg">
           Ver minhas compras
         </ButtonLink>
       </div>
+      {cancel && !review && <CancelAttempt cancel={cancel} hint="Isso libera o pedido para você pagar de outro jeito. Se você já concluiu no banco, não cancele: aguarde a confirmação." />}
     </div>
   )
 }

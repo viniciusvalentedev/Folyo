@@ -4,10 +4,12 @@ import { describe, expect, test, vi } from 'vitest'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ back: () => {}, push: () => {} }) }))
 
-import { PurchasesView } from '@/app/(app)/(main)/compras/PurchasesView'
+import { PreviousPurchases, PURCHASES_HREF, PurchasesList } from '@/app/(app)/(main)/compras/PurchasesView'
+import { parseSection, SECTIONS } from '@/app/(app)/(main)/configuracoes/sections'
+import { NAV_GROUPS } from '@/components/shell/nav'
 import type { MyOrder } from '@/lib/payments/order'
 
-/** Página "Minhas compras": o que aparece para cada situação do pedido (renderização no servidor, sem navegador). */
+/** "Minhas compras" (em Configurações): o que aparece para cada situação do pedido (renderização no servidor, sem navegador). */
 
 const ID = '3f2b8c1e-6a4d-4e0b-9c53-7d1a2b3c4d5e'
 const order = (over: Partial<MyOrder> = {}): MyOrder => ({
@@ -24,7 +26,7 @@ const order = (over: Partial<MyOrder> = {}): MyOrder => ({
   ],
   ...over,
 })
-const html = (orders: MyOrder[]) => renderToStaticMarkup(createElement(PurchasesView, { orders })).replace(/ /g, ' ')
+const html = (orders: MyOrder[]) => renderToStaticMarkup(createElement(PurchasesList, { orders })).replace(/ /g, ' ')
 
 describe('Minhas compras', () => {
   test('sem compras: mostra o estado vazio e o caminho para os cursos', () => {
@@ -87,5 +89,64 @@ describe('Minhas compras', () => {
 
   test('mostra o e-mail de suporte para dúvidas', () => {
     expect(html([order()])).toContain('mailto:contato@usefolyo.com')
+  })
+})
+
+describe('Compras anteriores (no carrinho)', () => {
+  const previous = (orders: MyOrder[]) => renderToStaticMarkup(createElement(PreviousPurchases, { orders })).replace(/\u00a0/g, ' ')
+
+  test('sem compras pagas: não mostra nada', () => {
+    expect(previous([])).toBe('')
+    expect(previous([order({ status: 'pendente', paidAt: null })])).toBe('')
+    expect(previous([order({ status: 'cancelado', paidAt: null }), order({ status: 'expirado', paidAt: null })])).toBe('')
+  })
+
+  test('mostra o pedido pago e o caminho para ver todas as compras em Configurações', () => {
+    const out = previous([order()])
+    expect(out).toContain('Compras anteriores')
+    expect(out).toContain('Pedido 3F2B8C1E')
+    expect(out).toContain('href="/cursos/mkt"')
+    expect(out).toContain(`href="${PURCHASES_HREF}"`)
+  })
+
+  test('pedido em aberto fica de fora (o carrinho já é o caminho para pagar), o estornado aparece', () => {
+    const open = order({ id: '11111111-2222-4333-8444-555555555555', status: 'pendente', paidAt: null })
+    const out = previous([open, order({ status: 'reembolsado', refundedAt: '2026-11-03T10:00:00.000Z' })])
+    expect(out).not.toContain('Pedido 11111111')
+    expect(out).not.toContain('Continuar pagamento')
+    expect(out).toContain('Estornado')
+  })
+
+  test('mostra só as 3 compras mais recentes', () => {
+    const many = ['a', 'b', 'c', 'd'].map((x, i) => order({ id: `${x.repeat(8)}-6a4d-4e0b-9c53-7d1a2b3c4d5${i}` }))
+    const out = previous(many)
+    expect(out).toContain('Pedido AAAAAAAA')
+    expect(out).toContain('Pedido CCCCCCCC')
+    expect(out).not.toContain('Pedido DDDDDDDD')
+  })
+})
+
+describe('Onde "Minhas compras" fica', () => {
+  test('o endereço leva para a seção de compras de Configurações', () => {
+    expect(PURCHASES_HREF).toBe('/configuracoes?secao=compras')
+    expect(parseSection('compras')).toBe('compras')
+  })
+
+  test('Configurações: "Minhas compras" fica logo abaixo de "Dados pessoais"', () => {
+    const ids = SECTIONS.map((s) => s.id)
+    expect(ids.slice(0, 2)).toEqual(['dados', 'compras'])
+  })
+
+  test('?secao= inválido, vazio ou repetido não quebra a tela', () => {
+    expect(parseSection(undefined)).toBe('dados')
+    expect(parseSection('')).toBe('dados')
+    expect(parseSection('admin')).toBe('dados')
+    expect(parseSection(['compras', 'conta'])).toBe('compras')
+    expect(parseSection(['x'])).toBe('dados')
+  })
+
+  test('o menu lateral não tem mais "Minhas compras"', () => {
+    const items = NAV_GROUPS.flatMap((g) => g.items)
+    expect(items.some((i) => i.to === '/compras' || i.label === 'Minhas compras')).toBe(false)
   })
 })

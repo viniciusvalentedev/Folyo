@@ -5,7 +5,7 @@ import { z } from 'zod'
 import { ID_PATTERN } from '@/lib/admin/catalog'
 import { CART_MAX } from '@/lib/cart'
 import { sendOrderReceipt } from '@/lib/email/send'
-import { checkoutConfig, createGatewayOrder, GatewayError, PIX_MINUTES, webhookConfig, type GatewayOrder } from '@/lib/payments/mercadopago'
+import { cancelGatewayOrder, checkoutConfig, createGatewayOrder, GatewayError, PIX_MINUTES, webhookConfig, type GatewayOrder } from '@/lib/payments/mercadopago'
 import {
   CHECKOUT_FAILED,
   CHECKOUT_UNAVAILABLE,
@@ -24,7 +24,7 @@ import {
   type PayResult,
   type StartResult,
 } from '@/lib/payments/order'
-import { applyGatewayOrder, reconcileGatewayOrder } from '@/lib/payments/reconcile'
+import { applyGatewayOrder, reconcileGatewayOrder, type ReconcileOutcome } from '@/lib/payments/reconcile'
 import { mapGatewayStatus } from '@/lib/payments/status'
 import { CART_LIMITS, allow } from '@/lib/security/rate-limit'
 import { createSupabaseServiceClient } from '@/lib/supabase/service'
@@ -44,6 +44,8 @@ const EXPIRED = 'Sua sessão expirou. Entre de novo para continuar.'
 const TOO_MANY = 'Muitas tentativas seguidas. Espere um minuto e tente de novo.'
 const STATUS_FAILED = 'Não foi possível conferir o pedido agora.'
 const THREE_DS_FAILED = 'Não foi possível abrir a confirmação do banco. Nada foi cobrado. Tente de novo em alguns minutos.'
+const CANCEL_NOT_ALLOWED = 'Este pagamento está em análise e não pode ser cancelado agora. Aguarde a confirmação.'
+const CANCEL_FAILED = 'Não foi possível cancelar agora. Tente de novo em instantes. Se você já pagou, aguarde: o curso é liberado sozinho.'
 
 /** Por quanto tempo cada estado em aberto impede um novo pagamento do mesmo pedido (o banco aplica). */
 const OPEN_MINUTES = { processando: 30, aguardando_acao: 15, aguardando_pix: PIX_MINUTES } as const
@@ -324,4 +326,56 @@ export async function checkPaymentAction(orderId: unknown): Promise<OrderStatusR
     console.error('Falha ao conferir o pagamento', { code: error instanceof Error && 'code' in error ? error.code : undefined })
   }
   return readOrderStatus(ctx.supabase, id.data)
+}
+
+/**
+ * "Cancelar e tentar de novo": desiste do Pix gerado ou da confirmação do banco (3D Secure) para a pessoa escolher outra
+ * forma de pagar sem esperar o prazo (15 min no 3DS, 60 min no Pix).
+ *
+ * O cancelamento é feito NO MERCADO PAGO primeiro; o nosso banco só solta o pedido depois de ler a ordem lá (a mesma
+ * conciliação do aviso). Assim um Pix ou 3DS cancelado não pode ser pago depois, e um pagamento que acabou de ser aprovado
+ * (o Mercado Pago recusa cancelar) vira "pago" em vez de cobrar duas vezes. "Em análise" não cancela: pode ser aprovado a qualquer momento.
+ */
+export async function cancelPaymentAction(orderId: unknown): Promise<OrderStatusResult> {
+  const id = orderIdSchema.safeParse(orderId)
+  if (!id.success) return { ok: false, error: STATUS_FAILED }
+  const cfg = webhookConfig()
+  if (!cfg) return { ok: false, error: CHECKOUT_UNAVAILABLE }
+  const ctx = await actionContext()
+  if (!ctx) return { ok: false, error: EXPIRED }
+  if (!allow('paycancel:' + ctx.user.id, CART_LIMITS.payCancel)) return { ok: false, error: TOO_MANY }
+
+  // Só do PRÓPRIO pedido: order_status devolve nulo para pedido de outra pessoa.
+  const before = await readOrderStatus(ctx.supabase, id.data)
+  if (!before.ok) return before
+  const attempt = before.order.attempt
+  // Nada em andamento (já venceu, foi recusado ou pago): não há o que cancelar, a tela mostra o estado de agora.
+  if (before.order.status !== 'pendente' || !attempt?.open) return before
+  if (attempt.status !== 'aguardando_pix' && attempt.status !== 'aguardando_acao') return { ok: false, error: CANCEL_NOT_ALLOWED }
+
+  try {
+    const supabase = createSupabaseServiceClient()
+    const ref = await supabase.rpc('payment_attempt_ref', { p_order: id.data, p_user: ctx.user.id })
+    const providerOrderId = z.object({ providerOrderId: z.string().regex(/^[0-9A-Za-z_-]{1,64}$/) }).safeParse(ref.data)
+    if (!providerOrderId.success) return { ok: false, error: CANCEL_FAILED }
+
+    let outcome: ReconcileOutcome
+    try {
+      outcome = await applyGatewayOrder(supabase, await cancelGatewayOrder(cfg, providerOrderId.data.providerOrderId))
+    } catch (error) {
+      // O Mercado Pago recusou (ex.: o pagamento acabou de ser aprovado) ou não respondeu. Não soltamos o pedido por conta
+      // própria: lê a ordem de novo e aplica o que ela diz (paga, ainda em aberto, vencida...).
+      console.warn('Cancelamento não confirmado pelo Mercado Pago', { status: error instanceof GatewayError ? error.status : undefined })
+      outcome = await reconcileGatewayOrder(cfg, supabase, providerOrderId.data.providerOrderId)
+    }
+    if (outcome.kind === 'ok' && outcome.receiptDue) sendReceiptLater(supabase, outcome.orderId)
+  } catch (error) {
+    console.error('Falha ao cancelar o pagamento', { code: error instanceof Error && 'code' in error ? error.code : undefined })
+    return { ok: false, error: CANCEL_FAILED }
+  }
+
+  const after = await readOrderStatus(ctx.supabase, id.data)
+  // Ainda em aberto: o Mercado Pago não cancelou. Mantém o bloqueio (é ele que evita a cobrança dupla) e avisa.
+  if (after.ok && after.order.status === 'pendente' && after.order.attempt?.open) return { ok: false, error: CANCEL_FAILED }
+  return after
 }
