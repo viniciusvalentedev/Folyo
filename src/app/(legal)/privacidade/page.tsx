@@ -145,8 +145,9 @@ export default async function PrivacyPage() {
           </li>
           <li>
             <b>Mercado Pago:</b> processamento dos pagamentos (cartão e Pix). Os campos do cartão são fornecidos por ele e
-            ele nos avisa se o pagamento foi aprovado, o valor e a qual pedido ele se refere. Ele pode usar um identificador do
-            seu aparelho para prevenir fraude.
+            ele nos avisa se o pagamento foi aprovado, o valor e a qual pedido ele se refere. Para cobrar, enviamos a ele o
+            seu nome e e-mail da conta, o CPF que você digitou, os cursos do pedido e o valor. Na página de pagamento, o
+            MercadoPago.js gera um identificador do seu aparelho, que enviamos junto para o Mercado Pago prevenir fraude.
           </li>
         </ul>
         <p>
