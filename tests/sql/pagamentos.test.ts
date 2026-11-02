@@ -12,8 +12,6 @@ const migrations = loadMigrations()
 type Order = { orderId: string; totalCents: number; checkoutUrl: string | null; items: { courseId: string; title: string; priceCents: number }[] }
 type Applied = { result: string; orderId?: string }
 
-const URL_OK = 'https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=123-abc'
-
 describe.skipIf(!migrations)('pagamentos (SQL)', () => {
   let db: Db
   let ana: string
@@ -24,8 +22,6 @@ describe.skipIf(!migrations)('pagamentos (SQL)', () => {
     return r.data
   }
   const create = (uid: string, ids: string[]) => rpc<Order>(db, { uid }, 'select public.create_order($1::text[]) as r', [ids])
-  const attach = (uid: string, order: string, pref: string, url: string) =>
-    rpc<{ checkoutUrl: string }>(db, { uid }, 'select public.attach_order_checkout($1, $2, $3) as r', [order, pref, url])
   const status = (uid: string, order: string) =>
     rpc<{ status: string; totalCents: number; items: { courseId: string }[] } | null>(db, { uid }, 'select public.order_status($1) as r', [order])
   const hasAccess = async (uid: string, course: string) => ok(await rpc<boolean>(db, { uid }, 'select public.has_course_access($1) as r', [course]))
@@ -107,7 +103,7 @@ describe.skipIf(!migrations)('pagamentos (SQL)', () => {
       expect(r.ok).toBe(false)
     })
 
-    test('o mesmo carrinho reaproveita o pedido em aberto (não gera outro link)', async () => {
+    test('o mesmo carrinho reaproveita o pedido em aberto (não cria outro)', async () => {
       const a = ok(await create(bia, ['design']))
       const b = ok(await create(bia, ['design']))
       expect(b.orderId).toBe(a.orderId)
@@ -132,35 +128,18 @@ describe.skipIf(!migrations)('pagamentos (SQL)', () => {
     })
   })
 
-  describe('attach_order_checkout e order_status', () => {
-    test('grava o link do Mercado Pago; o primeiro link vale', async () => {
+  describe('order_status', () => {
+    test('o link do Checkout Pro não existe mais (o pagamento é dentro do site)', async () => {
       const o = ok(await create(ana, ['extra1']))
-      const first = ok(await attach(ana, o.orderId, 'pref-1', URL_OK))
-      expect(first.checkoutUrl).toBe(URL_OK)
-      const second = ok(await attach(ana, o.orderId, 'pref-2', 'https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=outro'))
-      expect(second.checkoutUrl).toBe(URL_OK)
-      expect(ok(await create(ana, ['extra1'])).checkoutUrl).toBe(URL_OK)
-    })
-
-    test.each([
-      'http://www.mercadopago.com.br/checkout',
-      'https://mercadopago.com.br.evil.com/checkout',
-      'https://evil.com/mercadopago.com.br/',
-      'https://www.mercadopago.com.br/x y',
-      'javascript:alert(1)',
-    ])('recusa endereço que não é do Mercado Pago: %s', async (url) => {
-      const o = ok(await create(ana, ['extra2']))
-      const r = await attach(ana, o.orderId, 'pref-x', url)
+      const r = await rpc(db, { uid: ana }, 'select public.attach_order_checkout($1, $2, $3) as r', [o.orderId, 'pref-1', 'https://www.mercadopago.com.br/x'])
       expect(r.ok).toBe(false)
-      // 23514 = a regra da tabela barrou (e não um erro qualquer).
-      if (!r.ok) expect(r.code).toBe('23514')
-      expect((await orderRow(o.orderId)).status).toBe('pendente')
-      expect(ok(await create(ana, ['extra2'])).checkoutUrl).toBeNull()
+      // 42883 = a função não existe.
+      if (!r.ok) expect(r.code).toBe('42883')
+      expect(o.checkoutUrl).toBeNull()
     })
 
-    test('outra conta não mexe no pedido nem vê o status dele', async () => {
+    test('outra conta não vê o status do pedido; o dono vê status, itens e prazo', async () => {
       const o = ok(await create(ana, ['extra3']))
-      expect((await attach(bia, o.orderId, 'pref-y', URL_OK)).ok).toBe(false)
       expect(ok(await status(bia, o.orderId))).toBeNull()
       const mine = ok(await status(ana, o.orderId))
       expect(mine?.status).toBe('pendente')

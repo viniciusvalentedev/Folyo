@@ -33,24 +33,37 @@ const SUPABASE_ORIGIN = (() => {
  */
 const BUNNY_PLAYER = 'https://iframe.mediadelivery.net'
 const BUNNY_UPLOAD = 'https://video.bunnycdn.com'
-const csp = [
-  "default-src 'self'",
-  `script-src 'self' 'unsafe-inline' ${TURNSTILE}${isDev ? " 'unsafe-eval'" : ''}`,
-  "style-src 'self' 'unsafe-inline'",
-  // Capas e imagens da biblioteca vêm do bucket PÚBLICO de imagens do Supabase (só imagens, sem script).
-  `img-src 'self' blob: data:${SUPABASE_ORIGIN ? ' ' + SUPABASE_ORIGIN : ''}`,
-  "font-src 'self'",
-  `connect-src 'self'${SUPABASE_ORIGIN ? ' ' + SUPABASE_ORIGIN : ''} ${BUNNY_UPLOAD}${isDev ? ' ws:' : ''}`,
-  // Vídeos das aulas são links https cadastrados pela equipe (a lista de endereços não é fixa).
-  // "media-src" só vale para <video>/<audio>: não executa nada e não libera scripts, imagens nem iframes.
-  "media-src 'self' https:",
-  `frame-src 'self' ${TURNSTILE} ${BUNNY_PLAYER}`,
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-  ...(isDev ? [] : ['upgrade-insecure-requests']),
-].join('; ')
+/**
+ * Página de pagamento (/finalizar/pagamento): o MercadoPago.js carrega o script e os campos seguros do cartão (iframes do
+ * Mercado Pago, onde número, validade e código são digitados: o nosso código nunca os vê) e a confirmação do banco (3D
+ * Secure) abre em outro iframe do Mercado Pago. Por isso esta página, e SÓ ela, libera os domínios do Mercado Pago em
+ * script, conexão, iframe e imagem. O resto do site continua sem nenhum deles.
+ */
+const MERCADO_PAGO = ['mercadopago.com', 'mercadopago.com.br', 'mercadolibre.com', 'mercadolivre.com.br', 'mlstatic.com'].map((d) => `https://*.${d}`).join(' ')
+const PAYMENT_ROUTE = 'finalizar/pagamento'
+
+const buildCsp = (extra: { script?: string; connect?: string; frame?: string; img?: string } = {}) =>
+  [
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline' ${TURNSTILE}${extra.script ? ' ' + extra.script : ''}${isDev ? " 'unsafe-eval'" : ''}`,
+    "style-src 'self' 'unsafe-inline'",
+    // Capas e imagens da biblioteca vêm do bucket PÚBLICO de imagens do Supabase (só imagens, sem script).
+    `img-src 'self' blob: data:${SUPABASE_ORIGIN ? ' ' + SUPABASE_ORIGIN : ''}${extra.img ? ' ' + extra.img : ''}`,
+    "font-src 'self'",
+    `connect-src 'self'${SUPABASE_ORIGIN ? ' ' + SUPABASE_ORIGIN : ''} ${BUNNY_UPLOAD}${extra.connect ? ' ' + extra.connect : ''}${isDev ? ' ws:' : ''}`,
+    // Vídeos das aulas são links https cadastrados pela equipe (a lista de endereços não é fixa).
+    // "media-src" só vale para <video>/<audio>: não executa nada e não libera scripts, imagens nem iframes.
+    "media-src 'self' https:",
+    `frame-src 'self' ${TURNSTILE} ${BUNNY_PLAYER}${extra.frame ? ' ' + extra.frame : ''}`,
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    ...(isDev ? [] : ['upgrade-insecure-requests']),
+  ].join('; ')
+
+const csp = buildCsp()
+const paymentCsp = buildCsp({ script: MERCADO_PAGO, connect: MERCADO_PAGO, frame: MERCADO_PAGO, img: MERCADO_PAGO })
 
 /**
  * O PDF do aluno (/api/trabalhos/<id>/arquivo; e o do perfil público, /api/u/...) abre numa aba própria. O leitor de PDF do
@@ -87,7 +100,9 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       // Ninguém pode colocar a Folyo dentro de um iframe de outro site (evita clickjacking).
-      { source: `/((?!${PDF_ROUTE}).*)`, headers: [{ key: 'Content-Security-Policy', value: csp }, frameDeny, ...baseHeaders] },
+      { source: `/((?!${PDF_ROUTE}|${PAYMENT_ROUTE}$|${PAYMENT_ROUTE}/).*)`, headers: [{ key: 'Content-Security-Policy', value: csp }, frameDeny, ...baseHeaders] },
+      // A página de pagamento tem a sua própria política (a única que libera o Mercado Pago). Nunca em iframe.
+      { source: '/finalizar/pagamento/:path*', headers: [{ key: 'Content-Security-Policy', value: paymentCsp }, frameDeny, ...baseHeaders] },
       { source: '/api/trabalhos/:path*', headers: [{ key: 'Content-Security-Policy', value: pdfCsp }, frameSame, ...baseHeaders] },
       { source: '/api/materiais/:path*', headers: [{ key: 'Content-Security-Policy', value: pdfCsp }, frameSame, ...baseHeaders] },
       { source: '/api/admin/midia/:path*', headers: [{ key: 'Content-Security-Policy', value: pdfCsp }, frameSame, ...baseHeaders] },

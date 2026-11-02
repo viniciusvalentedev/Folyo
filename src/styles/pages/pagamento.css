@@ -1,0 +1,22 @@
+/* Página: Pagamento dentro do site (/finalizar/pagamento) */
+
+.pay-card { width: 100%; max-width: 560px; gap: 18px; }
+.pay-card .tabs { margin-bottom: 0; }
+.pay-form { display: grid; gap: 16px; }
+.pay-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+/* Os campos do cartão são iframes do Mercado Pago dentro destas caixas (o nosso código nunca vê o que se digita). */
+.pay-secure { display: flex; align-items: center; height: 42px; width: 100%; padding: 0 12px; overflow: hidden; background: var(--input); border: 1px solid var(--line-2); border-radius: 10px; transition: border-color var(--t), box-shadow var(--t); }
+.pay-secure:focus-within { border-color: var(--focus); box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 22%, transparent); }
+.pay-secure iframe { width: 100%; height: 100%; border: 0; }
+.pay-h2 { margin: 0; font: 600 20px/1.25 var(--f-display); }
+.pay-hint { margin: 0; display: flex; gap: 6px; align-items: flex-start; color: var(--mute); font-size: 13.5px; line-height: 1.5; }
+.pay-hint .ico { flex: none; margin-top: 3px; }
+.pay-pix, .pay-wait, .pay-3ds { display: grid; gap: 14px; justify-items: start; min-width: 0; }
+.pay-pix > .field { width: 100%; }
+.pay-qr { width: 220px; max-width: 100%; height: auto; padding: 8px; background: #fff; border: 1px solid var(--line); border-radius: 12px; }
+.pay-code { font-family: var(--f-mono); font-size: 12.5px; text-overflow: ellipsis; }
+.pay-actions { display: flex; flex-wrap: wrap; gap: 12px; }
+.pay-3ds { width: 100%; }
+.pay-3ds-frame { width: 100%; height: 560px; background: #fff; border: 1px solid var(--line-2); border-radius: 12px; }
+.fin-note .ico { vertical-align: -2px; }
+@media (max-width: 560px) { .pay-row { grid-template-columns: minmax(0, 1fr); } .pay-3ds-frame { height: 520px; } }

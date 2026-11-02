@@ -10,10 +10,10 @@ import { orderStatusAction } from '@/lib/actions/checkout'
 import { orderIdSchema, type OrderStatusInfo } from '@/lib/payments/order'
 
 const POLL_MS = 3_000
-/** Depois disto paramos de perguntar (Pix e boleto podem demorar; o acesso chega sozinho quando o pagamento for confirmado). */
+/** Depois disto paramos de perguntar (o acesso chega sozinho quando o pagamento for confirmado). */
 const MAX_TRIES = 40
 
-/** Página de retorno do pagamento: acompanha o status do pedido até o Mercado Pago confirmar para o servidor. */
+/** Página "Pagamento confirmado": acompanha o status do pedido até o servidor confirmar o pagamento no Mercado Pago. */
 export function ReturnView({ orderId }: { orderId: string | null }) {
   const valid = orderId !== null && orderIdSchema.safeParse(orderId).success
   const [order, setOrder] = useState<OrderStatusInfo | null>(null)
@@ -69,13 +69,13 @@ export function ReturnView({ orderId }: { orderId: string | null }) {
     <div className="shop shop-dark surface-ink">
       <CheckoutHeader back={{ href: '/cursos', label: 'Ver cursos' }} dark />
       <main id="main" tabIndex={-1} className="shop-main">
-        <Body order={order} failed={failed} gaveUp={gaveUp} />
+        <Body order={order} orderId={orderId} failed={failed} gaveUp={gaveUp} />
       </main>
     </div>
   )
 }
 
-function Body({ order, failed, gaveUp }: { order: OrderStatusInfo | null; failed: boolean; gaveUp: boolean }) {
+function Body({ order, orderId, failed, gaveUp }: { order: OrderStatusInfo | null; orderId: string | null; failed: boolean; gaveUp: boolean }) {
   if (failed && !order) {
     return (
       <Message icon="CircleAlert" title="Não encontramos este pedido." text="Confira se você está na conta certa. Se você acabou de pagar, o acesso chega sozinho quando o pagamento for confirmado.">
@@ -136,10 +136,13 @@ function Body({ order, failed, gaveUp }: { order: OrderStatusInfo | null; failed
       <Message
         icon="Clock"
         title={gaveUp ? 'Ainda aguardando a confirmação.' : 'Conferindo o seu pagamento…'}
-        text="Pix e boleto podem levar alguns minutos para serem confirmados. Você pode fechar esta página: os cursos são liberados na sua conta assim que o Mercado Pago confirmar o pagamento."
+        text="Pode levar alguns minutos para o pagamento ser confirmado. Você pode fechar esta página: os cursos são liberados na sua conta assim que o Mercado Pago confirmar."
       >
-        <ButtonLink href="/cursos" variant="go" size="lg">
-          Ver cursos
+        <ButtonLink href={`/finalizar/pagamento?pedido=${orderId}`} variant="go" size="lg">
+          Voltar ao pagamento
+        </ButtonLink>
+        <ButtonLink href="/compras" variant="quiet-dark" size="lg">
+          Ver minhas compras
         </ButtonLink>
       </Message>
     )

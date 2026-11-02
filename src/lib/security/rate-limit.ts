@@ -85,10 +85,14 @@ export const CART_LIMITS = {
   coupon: { max: 12, windowMs: 60_000 },
   /** Liberar o pré-acesso. */
   redeem: { max: 10, windowMs: 60_000 },
-  /** Abrir o pagamento (cria pedido e link no Mercado Pago): baixo. */
+  /** Criar o pedido a partir do carrinho (ir para o pagamento): baixo. */
   checkout: { max: 8, windowMs: 60_000 },
-  /** Perguntar se o pedido já foi pago (a página de retorno pergunta a cada poucos segundos). */
+  /** Pagar (cartão ou Pix: cada um fala com o Mercado Pago): baixo. O banco ainda limita por pedido e por hora. */
+  pay: { max: 6, windowMs: 60_000 },
+  /** Perguntar se o pedido já foi pago (a tela pergunta a cada poucos segundos; só lê o banco). */
   orderStatus: { max: 60, windowMs: 60_000 },
+  /** Conferir o pagamento no Mercado Pago (a tela faz de vez em quando; cada uma é uma consulta à API deles). */
+  payCheck: { max: 15, windowMs: 60_000 },
 } satisfies Record<string, Rule>
 
 /* Contagem em memória, por servidor (veja limiter.ts). */

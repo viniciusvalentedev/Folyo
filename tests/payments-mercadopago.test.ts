@@ -1,18 +1,55 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { createPreference, fetchPayment, GatewayError, type MercadoPagoConfig } from '@/lib/payments/mercadopago'
+import {
+  buildOrderBody,
+  checkoutConfig,
+  createGatewayOrder,
+  fetchGatewayOrder,
+  fromCents,
+  GatewayError,
+  parseGatewayOrder,
+  toCents,
+  webhookConfig,
+  type MercadoPagoConfig,
+  type NewGatewayOrder,
+} from '@/lib/payments/mercadopago'
 import { isMercadoPagoUrl } from '@/lib/payments/order'
 
-const cfg: MercadoPagoConfig = { accessToken: 'TOKEN-SECRETO-DE-TESTE', webhookSecret: 'x', useSandboxUrl: false, siteUrl: 'https://www.usefolyo.com' }
+const cfg: MercadoPagoConfig = { accessToken: 'TOKEN-SECRETO-DE-TESTE', webhookSecret: 'x', publicKey: 'APP_USR-abc12345-test' }
 const ORDER = '3f2b8c1e-6a4d-4e0b-9c53-7d1a2b3c4d5e'
+const ATTEMPT = '9a8b7c6d-1111-4222-8333-444455556666'
+const PIX_CODE = '00020126580014br.gov.bcb.pix0136123e4567-e89b-12d3-a456-426614174000520400005303986540510.005802BR5909Folyo6009SAO PAULO62070503***6304ABCD'
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
+const card: NewGatewayOrder = {
+  orderId: ORDER,
+  attemptId: ATTEMPT,
+  totalCents: 8289,
+  email: 'ana@exemplo.com',
+  cpf: '52998224725',
+  description: 'Folyo: 2 cursos',
+  deviceId: 'device-abc-12345',
+  payment: { kind: 'card', token: 'ff8080814c11e237014c1ff593b57b4d', paymentMethodId: 'visa', installments: 3 },
+}
+const pix: NewGatewayOrder = { ...card, payment: { kind: 'pix' } }
+
+const mpOrder = (over: Record<string, unknown> = {}) => ({
+  id: 'ORD01TESTE',
+  status: 'processed',
+  status_detail: 'accredited',
+  external_reference: ORDER,
+  total_amount: '82.89',
+  currency: 'BRL',
+  transactions: { payments: [{ id: 'PAY01TESTE', status: 'processed', status_detail: 'accredited', amount: '82.89', paid_amount: '82.89' }] },
+  ...over,
+})
+
 describe('isMercadoPagoUrl', () => {
   test.each([
-    'https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=1-abc',
-    'https://sandbox.mercadopago.com.br/checkout/v1/redirect?pref_id=1-abc',
+    'https://www.mercadopago.com.br/payments/123/ticket?caller_id=1&hash=abc',
+    'https://sandbox.mercadopago.com.br/x',
     'https://mercadopago.com/checkout',
-    'https://www.mercadopago.com/mlb/checkout/start?pref_id=1',
+    'https://www.mercadopago.com/mlb/x?y=1',
   ])('aceita %s', (url) => expect(isMercadoPagoUrl(url)).toBe(true))
 
   test.each([
@@ -32,83 +69,107 @@ describe('isMercadoPagoUrl', () => {
   ])('recusa %j', (url) => expect(isMercadoPagoUrl(url)).toBe(false))
 })
 
-describe('createPreference', () => {
-  let fetchMock: ReturnType<typeof vi.fn>
-  beforeEach(() => {
-    fetchMock = vi.fn()
-    vi.stubGlobal('fetch', fetchMock)
-  })
-  afterEach(() => vi.unstubAllGlobals())
-
-  const order = {
-    orderId: ORDER,
-    items: [
-      { courseId: 'mkt', title: 'Marketing Estratégico', priceCents: 3299 },
-      { courseId: 'design', title: 'Design Gráfico', priceCents: 4990 },
-    ],
+describe('configuração', () => {
+  afterEach(() => vi.unstubAllEnvs())
+  const env = (over: Record<string, string> = {}) => {
+    vi.stubEnv('PAYMENTS_ENABLED', 'true')
+    vi.stubEnv('MERCADOPAGO_ACCESS_TOKEN', 'TOKEN')
+    vi.stubEnv('MERCADOPAGO_WEBHOOK_SECRET', 'segredo')
+    vi.stubEnv('MERCADOPAGO_PUBLIC_KEY', 'APP_USR-abc12345-test')
+    for (const [k, v] of Object.entries(over)) vi.stubEnv(k, v)
   }
 
-  test('manda a foto do pedido (preços do banco), a referência e as URLs do site, sem dados pessoais', async () => {
-    fetchMock.mockResolvedValue(json({ id: '123-abc', init_point: 'https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=123-abc', sandbox_init_point: 'https://sandbox.mercadopago.com.br/x/y' }))
-    const r = await createPreference(cfg, order, new Date('2026-11-02T12:00:00Z'))
-    expect(r).toEqual({ preferenceId: '123-abc', checkoutUrl: 'https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=123-abc' })
-
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe('https://api.mercadopago.com/checkout/preferences')
-    expect(init.method).toBe('POST')
-    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer TOKEN-SECRETO-DE-TESTE')
-    expect(init.redirect).toBe('error')
-    const body = JSON.parse(init.body as string)
-    expect(body.items).toEqual([
-      { id: 'mkt', title: 'Marketing Estratégico', quantity: 1, currency_id: 'BRL', unit_price: 32.99 },
-      { id: 'design', title: 'Design Gráfico', quantity: 1, currency_id: 'BRL', unit_price: 49.9 },
-    ])
-    expect(body.external_reference).toBe(ORDER)
-    expect(body.notification_url).toBe('https://www.usefolyo.com/api/webhooks/mercadopago')
-    expect(body.back_urls).toEqual({
-      success: `https://www.usefolyo.com/finalizar/retorno?pedido=${ORDER}`,
-      pending: `https://www.usefolyo.com/finalizar/retorno?pedido=${ORDER}`,
-      failure: `https://www.usefolyo.com/finalizar/retorno?pedido=${ORDER}`,
-    })
-    expect(body.payer).toBeUndefined()
-    expect(body.expires).toBe(true)
-    expect(body.expiration_date_from).toBe('2026-11-02T09:00:00.000-03:00')
-    expect(body.expiration_date_to).toBe('2026-11-04T09:00:00.000-03:00')
+  test('a venda só liga com PAYMENTS_ENABLED=true E token, chave do webhook e chave pública', () => {
+    env()
+    expect(checkoutConfig()).toMatchObject({ accessToken: 'TOKEN', publicKey: 'APP_USR-abc12345-test' })
+    for (const off of ['false', '', 'TRUE', '1']) {
+      env({ PAYMENTS_ENABLED: off })
+      expect(checkoutConfig(), off).toBeNull()
+    }
+    env({ MERCADOPAGO_ACCESS_TOKEN: '' })
+    expect(checkoutConfig()).toBeNull()
+    env({ MERCADOPAGO_WEBHOOK_SECRET: '' })
+    expect(checkoutConfig()).toBeNull()
+    env({ MERCADOPAGO_PUBLIC_KEY: '' })
+    expect(checkoutConfig()).toBeNull()
   })
 
-  test('com MERCADOPAGO_USE_SANDBOX_URL usa o link de teste', async () => {
-    fetchMock.mockResolvedValue(json({ id: '9', init_point: 'https://www.mercadopago.com.br/a/b', sandbox_init_point: 'https://sandbox.mercadopago.com.br/a/b' }))
-    const r = await createPreference({ ...cfg, useSandboxUrl: true }, order)
-    expect(r.checkoutUrl).toBe('https://sandbox.mercadopago.com.br/a/b')
+  test('chave pública fora do formato (ou um token por engano) não vale', () => {
+    for (const bad of ['TOKEN', 'APP_USR-', 'APP_USR-abc 123456', 'http://x', 'APP_USR-<script>alert(1)</script>']) {
+      env({ MERCADOPAGO_PUBLIC_KEY: bad })
+      expect(checkoutConfig(), bad).toBeNull()
+    }
+    env({ MERCADOPAGO_PUBLIC_KEY: 'TEST-8f2c1d9e-1234-4abc-9def-0123456789ab' })
+    expect(checkoutConfig()).not.toBeNull()
   })
 
-  test('recusa link que não é do Mercado Pago (resposta adulterada)', async () => {
-    fetchMock.mockResolvedValue(json({ id: '9', init_point: 'https://evil.com/mercadopago.com.br/' }))
-    await expect(createPreference(cfg, order)).rejects.toBeInstanceOf(GatewayError)
-  })
-
-  test('erro HTTP vira GatewayError só com o status (sem token nem corpo)', async () => {
-    fetchMock.mockResolvedValue(json({ message: 'TOKEN-SECRETO-DE-TESTE inválido' }, 401))
-    const error = await createPreference(cfg, order).catch((e: unknown) => e)
-    expect(error).toBeInstanceOf(GatewayError)
-    expect((error as GatewayError).status).toBe(401)
-    expect(String((error as GatewayError).message)).not.toContain('TOKEN')
-  })
-
-  test('falha de rede vira GatewayError sem os detalhes originais', async () => {
-    fetchMock.mockRejectedValue(new Error('connect ECONNREFUSED com TOKEN-SECRETO-DE-TESTE'))
-    const error = await createPreference(cfg, order).catch((e: unknown) => e)
-    expect(error).toBeInstanceOf(GatewayError)
-    expect((error as GatewayError).message).not.toContain('TOKEN')
-  })
-
-  test('id de preferência fora do formato é recusado', async () => {
-    fetchMock.mockResolvedValue(json({ id: "x'; drop", init_point: 'https://www.mercadopago.com.br/a/b' }))
-    await expect(createPreference(cfg, order)).rejects.toBeInstanceOf(GatewayError)
+  test('o webhook funciona com a venda desligada e sem a chave pública', () => {
+    env({ PAYMENTS_ENABLED: 'false', MERCADOPAGO_PUBLIC_KEY: '' })
+    expect(webhookConfig()).toMatchObject({ accessToken: 'TOKEN', webhookSecret: 'segredo', publicKey: null })
+    env({ MERCADOPAGO_WEBHOOK_SECRET: '' })
+    expect(webhookConfig()).toBeNull()
   })
 })
 
-describe('fetchPayment', () => {
+describe('valores', () => {
+  test.each([
+    ['82.89', 8289],
+    ['50.00', 5000],
+    ['50', 5000],
+    ['0.5', 50],
+    ['0.05', 5],
+    [82.89, 8289],
+    ['1234567.01', 123456701],
+  ])('toCents(%j) = %i', (input, cents) => expect(toCents(input)).toBe(cents))
+
+  test.each(['', 'abc', '-1.00', '1.005', '1,50', '1e3', '12345678901', null, undefined, {}, NaN])('toCents recusa %j', (input) => expect(toCents(input)).toBeNull())
+
+  test.each([
+    [8289, '82.89'],
+    [5000, '50.00'],
+    [5, '0.05'],
+    [100000000, '1000000.00'],
+  ])('fromCents(%i) = %s', (cents, text) => expect(fromCents(cents)).toBe(text))
+
+  test('fromCents recusa o que não é centavo inteiro', () => {
+    for (const bad of [-1, 1.5, NaN, Infinity]) expect(() => fromCents(bad)).toThrow(GatewayError)
+  })
+})
+
+describe('buildOrderBody', () => {
+  test('cartão: o valor, a referência e o CPF vão certos; só o token do cartão, nada de número, validade ou código', () => {
+    const body = buildOrderBody(card) as Record<string, unknown>
+    expect(body).toMatchObject({
+      type: 'online',
+      processing_mode: 'automatic',
+      total_amount: '82.89',
+      external_reference: ORDER,
+      payer: { email: 'ana@exemplo.com', identification: { type: 'CPF', number: '52998224725' } },
+      config: { statement_descriptor: 'FOLYO', payment_method: { max_installments: 12 }, online: { transaction_security: { validation: 'on_fraud_risk', liability_shift: 'required' } } },
+      transactions: {
+        payments: [{ amount: '82.89', payment_method: { id: 'visa', type: 'credit_card', token: 'ff8080814c11e237014c1ff593b57b4d', installments: 3 } }],
+      },
+    })
+    const text = JSON.stringify(body)
+    expect(text).not.toMatch(/card_number|cardNumber|security_code|expiration_month|expiration_year|cvv/i)
+  })
+
+  test('Pix: forma bank_transfer com validade de 1 hora e sem dados de cartão', () => {
+    const body = buildOrderBody(pix) as { transactions: { payments: Record<string, unknown>[] }; config?: unknown }
+    expect(body.transactions.payments).toEqual([{ amount: '82.89', expiration_time: 'PT60M', payment_method: { id: 'pix', type: 'bank_transfer' } }])
+    expect(body.config).toBeUndefined()
+  })
+
+  test('o valor da ordem e o do pagamento são sempre o mesmo (o total do pedido no banco)', () => {
+    for (const input of [card, pix]) {
+      const body = buildOrderBody({ ...input, totalCents: 3299 }) as { total_amount: string; transactions: { payments: { amount: string }[] } }
+      expect(body.total_amount).toBe('32.99')
+      expect(body.transactions.payments[0].amount).toBe('32.99')
+    }
+  })
+})
+
+describe('createGatewayOrder', () => {
   let fetchMock: ReturnType<typeof vi.fn>
   beforeEach(() => {
     fetchMock = vi.fn()
@@ -116,55 +177,161 @@ describe('fetchPayment', () => {
   })
   afterEach(() => vi.unstubAllGlobals())
 
-  test('lê status, valor em centavos, moeda e pedido da API (com o nosso token)', async () => {
-    fetchMock.mockResolvedValue(json({ id: 123456789, status: 'approved', transaction_amount: 82.89, currency_id: 'BRL', external_reference: ORDER, payer: { email: 'x@y.z' } }))
-    const r = await fetchPayment(cfg, '123456789')
-    expect(r).toEqual({ kind: 'ok', payment: { id: '123456789', status: 'approved', amountCents: 8289, currency: 'BRL', externalReference: ORDER } })
+  test('POST /v1/orders com o token, a chave de idempotência e o id do dispositivo', async () => {
+    fetchMock.mockResolvedValue(json(mpOrder(), 201))
+    const order = await createGatewayOrder(cfg, card)
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe('https://api.mercadopago.com/v1/payments/123456789')
+    expect(url).toBe('https://api.mercadopago.com/v1/orders')
+    expect(init.method).toBe('POST')
+    const headers = init.headers as Record<string, string>
+    expect(headers.Authorization).toBe('Bearer TOKEN-SECRETO-DE-TESTE')
+    expect(headers['X-Idempotency-Key']).toBe(ATTEMPT)
+    expect(headers['X-meli-session-id']).toBe('device-abc-12345')
+    expect(headers['Content-Type']).toBe('application/json')
+    expect(init.redirect).toBe('error')
+    expect(JSON.parse(init.body as string).total_amount).toBe('82.89')
+    expect(order).toMatchObject({ id: 'ORD01TESTE', status: 'processed', statusDetail: 'accredited', externalReference: ORDER, totalCents: 8289, currency: 'BRL', paymentCount: 1 })
+    expect(order.payment).toMatchObject({ id: 'PAY01TESTE', amountCents: 8289 })
+  })
+
+  test('sem id do dispositivo, o cabeçalho não vai', async () => {
+    fetchMock.mockResolvedValue(json(mpOrder(), 201))
+    await createGatewayOrder(cfg, { ...card, deviceId: undefined })
+    expect((fetchMock.mock.calls[0] as [string, RequestInit])[1].headers).not.toHaveProperty('X-meli-session-id')
+  })
+
+  test('pagamento recusado com erro HTTP, mas com a ordem no corpo, volta como ordem (não como falha)', async () => {
+    fetchMock.mockResolvedValue(json(mpOrder({ status: 'failed', status_detail: 'rejected_by_issuer' }), 402))
+    const order = await createGatewayOrder(cfg, card)
+    expect(order).toMatchObject({ status: 'failed', statusDetail: 'rejected_by_issuer' })
+  })
+
+  test('ordem de OUTRO pedido em resposta de erro nunca é aceita', async () => {
+    fetchMock.mockResolvedValue(json(mpOrder({ external_reference: '00000000-0000-4000-8000-000000000000' }), 402))
+    await expect(createGatewayOrder(cfg, card)).rejects.toMatchObject({ status: 402 })
+  })
+
+  test('erro sem ordem vira GatewayError só com o status e o código (sem token nem corpo)', async () => {
+    fetchMock.mockResolvedValue(json({ errors: [{ code: 'invalid_card_token', message: 'Token TOKEN-SECRETO-DE-TESTE inválido', details: ['cpf 52998224725'] }] }, 400))
+    const error = await createGatewayOrder(cfg, card).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(GatewayError)
+    expect(error).toMatchObject({ status: 400, code: 'invalid_card_token' })
+    expect(JSON.stringify(error)).not.toContain('TOKEN-SECRETO-DE-TESTE')
+    expect(String((error as Error).message)).not.toMatch(/TOKEN|5299/)
+  })
+
+  test('código de erro fora do formato é descartado', async () => {
+    fetchMock.mockResolvedValue(json({ errors: [{ code: '<script>alert(1)</script>' }] }, 400))
+    await expect(createGatewayOrder(cfg, card)).rejects.toMatchObject({ status: 400, code: undefined })
+  })
+
+  test('falha de rede ou tempo esgotado vira GatewayError sem os detalhes originais e sem status', async () => {
+    fetchMock.mockRejectedValue(new Error('connect ECONNREFUSED com TOKEN-SECRETO-DE-TESTE'))
+    const error = await createGatewayOrder(cfg, card).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(GatewayError)
+    expect((error as GatewayError).status).toBeUndefined()
+    expect(String((error as Error).message)).not.toContain('ECONNREFUSED')
+  })
+
+  test('resposta 200 que não é uma ordem: recusada', async () => {
+    fetchMock.mockResolvedValue(json({ ok: true }, 200))
+    await expect(createGatewayOrder(cfg, card)).rejects.toBeInstanceOf(GatewayError)
+    fetchMock.mockResolvedValue(new Response('<html>', { status: 200 }))
+    await expect(createGatewayOrder(cfg, card)).rejects.toBeInstanceOf(GatewayError)
+  })
+})
+
+describe('fetchGatewayOrder', () => {
+  let fetchMock: ReturnType<typeof vi.fn>
+  beforeEach(() => {
+    fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  test('lê a ordem da API com o nosso token', async () => {
+    fetchMock.mockResolvedValue(json(mpOrder()))
+    const lookup = await fetchGatewayOrder(cfg, 'ORD01TESTE')
+    expect(lookup.kind).toBe('ok')
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('https://api.mercadopago.com/v1/orders/ORD01TESTE')
+    expect(init.method).toBe('GET')
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer TOKEN-SECRETO-DE-TESTE')
   })
 
-  test.each([
-    [0.1 + 0.2, 30],
-    [19.99, 1999],
-    [1234.5, 123450],
-    [0, 0],
-  ])('converte %s reais em %s centavos sem erro de arredondamento', async (amount, cents) => {
-    fetchMock.mockResolvedValue(json({ id: 1, status: 'approved', transaction_amount: amount, currency_id: 'BRL', external_reference: ORDER }))
-    const r = await fetchPayment(cfg, '1')
-    expect(r.kind === 'ok' && r.payment.amountCents).toBe(cents)
-  })
-
-  test('404 = pagamento não existe (notificação de teste)', async () => {
-    fetchMock.mockResolvedValue(json({ message: 'not found' }, 404))
-    expect(await fetchPayment(cfg, '123')).toEqual({ kind: 'not_found' })
+  test('404 = ordem não existe (notificação de teste)', async () => {
+    fetchMock.mockResolvedValue(json({}, 404))
+    expect(await fetchGatewayOrder(cfg, 'ORD01TESTE')).toEqual({ kind: 'not_found' })
   })
 
   test('outros erros lançam (o webhook responde erro e o Mercado Pago reenvia)', async () => {
-    for (const status of [401, 429, 500, 503]) {
-      fetchMock.mockResolvedValue(json({}, status))
-      await expect(fetchPayment(cfg, '123')).rejects.toBeInstanceOf(GatewayError)
-    }
+    fetchMock.mockResolvedValue(json({}, 503))
+    await expect(fetchGatewayOrder(cfg, 'ORD01TESTE')).rejects.toMatchObject({ status: 503 })
+    fetchMock.mockRejectedValue(new Error('rede'))
+    await expect(fetchGatewayOrder(cfg, 'ORD01TESTE')).rejects.toBeInstanceOf(GatewayError)
   })
 
-  test('resposta de outro pagamento (id diferente) ou fora do formato é recusada', async () => {
-    fetchMock.mockResolvedValue(json({ id: 999, status: 'approved', transaction_amount: 1, currency_id: 'BRL', external_reference: ORDER }))
-    await expect(fetchPayment(cfg, '123')).rejects.toBeInstanceOf(GatewayError)
-    fetchMock.mockResolvedValue(json({ id: 123, status: 'APPROVED; x', transaction_amount: 1, currency_id: 'BRL' }))
-    await expect(fetchPayment(cfg, '123')).rejects.toBeInstanceOf(GatewayError)
-    fetchMock.mockResolvedValue(json({ id: 123, status: 'approved', transaction_amount: 'muito', currency_id: 'BRL' }))
-    await expect(fetchPayment(cfg, '123')).rejects.toBeInstanceOf(GatewayError)
+  test('resposta de outra ordem (id diferente) ou fora do formato é recusada', async () => {
+    fetchMock.mockResolvedValue(json(mpOrder({ id: 'ORDOUTRA' })))
+    await expect(fetchGatewayOrder(cfg, 'ORD01TESTE')).rejects.toBeInstanceOf(GatewayError)
+    fetchMock.mockResolvedValue(json({ id: 'ORD01TESTE' }))
+    await expect(fetchGatewayOrder(cfg, 'ORD01TESTE')).rejects.toBeInstanceOf(GatewayError)
   })
 
-  test('id que não é número nunca chega a ir para a API (nada de ../ na URL)', async () => {
-    for (const id of ['', 'abc', '../admin', '12 3', '1'.repeat(30)]) await expect(fetchPayment(cfg, id)).rejects.toBeInstanceOf(GatewayError)
+  test.each(['', '../x', 'a b', 'ORD/../../v1/payments', 'x'.repeat(65), 'ORD?x=1'])('id %j nunca chega a ir para a API', async (id) => {
+    await expect(fetchGatewayOrder(cfg, id)).rejects.toBeInstanceOf(GatewayError)
     expect(fetchMock).not.toHaveBeenCalled()
   })
+})
 
-  test('sem referência de pedido volta null', async () => {
-    fetchMock.mockResolvedValue(json({ id: 5, status: 'pending', transaction_amount: 10, currency_id: 'BRL' }))
-    const r = await fetchPayment(cfg, '5')
-    expect(r.kind === 'ok' && r.payment.externalReference).toBeNull()
+describe('parseGatewayOrder', () => {
+  const withPayment = (payment: Record<string, unknown>) => parseGatewayOrder(mpOrder({ transactions: { payments: [{ id: 'PAY1', ...payment }] } }))
+
+  test('Pix: código, QR e link do Mercado Pago; o que o banco recusaria vira null', () => {
+    const good = withPayment({
+      status: 'action_required',
+      status_detail: 'waiting_transfer',
+      date_of_expiration: '2026-11-02T16:00:00.000-03:00',
+      payment_method: { qr_code: PIX_CODE, qr_code_base64: 'iVBORw0KGgoAAAANSUhEUgAAAAE=', ticket_url: 'https://www.mercadopago.com.br/payments/1/ticket?hash=a' },
+    })!
+    expect(good.payment?.pix).toEqual({ code: PIX_CODE, qrBase64: 'iVBORw0KGgoAAAANSUhEUgAAAAE=', ticketUrl: 'https://www.mercadopago.com.br/payments/1/ticket?hash=a' })
+    expect(good.payment?.expiresAt).toBe('2026-11-02T16:00:00.000-03:00')
+
+    const bad = withPayment({ payment_method: { qr_code: PIX_CODE, qr_code_base64: '<img src=x onerror=alert(1)>', ticket_url: 'https://evil.example/ticket' } })!
+    expect(bad.payment?.pix).toEqual({ code: PIX_CODE, qrBase64: null, ticketUrl: null })
+    expect(withPayment({ payment_method: { qr_code: 'curto' } })!.payment?.pix).toBeNull()
+    expect(withPayment({ payment_method: { qr_code: `${PIX_CODE}\n<script>` } })!.payment?.pix).toBeNull()
   })
+
+  test('3D Secure: só endereço https', () => {
+    const url = (u: string) => withPayment({ payment_method: { transaction_security: { url: u, status: 'pending' } } })!.payment?.threeDsUrl
+    expect(url('https://www.mercadopago.com.br/3ds/abc')).toBe('https://www.mercadopago.com.br/3ds/abc')
+    expect(url('http://www.mercadopago.com.br/3ds')).toBeNull()
+    expect(url('javascript:alert(1)')).toBeNull()
+    expect(url('https://x.example/a b')).toBeNull()
+  })
+
+  test('valores em texto ou número viram centavos; sem valor, null', () => {
+    expect(withPayment({ amount: '50.00' })!.payment?.amountCents).toBe(5000)
+    expect(withPayment({ amount: 50 })!.payment?.amountCents).toBe(5000)
+    expect(withPayment({ amount: 'abc' })!.payment?.amountCents).toBeNull()
+    expect(withPayment({})!.payment?.amountCents).toBeNull()
+  })
+
+  test('sem moeda na resposta é real; outra moeda segue como veio', () => {
+    expect(parseGatewayOrder(mpOrder({ currency: undefined }))!.currency).toBe('BRL')
+    expect(parseGatewayOrder(mpOrder({ currency: 'USD' }))!.currency).toBe('USD')
+  })
+
+  test('conta os pagamentos da ordem', () => {
+    expect(parseGatewayOrder(mpOrder({ transactions: { payments: [] } }))).toMatchObject({ paymentCount: 0, payment: null })
+    const two = parseGatewayOrder(mpOrder({ transactions: { payments: [{ id: 'A' }, { id: 'B' }] } }))!
+    expect(two.paymentCount).toBe(2)
+    expect(two.payment?.id).toBe('A')
+  })
+
+  test.each([null, undefined, 'texto', 42, [], {}, { id: 'ORD1' }, { id: '../x', status: 'processed' }, { id: 'ORD1', status: 'processed', status_detail: 'a b' }])(
+    'recusa %j',
+    (body) => expect(parseGatewayOrder(body)).toBeNull(),
+  )
 })

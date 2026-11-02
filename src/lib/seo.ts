@@ -65,6 +65,7 @@ export const PRIVATE_PATHS = [
   '/curriculo',
   '/entrar',
   '/esqueci-senha',
+  '/finalizar',
   '/inicio',
   '/objetivos',
   '/perfil',

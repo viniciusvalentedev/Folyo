@@ -887,16 +887,31 @@ O envio de e-mails já usa o SMTP próprio (Zoho, `contato@usefolyo.com`), entã
 
 # Pagamentos (Mercado Pago)
 
-O aluno paga um curso avulso na página do **Mercado Pago** (Checkout Pro): cartão, Pix etc., com ou sem conta lá. A
-Folyo **nunca** vê dado de cartão. O **banco** cria o pedido e calcula o preço; **só o webhook** libera o curso.
+O aluno paga um curso avulso **dentro do site** (Checkout Transparente do Mercado Pago): cartão de crédito em até 12x
+(com confirmação do banco, o 3D Secure, quando pedida) e Pix. Os dados do cartão são digitados em campos seguros do
+Mercado Pago: a Folyo **nunca** vê número, validade nem código, só um token de uso único. O **banco** cria o pedido,
+calcula o preço e limita as tentativas; **só o servidor**, depois de ler a ordem na API do Mercado Pago, libera o curso.
 
 > A venda nasce **desligada**: sem `PAYMENTS_ENABLED=true` (e as chaves do Mercado Pago), `/finalizar` continua dizendo
 > que o pagamento online ainda não está disponível. Pode publicar o código e rodar o SQL sem risco de cobrar ninguém.
 
 ## 1. Rodar o SQL
 
-Supabase → **SQL Editor** → cole `supabase/migrations/20261102000001_pagamentos.sql` → **Run**, e **depois**
-`supabase/migrations/20261102000002_compras_recibo.sql` → **Run** (cada um uma vez; podem repetir). Eles **não apagam nada**.
+Supabase → **SQL Editor** → rode **nesta ordem**, cada um em uma consulta nova (**New query** → colar → **Run**):
+
+1. `supabase/migrations/20261102000001_pagamentos.sql`
+2. `supabase/migrations/20261102000002_compras_recibo.sql`
+3. `supabase/migrations/20261102000003_pagamento_transparente.sql`
+
+Cada um pode ser repetido sem problema e nenhum **apaga dado**. O terceiro só funciona depois dos dois primeiros.
+
+O terceiro (`..._pagamento_transparente.sql`) troca o link de pagamento pelo pagamento dentro do site: cria a tabela
+`private.payment_attempts` (cada tentativa de pagamento; fora da API) e as funções **`begin_payment_attempt`** (o aluno
+inicia um pagamento: o banco confere dono, prazo e pagamento em andamento, e aplica os limites contra teste de cartões:
+5 tentativas de cartão por pedido, 10 por hora por aluno e 20 de qualquer tipo por hora), **`record_payment_attempt`**,
+**`settle_payment_attempt`** e **`payment_attempt_ref`** (só o `service_role`). Também atualiza `order_status` e
+`my_orders` e **remove** `attach_order_checkout` (o link do Checkout Pro). Pedidos pendentes antigos continuam
+existindo; o aluno só precisa pagar de novo pela página nova.
 
 O segundo (`..._compras_recibo.sql`) cria a página "Minhas compras" e o controle do e-mail de recibo:
 **`my_orders()`** (o aluno lê as PRÓPRIAS compras: pagas, estornadas e o pagamento ainda em aberto) e, só para o
@@ -921,15 +936,20 @@ O primeiro (`..._pagamentos.sql`) faz:
 
 ## 2. Configurar o Mercado Pago (teste primeiro)
 
-1. Mercado Pago → **Suas integrações** → criar aplicação (**Checkout Pro**). Pegue as credenciais de **teste**.
+1. Mercado Pago → **Suas integrações** → criar aplicação: tipo **Pagamentos online**, produto **Checkout Transparente**.
+   Pegue as credenciais de **teste** (a **Public Key** e o **Access Token**).
 2. Crie dois **usuários de teste** (vendedor e comprador) no próprio painel do Mercado Pago.
-3. **Webhooks → Configurar notificações:** URL `https://www.usefolyo.com/api/webhooks/mercadopago`, evento **Pagamentos**.
-   Copie a **chave secreta** que aparece depois de salvar.
-4. Vercel → **Environment Variables** (nunca no GitHub, nunca em conversa): `MERCADOPAGO_ACCESS_TOKEN`,
-   `MERCADOPAGO_WEBHOOK_SECRET`, `SUPABASE_SECRET_KEY` e, para testar, `MERCADOPAGO_USE_SANDBOX_URL=true` e
-   `PAYMENTS_ENABLED=true`. **Teste só em Preview/Development; produção só em Production.** Para testar o webhook num
+3. **Webhooks → Configurar notificações:** URL `https://www.usefolyo.com/api/webhooks/mercadopago`, evento
+   **Order (Mercado Pago)** (tipo `order`; o evento antigo "Pagamentos" não é mais usado). Copie a **chave secreta**
+   que aparece depois de salvar.
+4. Vercel → **Environment Variables** (nunca no GitHub, nunca em conversa): `MERCADOPAGO_PUBLIC_KEY`,
+   `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET`, `SUPABASE_SECRET_KEY` e, para testar,
+   `PAYMENTS_ENABLED=true`. Public Key, Access Token e chave do webhook têm de ser **do mesmo ambiente** (todas de teste
+   ou todas de produção). **Teste só em Preview/Development; produção só em Production.** Para testar o webhook num
    preview, ele precisa ser alcançável pelo Mercado Pago (desligue a proteção do preview ou use o domínio de produção
    com credenciais de teste) e `NEXT_PUBLIC_SITE_URL` deve apontar para esse endereço.
+5. A conta do Mercado Pago precisa estar apta ao Checkout Transparente (conta de vendedor com os dados completos; a
+   disponibilidade para conta de pessoa física deve ser confirmada no painel).
 
 ### E-mail de recibo (Zoho)
 
@@ -951,18 +971,25 @@ jeito (o curso já foi liberado) e o próximo aviso do Mercado Pago tenta enviar
 
 ## 3. Testar (com contas de teste)
 
-1. Um curso com preço → **Adicionar** → carrinho → **Prosseguir** → **Pagar com Mercado Pago**.
-2. Pague com os dados de cartão de teste do Mercado Pago, logado como o comprador de teste (e também como convidado).
-3. Volte para o site: `/finalizar/retorno` mostra "Pagamento confirmado" e o curso abre. Em **Painel › Alunos** o aluno
-   aparece com o curso. Se demorar, é o webhook ainda não chegado (a página continua conferindo). O recibo chega no e-mail
-   da conta e o pedido aparece em **Minhas compras** (menu lateral, `/compras`).
-4. Confira no Mercado Pago (Webhooks → histórico) que a notificação teve resposta **200**.
+1. Um curso com preço → **Adicionar** → carrinho → **Prosseguir**. Abre `/finalizar/pagamento`, com as abas **Cartão** e **Pix**.
+2. **Cartão:** use os cartões de teste do Mercado Pago (um aprovado, um recusado e um que peça confirmação do banco,
+   o 3D Secure), com o CPF de teste indicado na documentação. Troque as parcelas e confira que o total mostrado é o do pedido.
+3. **Pix:** gere o QR Code, copie o código e simule o pagamento pelo painel de testes do Mercado Pago. A tela muda
+   sozinha para "Pagamento confirmado" e o curso abre. Em **Painel › Alunos** o aluno aparece com o curso. O recibo chega
+   no e-mail da conta e o pedido aparece em **Minhas compras** (menu lateral, `/compras`).
+4. Confira no Mercado Pago (Webhooks → histórico) que as notificações tiveram resposta **200**.
 5. Teste um **estorno** no painel do Mercado Pago: o acesso ao curso daquele pedido deve sumir.
+6. Abra o **console do navegador** (F12) em `/finalizar/pagamento` durante os testes. Qualquer aviso de
+   **Content Security Policy** (algo bloqueado) precisa ser corrigido antes de abrir a venda: anote o endereço bloqueado.
+
+Limites que valem a pena conhecer: só **cartão de crédito** e **Pix** (sem débito nem boleto); enquanto um Pix está em
+aberto (até 60 minutos) o mesmo pedido não aceita outro pagamento; ainda não existe "cancelar pedido".
 
 ## 4. Antes de cobrar de verdade
 
 - Preencha `src/lib/legal.ts` e mande **Termos (seção 8)** e **Privacidade** para um advogado; troque `reviewed` para `true`.
-- Credenciais de **produção** só na Vercel/Production, e `MERCADOPAGO_USE_SANDBOX_URL=false`.
+- Credenciais de **produção** (Public Key, Access Token e chave do webhook, as três) só na Vercel/Production.
+- Cobrança com **nota fiscal** (CNPJ/MEI) é assunto para o seu contador: este código só cobra e envia o recibo.
 - Faça uma compra real de valor baixo com um curso de teste e confira a liberação e o estorno.
 - Defina com um contador a emissão de nota (a conta hoje é de Pessoa Física).
 

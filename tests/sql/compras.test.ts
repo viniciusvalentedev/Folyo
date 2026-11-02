@@ -8,19 +8,17 @@ import { createDb, createUser, loadMigrations, rpc, type Db } from './db'
 
 const migrations = loadMigrations()
 
-type Order = { orderId: string; totalCents: number; checkoutUrl: string | null; items: { courseId: string; title: string; priceCents: number }[] }
+type Order = { orderId: string; totalCents: number; items: { courseId: string; title: string; priceCents: number }[] }
 type MyOrder = {
   id: string
   status: string
   totalCents: number
   paidAt: string | null
   refundedAt: string | null
-  checkoutUrl: string | null
+  payment: { method: string; status: string } | null
   items: { courseId: string; title: string; priceCents: number }[]
 }
 type Receipt = { orderId: string; email: string; name: string | null; totalCents: number; items: { courseId: string; title: string; priceCents: number }[] } | null
-
-const URL_OK = 'https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=123-abc'
 
 describe.skipIf(!migrations)('compras e recibo (SQL)', () => {
   let db: Db
@@ -102,7 +100,8 @@ describe.skipIf(!migrations)('compras e recibo (SQL)', () => {
       expect(found.status).toBe('pago')
       expect(found.totalCents).toBe(8289)
       expect(found.paidAt).not.toBeNull()
-      expect(found.checkoutUrl).toBeNull()
+      expect(found.payment).toBeNull()
+      expect(found).not.toHaveProperty('checkoutUrl')
       expect(found.items.map((i) => [i.courseId, i.title, i.priceCents])).toEqual([
         ['mkt', 'Marketing Estratégico', 3299],
         ['design', 'Design Gráfico', 4990],
@@ -114,15 +113,19 @@ describe.skipIf(!migrations)('compras e recibo (SQL)', () => {
       expect((await mine(ana)).length).toBeGreaterThan(0)
     })
 
-    test('pedido em aberto aparece com o link para continuar, e some quando vence', async () => {
-      const o = await create(ana, ['prog'])
-      ok(await rpc(db, { uid: ana }, 'select public.attach_order_checkout($1, $2, $3) as r', [o.orderId, 'pref-1', URL_OK]))
-      const open = (await mine(ana)).find((x) => x.id === o.orderId)!
+    test('pedido em aberto aparece com o estado do pagamento em andamento, e some quando vence', async () => {
+      const uid = await fresh()
+      const o = await create(uid, ['prog'])
+      expect((await mine(uid)).find((x) => x.id === o.orderId)!.payment).toBeNull()
+
+      const begun = ok(await rpc<{ attemptId: string }>(db, { uid }, `select public.begin_payment_attempt($1, 'pix') as r`, [o.orderId]))
+      ok(await runAs('service_role', `select public.record_payment_attempt($1, 'aguardando_pix', null, 'ORD01PIXTESTE', 'PAY01', 60, $2, null, null, now() + interval '1 hour') as r`, [begun.attemptId, 'a'.repeat(40)]))
+      const open = (await mine(uid)).find((x) => x.id === o.orderId)!
       expect(open.status).toBe('pendente')
-      expect(open.checkoutUrl).toBe(URL_OK)
+      expect(open.payment).toMatchObject({ method: 'pix', status: 'aguardando_pix' })
 
       await db.query(`update private.orders set expires_at = now() - interval '1 minute' where id = $1`, [o.orderId])
-      expect((await mine(ana)).some((x) => x.id === o.orderId)).toBe(false)
+      expect((await mine(uid)).some((x) => x.id === o.orderId)).toBe(false)
     })
 
     test('pedido substituído por outro (cancelado) não aparece', async () => {

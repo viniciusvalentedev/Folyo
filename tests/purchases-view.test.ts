@@ -10,7 +10,6 @@ import type { MyOrder } from '@/lib/payments/order'
 /** Página "Minhas compras": o que aparece para cada situação do pedido (renderização no servidor, sem navegador). */
 
 const ID = '3f2b8c1e-6a4d-4e0b-9c53-7d1a2b3c4d5e'
-const PAY = 'https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=123-abc'
 const order = (over: Partial<MyOrder> = {}): MyOrder => ({
   id: ID,
   status: 'pago',
@@ -18,7 +17,7 @@ const order = (over: Partial<MyOrder> = {}): MyOrder => ({
   createdAt: '2026-11-02T15:00:00.000Z',
   paidAt: '2026-11-02T15:30:00.000Z',
   refundedAt: null,
-  checkoutUrl: null,
+  payment: null,
   items: [
     { courseId: 'mkt', title: 'Marketing Estratégico', priceCents: 3299 },
     { courseId: 'design', title: 'Design Gráfico', priceCents: 4990 },
@@ -47,23 +46,30 @@ describe('Minhas compras', () => {
     expect(out).not.toContain('Continuar pagamento')
   })
 
-  test('pedido em aberto: aviso e botão para continuar o pagamento no Mercado Pago', () => {
-    const out = html([order({ status: 'pendente', paidAt: null, checkoutUrl: PAY })])
+  test('pedido em aberto sem pagamento iniciado: aviso e botão para a página de pagamento (dentro do site)', () => {
+    const out = html([order({ status: 'pendente', paidAt: null })])
     expect(out).toContain('Aguardando pagamento')
     expect(out).toContain('Criado em 2 de novembro de 2026')
-    expect(out).toContain(`href="${PAY.replace(/&/g, '&amp;')}"`)
+    expect(out).toContain(`href="/finalizar/pagamento?pedido=${ID}"`)
     expect(out).toContain('Continuar pagamento')
+    expect(out).toContain('Nada foi cobrado por este pedido')
     expect(out).not.toContain('Abrir curso')
     expect(out).toContain('Total</span>')
   })
 
-  test('link de pagamento que não é do Mercado Pago nunca vira botão', () => {
-    for (const url of ['https://evil.example/pagar', 'javascript:alert(1)', 'http://www.mercadopago.com.br/x', 'https://mercadopago.com.evil.example/x']) {
-      const out = html([order({ status: 'pendente', paidAt: null, checkoutUrl: url })])
-      expect(out).not.toContain('Continuar pagamento')
-      expect(out).not.toContain('evil.example')
-      expect(out).not.toContain('javascript:')
-    }
+  test.each([
+    [{ method: 'pix', status: 'aguardando_pix', until: '2026-11-02T16:00:00.000Z' }, 'Pix gerado, aguardando o pagamento'],
+    [{ method: 'cartao', status: 'aguardando_acao', until: '2026-11-02T16:00:00.000Z' }, 'O seu banco pede uma confirmação'],
+    [{ method: 'cartao', status: 'processando', until: '2026-11-02T16:00:00.000Z' }, 'O pagamento está em análise'],
+  ] as const)('pedido em aberto com pagamento em andamento (%o)', (payment, text) => {
+    const out = html([order({ status: 'pendente', paidAt: null, payment })])
+    expect(out).toContain(text)
+    expect(out).toContain(`href="/finalizar/pagamento?pedido=${ID}"`)
+  })
+
+  test('pedido pago ou estornado nunca oferece continuar o pagamento', () => {
+    expect(html([order({ status: 'pago' })])).not.toContain('/finalizar/pagamento')
+    expect(html([order({ status: 'reembolsado', refundedAt: '2026-11-03T10:00:00.000Z' })])).not.toContain('/finalizar/pagamento')
   })
 
   test('pedido estornado: avisa que o acesso acabou e não oferece abrir o curso', () => {

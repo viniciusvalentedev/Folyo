@@ -52,9 +52,10 @@ export default async function PrivacyPage() {
         <ul>
           <li>Progresso nos cursos, aulas concluídas e favoritos.</li>
           <li>
-            Pedidos de compra: cursos, valor, data, situação do pedido e o código do pagamento no Mercado Pago. Os dados
-            do cartão e os documentos que você informa para pagar ficam só com o Mercado Pago. O recibo da compra é enviado
-            ao e-mail da sua conta.
+            Pedidos de compra: cursos, valor, data, situação do pedido e o código do pagamento no Mercado Pago. Você digita
+            os dados do cartão em campos seguros do Mercado Pago, dentro da nossa página: a Folyo não recebe nem guarda número,
+            validade ou código do cartão. O CPF que você informa para pagar é enviado ao Mercado Pago e não fica salvo na
+            Folyo. O recibo da compra é enviado ao e-mail da sua conta.
           </li>
           <li>Tempo assistido e visualizações das aulas: data, aula, tempo e tipo de aparelho (computador, celular ou tablet).</li>
           <li>Sessões de vídeo em andamento (somem sozinhas quando o sinal para de chegar) e a hora em que você leu as notificações.</li>
@@ -143,8 +144,9 @@ export default async function PrivacyPage() {
             <b>Zoho:</b> envio dos e-mails da conta (confirmação e nova senha) e do recibo da compra (seu nome, seu e-mail e os cursos e o valor do pedido).
           </li>
           <li>
-            <b>Mercado Pago:</b> processamento dos pagamentos. Você paga na página dele; ele nos avisa se o pagamento foi
-            aprovado, o valor e a qual pedido ele se refere.
+            <b>Mercado Pago:</b> processamento dos pagamentos (cartão e Pix). Os campos do cartão são fornecidos por ele e
+            ele nos avisa se o pagamento foi aprovado, o valor e a qual pedido ele se refere. Ele pode usar um identificador do
+            seu aparelho para prevenir fraude.
           </li>
         </ul>
         <p>

@@ -4,7 +4,7 @@ import { EmptyState } from '@/components/ui/indicators'
 import { PageHead } from '@/components/ui/PageHead'
 import { formatBRL } from '@/lib/cart'
 import { FALLBACK_SUPPORT_EMAIL } from '@/lib/app-config'
-import { isMercadoPagoUrl, longDate, orderNumber, type MyOrder } from '@/lib/payments/order'
+import { longDate, orderNumber, type MyOrder } from '@/lib/payments/order'
 
 const STATUS: Record<MyOrder['status'], { label: string; pill: string }> = {
   pago: { label: 'Pago', pill: 'pill-ok' },
@@ -49,13 +49,22 @@ export function PurchasesView({ orders }: { orders: MyOrder[] }) {
   )
 }
 
+/** O que está acontecendo com o pagamento de um pedido em aberto. */
+function pendingText(order: MyOrder): string {
+  const p = order.payment
+  if (p?.method === 'pix') return 'Pix gerado, aguardando o pagamento. Assim que ele for confirmado, o acesso chega sozinho.'
+  if (p?.status === 'aguardando_acao') return 'O seu banco pede uma confirmação para liberar este pagamento.'
+  if (p) return 'O pagamento está em análise. O acesso chega sozinho quando ele for aprovado.'
+  return 'O pagamento ainda não foi concluído. Nada foi cobrado por este pedido.'
+}
+
 function OrderCard({ order }: { order: MyOrder }) {
   const status = STATUS[order.status]
   const number = orderNumber(order.id)
   const date = longDate(order.status === 'pago' || order.status === 'reembolsado' ? (order.paidAt ?? order.createdAt) : order.createdAt)
   const owned = order.status === 'pago'
-  // Só segue para o Mercado Pago um endereço do Mercado Pago (o banco já confere; aqui confere de novo).
-  const payUrl = order.status === 'pendente' && isMercadoPagoUrl(order.checkoutUrl) ? order.checkoutUrl : null
+  // Pedido em aberto: a página de pagamento (dentro do site) retoma de onde parou: Pix gerado, confirmação do banco ou formulário.
+  const payUrl = order.status === 'pendente' ? `/finalizar/pagamento?pedido=${order.id}` : null
 
   return (
     <article className="buy-card" aria-labelledby={`pedido-${order.id}`}>
@@ -89,13 +98,12 @@ function OrderCard({ order }: { order: MyOrder }) {
         {order.status === 'pendente' && (
           <div className="buy-note">
             <p>
-              <Icon name="Clock" size={15} /> O pagamento ainda não foi confirmado. Pix e boleto podem levar alguns minutos; o acesso chega sozinho quando o pagamento for confirmado.
+              <Icon name="Clock" size={15} /> {pendingText(order)}
             </p>
             {payUrl && (
-              <a className="btn btn-go btn-md" href={payUrl} rel="noopener noreferrer">
-                <span>Continuar pagamento</span>
-                <Icon name="ExternalLink" size={17} />
-              </a>
+              <ButtonLink variant="go" size="md" href={payUrl}>
+                Continuar pagamento
+              </ButtonLink>
             )}
           </div>
         )}

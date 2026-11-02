@@ -5,7 +5,7 @@ import { RouteFocus } from '@/lib/a11y'
 /**
  * Telas de compra (/comprar, /carrinho, /finalizar): sem menu lateral, com um topo simples.
  * O login é exigido pelo proxy e de novo pelo layout da área do aluno (quem não entrou vai para
- * /entrar e volta para cá depois). Nenhuma delas cobra nada: não existe pagamento na Folyo.
+ * /entrar e volta para cá depois). O pagamento (/finalizar/pagamento) acontece dentro do site, com cartão ou Pix.
  */
 export default function CheckoutLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -96,12 +96,12 @@ export default async function TermsPage() {
             fez o pedido.
           </li>
           <li>
-            <b>Como pagar:</b> o pagamento é feito no ambiente do Mercado Pago (cartão, Pix e outras formas que ele
-            oferecer). A Folyo não recebe nem guarda os dados do seu cartão.
+            <b>Como pagar:</b> o pagamento é feito na própria Folyo, com a tecnologia do Mercado Pago (cartão de
+            crédito, em até 12 parcelas, e Pix). A Folyo não recebe nem guarda os dados do seu cartão.
           </li>
           <li>
-            <b>Liberação:</b> o acesso ao curso comprado é liberado quando o Mercado Pago confirma o pagamento. Pix e
-            boleto podem levar alguns minutos.
+            <b>Liberação:</b> o acesso ao curso comprado é liberado quando o Mercado Pago confirma o pagamento. O Pix e a
+            confirmação do banco no cartão podem levar alguns minutos.
           </li>
           <li>
             <b>Desistência:</b> você pode desistir da compra em até 7 dias corridos depois do pagamento (CDC, art. 49),

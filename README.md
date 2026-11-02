@@ -50,13 +50,17 @@ Onde estamos:
   "Liberar com cupom"; preço, desconto e liberação são calculados **no banco**. **Não existe pagamento**: sem cupom,
   `/finalizar` avisa que o pagamento online ainda não está disponível. Curso pago sem acesso não entrega vídeo nem
   materiais. Exige um SQL novo, rodado **depois** de publicar o código (veja [`supabase/README.md`](supabase/README.md)).
-- **Pagamentos com Mercado Pago (Checkout Pro)** ✅ código pronto, **desligado por padrão** (`PAYMENTS_ENABLED`).
-  O aluno paga na página do Mercado Pago (cartão, Pix etc., com ou sem conta lá); a Folyo nunca vê dado de cartão.
-  O **banco** cria o pedido e calcula o preço (`create_order`); só o **webhook** (`/api/webhooks/mercadopago`) libera o
-  curso: confere a assinatura, consulta o pagamento na API do Mercado Pago e chama `apply_payment` (valor e moeda
-  conferidos, idempotente; estorno tira o acesso). Depois de pago, o aluno recebe o **recibo por e-mail** (pela Zoho, uma vez por
-  pedido, com o link para o curso) e vê o pedido em **Minhas compras** (`/compras`). Exige dois SQL novos e a configuração do
-  Mercado Pago e do e-mail da Zoho (veja [`supabase/README.md`](supabase/README.md), "Pagamentos").
+- **Pagamentos com Mercado Pago (Checkout Transparente)** ✅ código pronto, **desligado por padrão** (`PAYMENTS_ENABLED`).
+  O aluno paga **dentro do site** (`/finalizar/pagamento`): cartão de crédito em até 12x, com confirmação do banco
+  (3D Secure) quando pedida, ou Pix com QR Code. Os dados do cartão são digitados em campos seguros do Mercado Pago
+  (MercadoPago.js): a Folyo só recebe um **token de uso único**, nunca número, validade ou código. O CPF vai ao Mercado
+  Pago e não é guardado. O **banco** cria o pedido, calcula o preço e limita as tentativas contra teste de cartões
+  (`create_order`, `begin_payment_attempt`); o valor cobrado é sempre o do banco. Só o **servidor**, depois de ler a
+  ordem na API do Mercado Pago com o nosso token (pelo webhook `/api/webhooks/mercadopago`, logo após uma aprovação ou
+  no botão "conferir pagamento"), chama `apply_payment` (valor e moeda conferidos, idempotente; estorno tira o acesso).
+  Depois de pago, o aluno recebe o **recibo por e-mail** (pela Zoho, uma vez por pedido, com o link para o curso) e vê o
+  pedido em **Minhas compras** (`/compras`). Exige três SQL novos e a configuração do Mercado Pago e do e-mail da Zoho
+  (veja [`supabase/README.md`](supabase/README.md), "Pagamentos").
 - **Aulas em sequência, "continuar de onde parou" e conclusão só no fim do vídeo** ✅ o aluno só abre uma aula depois
   de concluir as anteriores (conferido no servidor); o ponto em que parou o vídeo é salvo e vale em qualquer aparelho;
   "Próxima aula" e "concluir" só liberam quando o vídeo chega ao final. Exige um SQL novo, rodado **antes** de publicar
@@ -129,7 +133,7 @@ src/
 │  │  ├─ layout.tsx          → carrega o catálogo e os dados do aluno
 │  │  ├─ primeiro-acesso/    → /primeiro-acesso (primeiro acesso em 3 passos)
 │  │  ├─ publico/            → /publico  (pré-visualização do perfil público)
-│  │  ├─ (checkout)/         → /carrinho, /comprar/[curso] e /finalizar  (carrinho e cupom; sem pagamento ainda)
+│  │  ├─ (checkout)/         → /carrinho, /comprar/[curso] e /finalizar e /finalizar/pagamento  (carrinho, cupom e pagamento dentro do site)
 │  │  ├─ admin/              → /admin  (painel da equipe: visão geral, usuários, permissões, cursos, aulas, categorias,
 │  │  │                         trilhas, mídia, audiência, relatórios e configurações)
 │  │  ├─ (main)/             ← páginas com menu lateral + barra do topo
@@ -335,7 +339,7 @@ Turnstile (CAPTCHA), Zoho Mail (e-mail `contato@usefolyo.com` e envio dos e-mail
 | **Currículo em PDF e certificados** | Só visual ("Certificados a caminho"). A conclusão da aula só libera no fim do vídeo e as aulas são em sequência, mas é conferido na tela (o banco não sabe o ponto do vídeo) | Certificado emitido pelo servidor (conferindo aulas e trabalho) + código de verificação |
 | **Perfil público** | ✅ `/u/<endereço>` aberto sem login, com controle de privacidade; `/publico` é a pré-visualização. Não é indexado pelo Google (`noindex`) | Opção "aparecer no Google" e subdomínio (`nome.usefolyo.com`) |
 | **Objetivos com recomendação** | ✅ Trilhas cadastradas no painel (Trilhas), com as 7 de `src/lib/trails.ts` de reserva; as recomendações usam os cursos do banco (publicados e visíveis) | Refinar com os dados de audiência |
-| **Pagamentos** | ✅ Curso avulso pelo Mercado Pago (Checkout Pro), pedido e preço no banco, liberação só pelo webhook assinado. Recibo por e-mail e página Minhas compras. Desligado até `PAYMENTS_ENABLED=true` (e o cupom `LANCAMENTO` segue valendo) | Assinatura mensal; notas fiscais/CNPJ |
+| **Pagamentos** | ✅ Curso avulso pago dentro do site (Mercado Pago, Checkout Transparente: cartão até 12x e Pix), pedido e preço no banco, liberação só depois de ler a ordem na API do Mercado Pago (webhook assinado). Recibo por e-mail e página Minhas compras. Desligado até `PAYMENTS_ENABLED=true` (e o cupom `LANCAMENTO` segue valendo) | Assinatura mensal; notas fiscais/CNPJ |
 | **Textos legais** | `/termos` e `/privacidade` no ar com aviso "versão em revisão" | Preencher `src/lib/legal.ts` (CNPJ/CPF, endereço, encarregado, foro), revisão de advogado e trocar `reviewed` para `true` |
 
 ### Como os dados vão para o banco
