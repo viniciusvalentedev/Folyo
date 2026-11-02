@@ -57,6 +57,8 @@ export class GatewayError extends Error {
     message: string,
     readonly status?: number,
     readonly code?: string,
+    /** Só para "propriedade não aceita" (unsupported_properties): quais campos o Mercado Pago recusou. Nunca dados da pessoa. */
+    readonly detail?: string,
   ) {
     super(message)
     this.name = 'GatewayError'
@@ -127,8 +129,6 @@ export type NewGatewayOrder = {
   items: OrderItemInput[]
   /** Nome da conta (como a pessoa cadastrou), para o antifraude. Opcional. */
   payerName?: string | null
-  /** Quando a conta foi criada (data de cadastro), para o antifraude. Opcional. */
-  payerSince?: string | null
   /** Identificador do dispositivo (antifraude), opcional. */
   deviceId?: string
   payment: { kind: 'card'; token: string; paymentMethodId: string; installments: number } | { kind: 'pix' }
@@ -194,7 +194,6 @@ export function buildOrderBody(input: NewGatewayOrder): Record<string, unknown> 
     quantity: 1,
     category_id: ITEM_CATEGORY,
   }))
-  const since = input.payerSince ? new Date(input.payerSince) : null
   const common = {
     type: 'online',
     processing_mode: 'automatic',
@@ -203,7 +202,6 @@ export function buildOrderBody(input: NewGatewayOrder): Record<string, unknown> 
     description: input.description,
     payer,
     items,
-    ...(since && !Number.isNaN(since.getTime()) ? { additional_info: { payer: { registration_date: since.toISOString() } } } : {}),
   }
   if (input.payment.kind === 'pix') {
     return {
@@ -346,6 +344,14 @@ function errorCode(body: unknown): string | undefined {
   return parsed.success ? parsed.data.errors[0].code : undefined
 }
 
+/** Nomes dos campos recusados em "unsupported_properties" (ex.: "items.0.foo"). Só texto curto, sem sequências longas de números. */
+function unsupportedFields(body: unknown): string | undefined {
+  const parsed = z.object({ errors: z.array(z.object({ code: z.string(), details: z.array(z.string()).optional() })).min(1) }).safeParse(body)
+  if (!parsed.success || parsed.data.errors[0].code !== 'unsupported_properties') return undefined
+  const safe = (parsed.data.errors[0].details ?? []).filter((d) => /^[A-Za-z0-9_.[\] :,'-]{1,150}$/.test(d) && !/\d{4,}/.test(d)).slice(0, 5)
+  return safe.length ? safe.join(' | ') : undefined
+}
+
 /** A ordem que o Mercado Pago anexa em `data` nas respostas de erro (ex.: pagamento recusado). */
 function dataOf(body: unknown): unknown {
   return typeof body === 'object' && body !== null && 'data' in body ? body.data : null
@@ -417,7 +423,7 @@ export async function createGatewayOrder(cfg: MercadoPagoConfig, input: NewGatew
     if (reason && order.payment && !order.payment.statusDetail) order.payment.statusDetail = reason
     return order
   }
-  if (!ok) throw new GatewayError('Mercado Pago recusou a criação do pagamento', status, errorCode(raw))
+  if (!ok) throw new GatewayError('Mercado Pago recusou a criação do pagamento', status, errorCode(raw), unsupportedFields(raw))
   throw new GatewayError('Resposta inesperada do Mercado Pago')
 }
 

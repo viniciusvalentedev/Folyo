@@ -93,16 +93,13 @@ type Service = ReturnType<typeof createSupabaseServiceClient>
 
 type UserDb = NonNullable<Awaited<ReturnType<typeof actionContext>>>['supabase']
 
-/** Nome e data de cadastro da conta (ajudam o antifraude a aprovar). Se não der para ler, o pagamento segue sem eles. */
-async function readPayerProfile(supabase: UserDb, userId: string): Promise<{ name: string | null; since: string | null }> {
+/** Nome da conta (ajuda o antifraude a aprovar). Se não der para ler, o pagamento segue sem ele. */
+async function readPayerProfile(supabase: UserDb, userId: string): Promise<{ name: string | null }> {
   try {
-    const { data } = await supabase.from('profiles').select('name, created_at').eq('id', userId).maybeSingle()
-    return {
-      name: typeof data?.name === 'string' ? data.name : null,
-      since: typeof data?.created_at === 'string' ? data.created_at : null,
-    }
+    const { data } = await supabase.from('profiles').select('name').eq('id', userId).maybeSingle()
+    return { name: typeof data?.name === 'string' ? data.name : null }
   } catch {
-    return { name: null, since: null }
+    return { name: null }
   }
 }
 
@@ -191,7 +188,7 @@ export async function payOrderAction(input: unknown): Promise<PayResult> {
     if (r.error) console.error('Falha ao gravar a tentativa de pagamento', { code: r.error.code })
   }
 
-  const { name: payerName, since: payerSince } = await readPayerProfile(ctx.supabase, ctx.user.id)
+  const { name: payerName } = await readPayerProfile(ctx.supabase, ctx.user.id)
 
   // 2. Cria o pagamento no Mercado Pago com o VALOR DO PEDIDO NO BANCO.
   let gateway: GatewayOrder
@@ -205,14 +202,13 @@ export async function payOrderAction(input: unknown): Promise<PayResult> {
       description: `Folyo: ${started.items.length} ${started.items.length === 1 ? 'curso' : 'cursos'}`,
       items: started.items,
       payerName,
-      payerSince,
       deviceId: pay.deviceId,
       payment: pay.method === 'pix' ? { kind: 'pix' } : { kind: 'card', token: pay.token, paymentMethodId: pay.paymentMethodId, installments: pay.installments },
     })
   } catch (error) {
     const status = error instanceof GatewayError ? error.status : undefined
     const code = error instanceof GatewayError ? error.code : undefined
-    console.error('Falha ao criar o pagamento no Mercado Pago', { status, code })
+    console.error('Falha ao criar o pagamento no Mercado Pago', { status, code, fields: error instanceof GatewayError ? error.detail : undefined })
     // Recusa clara (4xx): nada foi processado. Qualquer outra falha (rede, tempo esgotado, 5xx) é incerta: o pagamento
     // pode ter sido criado, então segura um novo pagamento por alguns minutos para o aviso do Mercado Pago chegar.
     if (status !== undefined && status >= 400 && status < 500 && status !== 408 && status !== 429) {

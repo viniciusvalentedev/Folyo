@@ -241,7 +241,7 @@ describe('payOrderAction: cartão', () => {
   beforeEach(setup)
   afterEach(teardown)
 
-  test('manda ao Mercado Pago os itens do banco, o nome e a data de cadastro da conta, e o descritivo da fatura', async () => {
+  test('manda ao Mercado Pago os itens do banco, o nome da conta e o descritivo da fatura', async () => {
     userRpc.mockResolvedValueOnce(begun())
     fetchMock.mockResolvedValueOnce(json(gw('processed', 'accredited')))
     await payOrderAction({ ...card, items: [{ title: 'inventado', unit_price: '0.01' }], name: 'Outra Pessoa' })
@@ -251,12 +251,12 @@ describe('payOrderAction: cartão', () => {
       { title: 'Design', unit_price: '49.90', quantity: 1, category_id: 'learnings' },
     ])
     expect(body.payer).toMatchObject({ first_name: 'Ana', last_name: 'Maria Souza' })
-    expect(body.additional_info).toEqual({ payer: { registration_date: '2026-03-10T12:30:00.000Z' } })
+    expect(body.additional_info).toBeUndefined()
     expect(body.transactions.payments[0].payment_method.statement_descriptor).toBe('FOLYO')
     expect(JSON.stringify(body)).not.toMatch(/inventado|Outra Pessoa/)
   })
 
-  test('sem conseguir ler o perfil (erro ou nome vazio), o pagamento segue sem nome e sem data', async () => {
+  test('sem conseguir ler o perfil (erro ou nome vazio), o pagamento segue sem nome', async () => {
     for (const broken of [() => (profileFails = true), () => (profileRow = null), () => (profileRow = { name: '', created_at: 5 })]) {
       setup()
       broken()

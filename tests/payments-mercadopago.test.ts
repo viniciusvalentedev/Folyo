@@ -38,7 +38,6 @@ const card: NewGatewayOrder = {
     { courseId: 'c-dois', title: 'Power BI', priceCents: 3299 },
   ],
   payerName: 'Ana Maria Souza',
-  payerSince: '2026-03-10T12:30:00.000Z',
   deviceId: 'device-abc-12345',
   payment: { kind: 'card', token: 'ff8080814c11e237014c1ff593b57b4d', paymentMethodId: 'visa', installments: 3 },
 }
@@ -156,7 +155,6 @@ describe('buildOrderBody', () => {
       total_amount: '82.89',
       external_reference: ORDER,
       payer: { email: 'ana@exemplo.com', first_name: 'Ana', last_name: 'Maria Souza', identification: { type: 'CPF', number: '52998224725' } },
-      additional_info: { payer: { registration_date: '2026-03-10T12:30:00.000Z' } },
       items: [
         { title: 'Excel do zero', unit_price: '49.90', quantity: 1, category_id: 'learnings' },
         { title: 'Power BI', unit_price: '32.99', quantity: 1, category_id: 'learnings' },
@@ -216,11 +214,13 @@ describe('itens, comprador e fatura (qualidade da integração do Mercado Pago)'
     expect(body.items.every((item) => Number(item.unit_price) > 0)).toBe(true)
   })
 
-  test('sem nome ou sem data de cadastro, os campos simplesmente não vão', () => {
-    const body = buildOrderBody({ ...card, payerName: null, payerSince: null }) as Body
+  test('a ordem não leva `additional_info` (a API de Orders não aceita esse nó: dá unsupported_properties)', () => {
+    for (const input of [card, pix]) expect(JSON.stringify(buildOrderBody(input))).not.toContain('additional_info')
+  })
+
+  test('sem nome, os campos de nome simplesmente não vão', () => {
+    const body = buildOrderBody({ ...card, payerName: null }) as Body
     expect(body.payer).toEqual({ email: 'ana@exemplo.com', identification: { type: 'CPF', number: '52998224725' } })
-    expect(body.additional_info).toBeUndefined()
-    expect((buildOrderBody({ ...card, payerSince: 'ontem' }) as Body).additional_info).toBeUndefined()
   })
 
   test('sem itens utilizáveis, vai um item só com o total', () => {
@@ -332,6 +332,12 @@ describe('createGatewayOrder', () => {
     expect(error).toMatchObject({ status: 400, code: 'invalid_card_token' })
     expect(JSON.stringify(error)).not.toContain('TOKEN-SECRETO-DE-TESTE')
     expect(String((error as Error).message)).not.toMatch(/TOKEN|5299/)
+  })
+
+  test('unsupported_properties: o erro leva os nomes dos campos recusados (para o log), nunca dados da pessoa', async () => {
+    always(fetchMock, json({ errors: [{ code: 'unsupported_properties', details: ['items.0.foo', 'payer.cpf 52998224725', 'x'.repeat(200), 'additional_info'] }] }, 400))
+    const error = await createGatewayOrder(cfg, card).catch((e: unknown) => e)
+    expect(error).toMatchObject({ status: 400, code: 'unsupported_properties', detail: 'items.0.foo | additional_info' })
   })
 
   test('código de erro fora do formato é descartado', async () => {
