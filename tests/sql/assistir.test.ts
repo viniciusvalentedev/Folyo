@@ -25,7 +25,8 @@ describe.skipIf(!migrations)('concluir aula (SQL)', () => {
   }, 120_000)
 
   test('aula em vídeo do Bunny pode ser concluída sem tempo assistido gravado', async () => {
-    await as(db, { uid: ana }, (tx) => tx.query(`insert into public.lesson_completions (course_id, lesson_id) values ('mkt', 'mkt-a1')`))
+    // Concluir passa por complete_lesson (20261103000002), que confere ordem e acesso, mas não tempo assistido.
+    await as(db, { uid: ana }, (tx) => tx.query(`select public.complete_lesson('mkt', 'mkt-a1')`))
     const { rows } = await db.query<{ n: number }>(`select count(*)::int as n from public.lesson_completions where lesson_id = 'mkt-a1'`)
     expect(rows[0].n).toBe(1)
   })

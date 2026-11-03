@@ -1,8 +1,9 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { verifyCurrentPassword } from '@/lib/auth/verify-password'
 import { getAccount } from '@/lib/data/user'
-import { AUTH_LIMITS, allowShared } from '@/lib/security/rate-limit'
+import { AUTH_LIMITS, allowShared, clientIp, hitShared, limitedShared } from '@/lib/security/rate-limit'
 import { deleteAccountSchema } from '@/lib/validation'
 import { actionContext, EXPIRED, type ActionContext, type ActionFailure } from './shared'
 
@@ -11,8 +12,9 @@ import { actionContext, EXPIRED, type ActionContext, type ActionFailure } from '
  *
  * - Baixar os meus dados: a função `export_my_data` do banco devolve tudo da PRÓPRIA conta
  *   (o id vem do token, nunca do navegador).
- * - Excluir a minha conta: apaga primeiro os PDFs do Storage (o banco não consegue) e depois
- *   chama `delete_my_account`, que remove a conta e, em cascata, todo o resto.
+ * - Excluir a minha conta: confere a SENHA ATUAL (uma sessão esquecida aberta não basta para
+ *   apagar a conta), apaga os PDFs do Storage (o banco não consegue) e depois chama
+ *   `delete_my_account`, que remove a conta e, em cascata, todo o resto.
  *
  * Detalhes e o que fica de fora: supabase/migrations/20261027000001_lgpd_conta.sql.
  */
@@ -26,6 +28,14 @@ const EXPORT_FAILED: ActionFailure = {
 const DELETE_FAILED: ActionFailure = {
   ok: false,
   error: 'Não foi possível excluir a conta agora. Tente de novo em instantes ou fale com o suporte.',
+}
+const TOO_MANY: ActionFailure = { ok: false, error: 'Muitas tentativas seguidas. Espere alguns minutos e tente de novo.' }
+/** Respostas da conferência da senha atual (nunca dizem mais do que "certa" ou "errada"). */
+const PASSWORD_FAILURES: Record<'senha_errada' | 'captcha' | 'limite' | 'falha', ActionFailure> = {
+  senha_errada: { ok: false, error: 'Senha incorreta. Confira e tente de novo.' },
+  captcha: { ok: false, error: 'Não conseguimos confirmar que você é uma pessoa. Espere a verificação terminar e tente de novo.' },
+  limite: TOO_MANY,
+  falha: { ok: false, error: 'Não foi possível conferir sua senha agora. Tente de novo em instantes.' },
 }
 
 /** Devolve os dados da conta como texto JSON; o navegador transforma em arquivo para baixar. */
@@ -68,13 +78,14 @@ async function removeAllPdfs({ supabase, user }: ActionContext): Promise<boolean
 /** Exclui a conta de quem está logado. Se der certo, a pessoa sai e vai para a tela de entrada. */
 export async function deleteMyAccountAction(input: unknown): Promise<ActionFailure> {
   const parsed = deleteAccountSchema.safeParse(input)
-  if (!parsed.success) return { ok: false, error: 'Digite a palavra EXCLUIR para confirmar.' }
+  if (!parsed.success) {
+    const missingPassword = parsed.error.issues.some((i) => i.path[0] === 'password')
+    return { ok: false, error: missingPassword ? 'Digite sua senha atual para confirmar.' : 'Digite a palavra EXCLUIR para confirmar.' }
+  }
 
   const ctx = await actionContext()
   if (!ctx) return EXPIRED
-  if (!(await allowShared('account-delete:' + ctx.user.id, AUTH_LIMITS.accountDelete))) {
-    return { ok: false, error: 'Muitas tentativas seguidas. Espere alguns minutos e tente de novo.' }
-  }
+  if (!(await allowShared('account-delete:' + ctx.user.id, AUTH_LIMITS.accountDelete))) return TOO_MANY
 
   // Proprietário precisa passar a função adiante antes: o banco também recusa a saída do último
   // proprietário ativo, mas aqui isso evita apagar os PDFs de uma conta que não poderá ser excluída.
@@ -84,6 +95,22 @@ export async function deleteMyAccountAction(input: unknown): Promise<ActionFailu
       ok: false,
       error: 'Esta conta é de proprietário. Peça a outro proprietário para mudar a sua função no painel e tente de novo.',
     }
+  }
+
+  // Senha atual, conferida pelo Supabase. Senha errada conta no MESMO limite do login (por e-mail), para esta tela não
+  // virar um jeito de testar senhas sem passar pelo limite da tela de entrada.
+  const failures = 'signin-fail:' + ctx.user.email.toLowerCase()
+  if (await limitedShared(failures, AUTH_LIMITS.signInFailures)) return TOO_MANY
+  const check = await verifyCurrentPassword({
+    userId: ctx.user.id,
+    email: ctx.user.email,
+    password: parsed.data.password,
+    captchaToken: parsed.data.captchaToken,
+    clientIp: await clientIp(),
+  })
+  if (check !== 'ok') {
+    if (check === 'senha_errada') await hitShared(failures, AUTH_LIMITS.signInFailures)
+    return PASSWORD_FAILURES[check]
   }
 
   if (!(await removeAllPdfs(ctx))) {

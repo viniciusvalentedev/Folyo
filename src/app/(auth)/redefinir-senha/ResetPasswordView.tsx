@@ -20,7 +20,7 @@ export function ResetPasswordView({ email }: { email: string }) {
           <Icon name="CircleCheck" size={24} />
         </span>
         <h2>Senha alterada</h2>
-        <p>Pronto! Da próxima vez, entre com a senha nova.</p>
+        <p>Pronto! Por segurança, saímos da sua conta nos outros aparelhos. Da próxima vez, entre com a senha nova.</p>
         <ButtonLink href="/inicio" iconRight="ArrowRight">
           Ir para o início
         </ButtonLink>
