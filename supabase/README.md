@@ -1,5 +1,6 @@
 # Supabase — passo a passo
 
+- **Concluir aula só pelo banco (sequência + acesso) e troca de senha mais segura:** logo abaixo. Publique o código **antes** do SQL.
 - **Aulas em sequência e continuar de onde parou:** logo abaixo. Rode o SQL **antes** de publicar o código.
 - **Concluir a aula só no final do vídeo:** logo abaixo. Sem SQL.
 - **Trilhas no painel (Objetivos > Escolher objetivos):** logo abaixo. O código funciona com e sem o SQL.
@@ -21,6 +22,60 @@
 > A **secret key** (`sb_secret_...`) **não é usada** nesta etapa: não cole ela no `.env.local`, na Vercel,
 > no GitHub nem em conversas. Ela passa por cima de todas as regras de segurança do banco. Guarde só no
 > gerenciador de senhas.
+
+---
+
+# Concluir aula só pelo banco (auditoria de segurança)
+
+**O problema:** o aluno gravava direto na tabela `lesson_completions`. Com o próprio token (o cookie, pego no navegador),
+dava para marcar todas as aulas de um curso de uma vez, fora de ordem, e o perfil público mostrava o curso como
+"concluído" e "certificado".
+
+**O que muda:** concluir uma aula passa a ser só pela função `complete_lesson(curso, aula)`, que confere no banco:
+- login e conta não suspensa;
+- a aula está no ar (publicada, módulo não arquivado, curso no ar) e é DESTE curso;
+- a pessoa pode assistir ao curso (gratuito, compra, liberação manual ou pré-acesso do cupom em dia);
+- a ordem: todas as aulas anteriores do curso já estão concluídas (a mesma ordem da tela). A equipe (editor ou acima,
+  **com** a verificação em duas etapas nesta sessão) não segue a ordem, como já acontece na tela.
+
+O aluno perde o INSERT direto na tabela. Desmarcar (apagar a própria conclusão) continua igual. Aula já concluída
+continua valendo, mesmo que a pessoa desmarque uma anterior depois (igual à tela).
+
+**Tempo assistido não é exigido.** `lesson_watch` é gravado pelo próprio aluno, então não prova nada contra quem usa o
+token; e travar por tempo atrapalharia aula sem vídeo, YouTube/Vimeo e quem pula trechos (foi por isso que a trava antiga,
+`20261030000001`, saiu). A regra "só conclui no fim do vídeo" continua na tela.
+
+## 1. Publicar o código (ANTES do SQL)
+Publique o código desta mudança. Ele chama `complete_lesson` e, enquanto a função não existe no banco, grava como antes
+(nada quebra).
+
+## 2. Rodar o SQL (DEPOIS de publicar)
+No Supabase → **SQL Editor**, rode `supabase/migrations/20261103000002_concluir_aula_no_banco.sql` (pode rodar de novo).
+Não apaga nenhuma aula concluída.
+
+> **Ordem importante:** rodar o SQL com o código ANTIGO no ar faz o botão "concluir aula" falhar para todos os alunos
+> até o código novo ser publicado (o código antigo grava direto na tabela, que fica fechada).
+
+## 3. Testar (com uma conta de aluno de teste)
+1. Num curso, conclua a aula 1 assistindo até o fim e vá para a aula 2: tudo como antes.
+2. Desmarque e marque de novo uma aula: funciona.
+3. Num curso pago sem acesso, a página da aula leva para a compra (como antes).
+4. Perfil público de uma conta que terminou um curso: o curso aparece concluído e com certificado.
+5. Opcional (técnico): no SQL Editor, `select has_table_privilege('authenticated', 'public.lesson_completions', 'insert');`
+   deve dar `false`.
+
+## Troca de senha e exclusão de conta (sem SQL)
+- Depois de trocar a senha, as **outras sessões** da conta são encerradas (outros aparelhos saem). Esta continua.
+- **Excluir a conta** agora pede a **senha atual** (conferida pelo Supabase) e o CAPTCHA, além da palavra EXCLUIR.
+  Senha errada conta no mesmo limite do login.
+- No painel do Supabase, ligue **Authentication → Providers → Email → Secure password change**. Com ele, só troca a
+  senha quem entrou na conta nas últimas 24 horas (quem veio pelo link de "Esqueci minha senha" sempre pode). Quem
+  passar disso vê a mensagem "Por segurança, você precisa ter entrado na conta há pouco tempo..." e só precisa sair e
+  entrar de novo.
+
+## Como desfazer
+O fim do arquivo SQL tem o bloco "Como desfazer": devolve o INSERT direto e apaga a função. O código novo volta a gravar
+direto sozinho (sem precisar publicar nada).
 
 ---
 
@@ -116,8 +171,10 @@ drop function if exists private.lesson_completion_guard();
 - Vale o fim do vídeo **nesta visita**: se a pessoa sair e voltar antes de concluir, precisa chegar ao final de novo.
 
 ## Limitação conhecida
-- Quem for técnico consegue pedir a conclusão direto ao servidor sem passar pela tela. Para blindar isso seria preciso
-  um servidor que registre os eventos do player; não foi feito porque o pedido foi não travar o aluno.
+- Quem for técnico consegue pedir a conclusão direto ao servidor sem passar pela tela. Desde
+  `20261103000002_concluir_aula_no_banco.sql` o banco confere a ordem das aulas e o acesso ao curso, mas ainda dá para
+  concluir uma aula de cada vez, na ordem, sem assistir. Para blindar isso seria preciso um servidor que registre os
+  eventos do player; não foi feito porque o pedido foi não travar o aluno.
 
 ---
 

@@ -20,6 +20,7 @@ import {
   INVALID,
   OK,
   updateOrInsert,
+  type ActionFailure,
   type ActionResult,
 } from './shared'
 
@@ -37,7 +38,15 @@ import {
  * "inverta". Repetir o mesmo pedido não estraga nada.
  */
 
-/** Marca ou desmarca uma aula como concluída. A data é sempre a do servidor. */
+const LESSON_OUT_OF_ORDER: ActionFailure = { ok: false, error: 'Conclua as aulas anteriores antes de concluir esta.' }
+const COURSE_LOCKED: ActionFailure = { ok: false, error: 'Este curso ainda não foi liberado para você.' }
+
+/**
+ * Marca ou desmarca uma aula como concluída. A data é sempre a do servidor.
+ *
+ * Concluir passa pela função complete_lesson do banco, que confere o acesso ao curso e a ordem das aulas (a tela
+ * confere também, mas quem decide é o banco). Desmarcar continua sendo apagar a própria linha.
+ */
 export async function setLessonDoneAction(input: unknown): Promise<ActionResult> {
   const parsed = lessonDoneSchema.safeParse(input)
   if (!parsed.success) return INVALID
@@ -47,10 +56,19 @@ export async function setLessonDoneAction(input: unknown): Promise<ActionResult>
   if (!ctx) return EXPIRED
 
   if (done) {
-    const { error } = await ctx.supabase.from('lesson_completions').insert({ course_id: courseId, lesson_id: lessonId })
-    // 23505 = já estava concluída. Tudo certo.
-    if (error && error.code !== '23505') return dbFailure('lesson_completions.insert', error)
-    return OK
+    const { error } = await ctx.supabase.rpc('complete_lesson', { p_course: courseId, p_lesson: lessonId })
+    if (!error) return OK
+    if (error.code === 'PGRST202') {
+      // Banco ainda sem o SQL 20261103000002 (o código é publicado ANTES dele): grava como antes.
+      const old = await ctx.supabase.from('lesson_completions').insert({ course_id: courseId, lesson_id: lessonId })
+      // 23505 = já estava concluída. Tudo certo.
+      if (old.error && old.error.code !== '23505') return dbFailure('lesson_completions.insert', old.error)
+      return OK
+    }
+    if (error.code === 'FC422') return LESSON_OUT_OF_ORDER
+    if (error.code === 'FA403') return COURSE_LOCKED
+    if (error.code === 'FA400' || error.code === 'FA404') return INVALID
+    return dbFailure('complete_lesson', error)
   }
   const { error } = await ctx.supabase
     .from('lesson_completions')

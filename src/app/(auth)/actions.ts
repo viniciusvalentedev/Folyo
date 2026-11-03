@@ -83,7 +83,8 @@ function friendly(code: string | undefined, status?: number) {
     case 'email_address_not_authorized':
       return 'Ainda não conseguimos enviar e-mails para esse endereço. O envio de e-mails da Folyo está em configuração.'
     case 'reauthentication_needed':
-      return 'Por segurança, saia e entre de novo antes de trocar a senha.'
+      // "Secure password change" do Supabase: só troca a senha quem entrou na conta nas últimas 24 horas.
+      return 'Por segurança, você precisa ter entrado na conta há pouco tempo para trocar a senha. Saia, entre de novo com a senha atual e tente outra vez. Esqueceu a senha? Use "Esqueci minha senha" na tela de entrada.'
     default:
       // Registra só o código (nunca e-mail ou senha) para investigarmos depois.
       console.error('Erro do Supabase Auth', { code, status })
@@ -251,6 +252,10 @@ export async function updatePasswordAction(_prev: AuthFormState, formData: FormD
   const supabase = await createSupabaseServerClient()
   const { error } = await supabase.auth.updateUser({ password: parsed.data.password })
   if (error) return { message: friendly(error.code, error.status) }
+  // Senha nova: encerra as outras sessões (outros aparelhos, ou quem tenha pego a sessão). Esta continua.
+  // Se falhar, a senha já foi trocada: só registra o código para investigarmos.
+  const { error: othersError } = await supabase.auth.signOut({ scope: 'others' })
+  if (othersError) console.error('Falha ao encerrar as outras sessões', { code: othersError.code, status: othersError.status })
   return { done: true }
 }
 

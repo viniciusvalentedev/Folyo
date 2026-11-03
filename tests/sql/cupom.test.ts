@@ -188,9 +188,10 @@ describe.skipIf(!migrations)('cupom de lançamento (SQL)', () => {
       expect(videos.map((v) => v.id).sort()).toEqual(['gratis-a1'])
       const mats = ok(await rpc<string[]>(db, { uid: ana }, `select coalesce(array_agg(id order by id), '{}') as r from public.lesson_materials`))
       expect(mats).toEqual(['gratis-mat'])
-      const done = await rpc(db, { uid: ana }, `insert into public.lesson_completions (course_id, lesson_id) values ('mkt', 'mkt-a1') returning 1 as r`)
-      expect(done).toMatchObject({ ok: false, code: '42501' })
-      const free = await rpc(db, { uid: ana }, `insert into public.lesson_completions (course_id, lesson_id) values ('gratis', 'gratis-a1') returning 1 as r`)
+      // Concluir aula passa por complete_lesson (20261103000002): curso pago sem acesso é recusado.
+      const done = await rpc(db, { uid: ana }, `select public.complete_lesson('mkt', 'mkt-a1') as r`)
+      expect(done).toMatchObject({ ok: false, code: 'FA403' })
+      const free = await rpc(db, { uid: ana }, `select public.complete_lesson('gratis', 'gratis-a1') as r`)
       expect(free.ok).toBe(true)
       const ev = await rpc(db, { uid: ana }, `select public.player_event(gen_random_uuid(), 'mkt', 'mkt-a1', 'play') as r`)
       expect(ev).toMatchObject({ ok: false, code: 'FA404' })
@@ -216,7 +217,7 @@ describe.skipIf(!migrations)('cupom de lançamento (SQL)', () => {
       expect(await hasAccess(ana, 'prog')).toBe(false)
       const videos = ok(await rpc<{ id: string }[]>(db, { uid: ana }, 'select public.lesson_videos() as r'))
       expect(videos.map((v) => v.id).sort()).toEqual(['gratis-a1', 'mkt-a1'])
-      const done = await rpc(db, { uid: ana }, `insert into public.lesson_completions (course_id, lesson_id) values ('mkt', 'mkt-a1') returning 1 as r`)
+      const done = await rpc(db, { uid: ana }, `select public.complete_lesson('mkt', 'mkt-a1') as r`)
       expect(done.ok).toBe(true)
     })
 

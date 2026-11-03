@@ -109,10 +109,14 @@ describe('MFA e exclusão de conta', () => {
   })
 
   it('excluir conta exige a palavra EXCLUIR (sem diferenciar maiúsculas)', () => {
-    expect(deleteAccountSchema.safeParse({ confirm: 'excluir' }).success).toBe(true)
-    expect(deleteAccountSchema.safeParse({ confirm: '  EXCLUIR ' }).success).toBe(true)
-    expect(deleteAccountSchema.safeParse({ confirm: 'sim' }).success).toBe(false)
-    expect(deleteAccountSchema.safeParse({ confirm: '' }).success).toBe(false)
+    expect(deleteAccountSchema.safeParse({ confirm: 'excluir', password: 'senha-atual' }).success).toBe(true)
+    expect(deleteAccountSchema.safeParse({ confirm: '  EXCLUIR ', password: 'senha-atual' }).success).toBe(true)
+    expect(deleteAccountSchema.safeParse({ confirm: 'sim', password: 'senha-atual' }).success).toBe(false)
+    expect(deleteAccountSchema.safeParse({ confirm: '', password: 'senha-atual' }).success).toBe(false)
+    // Sem a senha atual, não exclui.
+    expect(deleteAccountSchema.safeParse({ confirm: 'EXCLUIR' }).success).toBe(false)
+    expect(deleteAccountSchema.safeParse({ confirm: 'EXCLUIR', password: '' }).success).toBe(false)
+    expect(deleteAccountSchema.safeParse({ confirm: 'EXCLUIR', password: 'x'.repeat(73) }).success).toBe(false)
   })
 
   it('link do e-mail: token com formato seguro e tipo conhecido', () => {

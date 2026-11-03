@@ -101,7 +101,11 @@ export const mfaCodeSchema = z.object({
     .pipe(z.string().regex(/^\d{6}$/, 'Digite os 6 números que aparecem no aplicativo.')),
 })
 
-/** Confirmação de exclusão da conta: a pessoa precisa digitar a palavra (sem diferenciar maiúsculas). */
+/**
+ * Confirmação de exclusão da conta: a pessoa digita a palavra (sem diferenciar maiúsculas) E a senha atual, que o
+ * servidor confere com o Supabase antes de apagar qualquer coisa. O comprovante do CAPTCHA vai junto porque a
+ * conferência da senha é um login (o Supabase exige o CAPTCHA quando ele está ligado).
+ */
 export const DELETE_ACCOUNT_WORD = 'EXCLUIR'
 export const deleteAccountSchema = z.object({
   confirm: z
@@ -109,6 +113,8 @@ export const deleteAccountSchema = z.object({
     .max(40)
     .transform((v) => v.trim().toUpperCase())
     .pipe(z.literal(DELETE_ACCOUNT_WORD)),
+  password: z.string().min(1, 'Digite sua senha atual.').max(72, 'Senha muito longa.'),
+  captchaToken: z.string().min(1).max(2048).optional(),
 })
 
 /** Transforma os erros do zod em { campo: mensagem } para mostrar no formulário. */
