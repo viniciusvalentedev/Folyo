@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { birthDateInRange, GENDER_IDS, MAX_AGE, MIN_AGE, parseBirthDate } from '@/lib/personal-data'
+import { normalizeAccountPhone } from '@/lib/phone'
 import { AREA_IDS, STAGE_IDS, TRAIL_ID_PATTERN, WANT_IDS } from '@/lib/trails'
 
 /**
@@ -68,11 +70,55 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Digite sua senha.').max(72, 'Senha muito longa.'),
 })
 
+const PHONE_MESSAGE = 'Digite um celular do Brasil com DDD. Ex.: (35) 99876-5432.'
+
+/** Celular da conta: só Brasil, com DDD. Sai no formato +55DDNNNNNNNNN (o mesmo que o banco confere). */
+export const accountPhoneSchema = z
+  .string(PHONE_MESSAGE)
+  .trim()
+  .min(1, 'Digite seu celular com DDD.')
+  .max(30, PHONE_MESSAGE)
+  .refine((v) => normalizeAccountPhone(v) !== null, PHONE_MESSAGE)
+  .transform((v) => normalizeAccountPhone(v) as string)
+
 /** Formulário de criar conta. A senha vai direto para o Supabase, que guarda só um hash. */
 export const signUpSchema = z.object({
   name: personNameSchema,
   email: emailSchema,
   password: newPasswordSchema,
+})
+
+const BIRTH_MESSAGE = 'Digite a data no formato DD/MM/AAAA. Ex.: 25/08/2001.'
+
+/** Data de nascimento: "DD/MM/AAAA", data que existe e idade entre MIN_AGE e MAX_AGE. Sai como AAAA-MM-DD. */
+export const birthDateSchema = z
+  .string(BIRTH_MESSAGE)
+  .trim()
+  .min(1, 'Digite sua data de nascimento.')
+  .max(10, BIRTH_MESSAGE)
+  .refine((v) => parseBirthDate(v) !== null, BIRTH_MESSAGE)
+  .transform((v) => parseBirthDate(v) as string)
+  .refine((v) => birthDateInRange(v), `Confira o ano: a idade precisa ficar entre ${MIN_AGE} e ${MAX_AGE} anos.`)
+
+export const genderSchema = z.enum(GENDER_IDS, 'Escolha uma das opções.')
+
+/**
+ * Concluir cadastro (e "Dados pessoais" nas Configurações): celular, nascimento e gênero, todos obrigatórios.
+ * O aceite de novidades pelo WhatsApp é separado e opcional (LGPD: consentimento livre); ausente = não muda.
+ */
+export const personalDataInputSchema = z.object({
+  phone: accountPhoneSchema,
+  birthDate: birthDateSchema,
+  gender: genderSchema,
+  whatsappNews: z.boolean().optional(),
+})
+
+/** Dados do cadastro como o banco devolve (revalidados antes de irem para a tela). */
+export const storedPersonalDataSchema = z.object({
+  phone: z.string().regex(/^\+55\d{10,11}$/),
+  birthDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  gender: genderSchema,
+  whatsappNews: z.boolean(),
 })
 
 /** "Esqueci minha senha". */
@@ -397,6 +443,7 @@ export const storedSettingsSchema = z.object({
   notifyLessons: z.boolean(),
   notifyWeekly: z.boolean(),
   notifyNews: z.boolean(),
+  whatsappNews: z.boolean(),
   studyTime: z.enum(['manha', 'tarde', 'noite']),
   captions: z.boolean(),
   autoplay: z.boolean(),

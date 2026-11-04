@@ -23,6 +23,7 @@ import {
   type ActionFailure,
   type ActionResult,
 } from './shared'
+import { setWhatsappNews } from './personal-shared'
 
 /**
  * Ações que salvam os dados do aluno (etapa 2). Rodam SÓ no servidor.
@@ -210,25 +211,34 @@ export async function saveResumeAction(input: unknown): Promise<ActionResult> {
   )
 }
 
-/** Configurações (privacidade, notificações, aprendizagem e preferências). Só os campos que mudaram. */
+/**
+ * Configurações (privacidade, notificações, aprendizagem e preferências). Só os campos que mudaram.
+ * As novidades pelo WhatsApp ficam junto do celular, fora do perfil (private.personal_data): vão pela função própria.
+ */
 export async function saveSettingsAction(input: unknown): Promise<ActionResult> {
   const parsed = settingsPatchSchema.safeParse(input)
   if (!parsed.success) return INVALID
-  return updateOwnProfile(
-    pick(parsed.data, {
-      publicProfile: 'public_profile',
-      showEmail: 'show_email',
-      publicPortfolio: 'public_portfolio',
-      notifyLessons: 'notify_lessons',
-      notifyWeekly: 'notify_weekly',
-      notifyNews: 'notify_news',
-      studyTime: 'study_time',
-      captions: 'captions',
-      autoplay: 'autoplay',
-      reduceMotion: 'reduce_motion',
-    }),
-    'profiles.settings',
-  )
+  const { whatsappNews, ...rest } = parsed.data
+  if (whatsappNews !== undefined) {
+    const ctx = await actionContext()
+    if (!ctx) return EXPIRED
+    const failed = await setWhatsappNews(ctx, whatsappNews)
+    if (failed) return failed
+  }
+  const changes = pick(rest, {
+    publicProfile: 'public_profile',
+    showEmail: 'show_email',
+    publicPortfolio: 'public_portfolio',
+    notifyLessons: 'notify_lessons',
+    notifyWeekly: 'notify_weekly',
+    notifyNews: 'notify_news',
+    studyTime: 'study_time',
+    captions: 'captions',
+    autoplay: 'autoplay',
+    reduceMotion: 'reduce_motion',
+  })
+  if (!Object.keys(changes).length) return OK
+  return updateOwnProfile(changes, 'profiles.settings')
 }
 
 /** Marca os avisos do sino como lidos. */

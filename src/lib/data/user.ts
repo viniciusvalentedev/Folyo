@@ -16,7 +16,8 @@ import {
   WORK_COLUMNS,
 } from '@/lib/domain/student-state'
 import { createSupabaseServerClient } from '@/lib/supabase/server'
-import type { UserState } from '@/lib/types'
+import type { PersonalData, UserState } from '@/lib/types'
+import { storedPersonalDataSchema } from '@/lib/validation'
 
 /**
  * Camada de acesso a dados do ALUNO LOGADO (DAL).
@@ -125,9 +126,37 @@ export const getProfile = cache(async (): Promise<{ user: SessionUser; profile: 
   return { user, profile: data as unknown as ProfileRow, account }
 })
 
+/**
+ * Dados do cadastro completo (celular, nascimento, gênero) da PRÓPRIA conta, ou null se ainda não concluiu.
+ * Ficam fora da API (private.personal_data): só a função my_personal_data lê, e só a linha de quem chama.
+ * Nunca logue o conteúdo (dado pessoal); em erro, só o código.
+ */
+export const getPersonalData = cache(async (): Promise<PersonalData | null> => {
+  await requireUser()
+  const supabase = await createSupabaseServerClient()
+  const { data, error } = await supabase.rpc('my_personal_data')
+  if (error) {
+    // PGRST202 = a função ainda não existe (SQL 20261104000002 não rodado): segue como "não concluiu".
+    if (error.code === 'PGRST202') {
+      console.error('Função my_personal_data não encontrada: rode o SQL 20261104000002 no Supabase.')
+      return null
+    }
+    // Outra falha: a área do aluno abre do mesmo jeito (no pior caso, o aviso de concluir aparece sem precisar).
+    if (!/During prerendering/i.test(error.message ?? '')) console.error('Falha ao ler os dados do cadastro', { code: error.code })
+    return null
+  }
+  if (data === null) return null
+  const parsed = storedPersonalDataSchema.safeParse(data)
+  if (!parsed.success) {
+    console.error('Dados do cadastro em formato inesperado')
+    return null
+  }
+  return parsed.data
+})
+
 /** Estado inicial da área do aluno (vai para o navegador já filtrado e conferido). */
 export async function getCurrentUserState(): Promise<UserState> {
-  const [{ user, profile, account }, catalog] = await Promise.all([getProfile(), getCatalog()])
+  const [{ user, profile, account }, catalog, personal] = await Promise.all([getProfile(), getCatalog(), getPersonalData()])
   const supabase = await createSupabaseServerClient()
 
   // Os limites (.limit) são um pouco maiores que os do banco: só uma proteção extra.
@@ -170,6 +199,7 @@ export async function getCurrentUserState(): Promise<UserState> {
       watch: (watch.data ?? []) as LessonWatchRow[],
       works: (works.data ?? []) as unknown as WorkRow[],
       skills: (skills.data ?? []) as SkillRow[],
+      personal,
     },
     catalog,
   )

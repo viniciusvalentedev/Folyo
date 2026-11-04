@@ -1,8 +1,9 @@
 import type { z } from 'zod'
 import { findCourse, findLesson } from '@/lib/domain/catalog'
-import { brDate } from '@/lib/format'
+import { brDate, todayISO } from '@/lib/format'
+import { COMPLETE_PROFILE_NOTICE_ID, COMPLETE_PROFILE_PATH } from '@/lib/personal-data'
 import { STAGE_IDS, WANT_IDS } from '@/lib/trails'
-import type { Catalog, ResumeSection, Skill, UserState, Work } from '@/lib/types'
+import type { Catalog, PersonalData, ResumeSection, Skill, UserState, Work } from '@/lib/types'
 import {
   achievementSchema,
   educationSchema,
@@ -91,6 +92,8 @@ export type StudentRows = {
   watch: LessonWatchRow[]
   works: WorkRow[]
   skills: SkillRow[]
+  /** Dados do cadastro completo (my_personal_data); null = ainda não concluiu. */
+  personal?: PersonalData | null
 }
 
 const RESUME_SECTIONS: ResumeSection[] = [
@@ -221,6 +224,7 @@ export function stateFromRows(rows: StudentRows, catalog: Catalog): UserState {
   return {
     onboarded: profile.onboarded,
     accountEmail: email,
+    personal: rows.personal ?? null,
     role: rows.role,
     user: {
       name,
@@ -273,12 +277,24 @@ export function stateFromRows(rows: StudentRows, catalog: Catalog): UserState {
       notifyLessons: profile.notify_lessons,
       notifyWeekly: profile.notify_weekly,
       notifyNews: profile.notify_news,
+      whatsappNews: rows.personal?.whatsappNews ?? false,
       studyTime: oneOf(profile.study_time, ['manha', 'tarde', 'noite'] as const, 'noite'),
       captions: profile.captions,
       autoplay: profile.autoplay,
       reduceMotion: profile.reduce_motion,
     },
     notifications: [
+      ...(rows.personal
+        ? []
+        : [
+            {
+              id: COMPLETE_PROFILE_NOTICE_ID,
+              text: 'Conclua seu cadastro: faltam só seu celular, sua data de nascimento e seu gênero.',
+              to: COMPLETE_PROFILE_PATH,
+              read: false,
+              date: todayISO(),
+            },
+          ]),
       {
         id: 'n-boas-vindas',
         text: 'Boas-vindas à Folyo. Seu perfil está pronto para acompanhar seus aprendizados.',

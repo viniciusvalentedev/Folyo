@@ -37,7 +37,12 @@ export default async function PrivacyPage() {
             de login.
           </li>
           <li>
-            <b>Perfil e currículo (opcionais):</b> telefone, cidade, e-mail de contato, link, apresentação, objetivo,
+            <b>Cadastro completo:</b> celular (com DDD), data de nascimento e gênero, que você informa depois de entrar, na
+            tela &quot;Concluir cadastro&quot;. Gênero tem a opção &quot;Prefiro não informar&quot;. Esses dados ficam guardados à
+            parte, só você os vê na sua conta e eles nunca aparecem no perfil público nem no currículo.
+          </li>
+          <li>
+            <b>Perfil e currículo (opcionais):</b> telefone do currículo, cidade, e-mail de contato, link, apresentação, objetivo,
             formação, experiências, idiomas e conquistas.
           </li>
           <li>
@@ -84,6 +89,18 @@ export default async function PrivacyPage() {
               <tr>
                 <td>Criar e manter a sua conta; entregar cursos, progresso, anotações, trabalhos e currículo</td>
                 <td>Execução do contrato (V)</td>
+              </tr>
+              <tr>
+                <td>Falar com você sobre a sua conta e as suas compras (por e-mail, ligação ou WhatsApp no celular da conta)</td>
+                <td>Execução do contrato (V)</td>
+              </tr>
+              <tr>
+                <td>Enviar novidades e cursos novos pelo WhatsApp, só se você marcar essa opção</td>
+                <td>Consentimento (I): você desliga quando quiser em Configurações → Notificações</td>
+              </tr>
+              <tr>
+                <td>Conhecer quem estuda na Folyo (idade e gênero, só em números agrupados) para planejar cursos e conteúdos</td>
+                <td>Legítimo interesse (IX)</td>
               </tr>
               <tr>
                 <td>Mostrar o seu perfil público, projetos e e-mail quando você liga essas opções</td>

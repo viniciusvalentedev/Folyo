@@ -1,5 +1,7 @@
 # Supabase — passo a passo
 
+- **Cota de PDFs pelo tamanho real do arquivo:** logo abaixo. Rode o SQL **antes ou depois** de publicar (o código não muda).
+- **Concluir cadastro (celular, data de nascimento e gênero):** logo abaixo. Rode o SQL **antes** de publicar o código.
 - **Concluir aula só pelo banco (sequência + acesso) e troca de senha mais segura:** logo abaixo. Publique o código **antes** do SQL.
 - **Aulas em sequência e continuar de onde parou:** logo abaixo. Rode o SQL **antes** de publicar o código.
 - **Concluir a aula só no final do vídeo:** logo abaixo. Sem SQL.
@@ -22,6 +24,90 @@
 > A **secret key** (`sb_secret_...`) **não é usada** nesta etapa: não cole ela no `.env.local`, na Vercel,
 > no GitHub nem em conversas. Ela passa por cima de todas as regras de segurança do banco. Guarde só no
 > gerenciador de senhas.
+
+---
+
+# Cota de PDFs pelo tamanho real do arquivo
+
+**O problema:** o limite de 300 MB de PDFs por aluno (e de 20 MB por arquivo) somava a coluna `works.file_size`, que o
+**próprio aluno** grava. O site grava o tamanho certo (ele lê no Storage), mas, com o próprio token (o cookie, pego no
+navegador), dava para criar o trabalho direto na API dizendo que um PDF de 20 MB tinha 5 bytes, e passar muito dos 300 MB.
+Trocar só o arquivo de um trabalho (`file_path`) nem refazia a conta.
+
+**O que muda:** a função do gatilho `private.works_quota()` lê o tamanho e o tipo do arquivo no Storage
+(`private.stored_object`, a mesma que o painel já usa para a mídia) e **grava esse tamanho**, ignorando o que veio no
+pedido. Arquivo que não está no Storage, ou que não é PDF, é recusado. O gatilho roda também quando o arquivo do trabalho
+é trocado. Os trabalhos que já existem têm o tamanho corrigido (só onde estiver diferente). Limites e mensagens não mudam.
+
+**O que continua igual:** envios que nunca viraram trabalho ficam no Storage até o site limpar (o aluno pode ter no
+máximo 60 arquivos na pasta, e os não confirmados somem depois de 1 hora no próximo envio).
+
+## 1. Rodar o SQL (antes ou depois de publicar)
+No Supabase → **SQL Editor**, rode `supabase/migrations/20261104000001_cota_pdf_tamanho_real.sql` (pode rodar de novo).
+Não apaga nenhum trabalho nem arquivo. O código do site não muda.
+
+> Se o SQL der erro de "Limite de espaço de arquivos atingido", algum aluno já passou dos 300 MB de verdade: nada foi
+> alterado (a transação é desfeita). Me avise que a gente decide o que fazer com essa conta.
+
+## 2. Testar (com uma conta de aluno de teste)
+1. Em Projetos, envie um PDF: aparece com o tamanho certo, como antes.
+2. Troque o PDF de um trabalho por outro: funciona e mostra o tamanho do novo.
+3. Opcional (técnico): no SQL Editor,
+   `select count(*) from public.works w join storage.objects o on o.bucket_id = 'student-works' and o.name = w.file_path where w.file_size <> (o.metadata ->> 'size')::bigint;`
+   deve dar `0`.
+
+## Como desfazer
+O fim do arquivo SQL tem o bloco "Como desfazer": volta a função e o gatilho antigos. O site continua funcionando igual.
+
+---
+
+# Concluir cadastro (celular, data de nascimento e gênero)
+
+**O que muda:** o "Criar conta" continua **igual** (nome, e-mail e senha). Depois de entrar (e do primeiro acesso), quem
+ainda não concluiu vê um aviso no **sino**: "Conclua seu cadastro". Ele leva a `/concluir-cadastro`, uma tela em 3
+passos no estilo do primeiro acesso: **celular** do Brasil com DDD (+ caixinha separada e desmarcada para novidades pelo
+WhatsApp), **data de nascimento** (DD/MM/AAAA, idade entre 10 e 120 anos) e **gênero** (Feminino, Masculino, Não
+binário, Outro ou Prefiro não informar). Não é obrigatório para usar a Folyo ("Fazer depois"); o aviso fica no sino até
+concluir. Em Configurações → Dados pessoais aparece o bloco **Cadastro** (editar os três) ou o convite para concluir;
+em Notificações, **Novidades pelo WhatsApp** (só com cadastro concluído).
+
+**Onde fica:** tabela `private.personal_data` (uma linha por conta), **fora da API**. Não fica no perfil
+(`public.profiles`), nem nos metadados da conta, nem no token de login.
+
+**Segurança (o banco é a última barreira):**
+- a tabela não tem grant para ninguém da API (anon, authenticated, service_role) e tem RLS ligada sem regras: só as
+  funções `my_personal_data()`, `save_my_personal_data(...)` e `set_my_whatsapp_news(...)` chegam nela, e sempre só
+  na linha de **quem chama** (`auth.uid()`);
+- formato conferido no navegador, no servidor (zod) **e** no banco (função + CHECK): celular `+55DDNNNNNNNNN`, data que
+  existe e idade entre 10 e 120 anos, gênero da lista; conta suspensa não grava; conta no limite de gravações por minuto;
+- a data do aceite do WhatsApp é sempre a do banco (registro do consentimento, LGPD);
+- não aparece no perfil público, no currículo nem no painel; entra no "Baixar meus dados" (`dados_do_cadastro`) e some
+  quando a conta é excluída (`on delete cascade`). O site nunca registra esses dados no log, só o código do erro.
+
+## 1. Rodar o SQL (ANTES de publicar)
+No Supabase → **SQL Editor**, rode `supabase/migrations/20261104000002_dados_do_cadastro.sql` (pode rodar de novo).
+Com o SQL rodado, o código **antigo** continua funcionando normalmente.
+
+> **Ordem importante:** publicando o código antes do SQL, a área do aluno abre, mas todo mundo vê o aviso de concluir e
+> a gravação falha até o SQL rodar.
+
+## 2. Publicar o código e testar
+1. Aba anônima → `/entrar?modo=criar`: o cadastro pede só nome, e-mail e senha, como antes.
+2. Entre com uma conta que ainda não concluiu: o sino mostra o ponto e o aviso "Conclua seu cadastro". Clique nele.
+3. Na tela: tente avançar vazio (mostra o erro), digite `(10) 99999-9999` (DDD que não existe: erro), depois um celular
+   válido; data `31/02/2001` (erro) e depois uma válida (mostra a idade); escolha o gênero e conclua. O aviso some do sino.
+4. Configurações → Dados pessoais: o bloco "Cadastro" mostra os dados; troque um e salve. Notificações → ligue e desligue
+   "Novidades pelo WhatsApp".
+5. Contagem e lista de quem aceitou novidades pelo WhatsApp (só no SQL Editor; não existe tela no painel):
+   ```sql
+   select count(*) as concluiram from private.personal_data;
+   select u.email, d.phone, d.whatsapp_news_at from private.personal_data d join auth.users u on u.id = d.user_id
+    where d.whatsapp_news order by d.whatsapp_news_at;
+   ```
+
+## Como desfazer
+Está no fim do arquivo SQL. Resumo: volte o código anterior, rode de novo a parte 5 de `20261102000001_pagamentos.sql`
+(o "Baixar meus dados" sem `dados_do_cadastro`) e só então apague as três funções e a tabela (isso apaga os dados).
 
 ---
 

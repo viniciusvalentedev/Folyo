@@ -1,11 +1,11 @@
 import { stateFromRows } from '@/lib/domain/student-state'
-import type { Catalog, UserState } from '@/lib/types'
+import type { Catalog, PersonalData, UserState } from '@/lib/types'
 
 /**
  * Estado de um aluno "em branco" (sem progresso nenhum) para a PRÉVIA do curso no painel.
  * Nada disso vai para o banco: é só para desenhar a página do curso como um aluno novo a veria.
  */
-export function previewState(catalog: Catalog, reduceMotion: boolean): UserState {
+export function previewState(catalog: Catalog, reduceMotion: boolean, personal: PersonalData | null = null): UserState {
   const now = new Date().toISOString()
   return stateFromRows(
     {
@@ -58,6 +58,7 @@ export function previewState(catalog: Catalog, reduceMotion: boolean): UserState
       watch: [],
       works: [],
       skills: [],
+      personal,
     },
     catalog,
   )

@@ -8,6 +8,7 @@
  * src/lib/admin/catalog.ts.
  */
 
+import type { Gender } from '@/lib/personal-data'
 import type { Trail } from '@/lib/trails'
 
 // ---------- Catálogo ----------
@@ -212,10 +213,22 @@ export type Settings = {
   notifyLessons: boolean
   notifyWeekly: boolean
   notifyNews: boolean
+  /** Aceitou novidades pelo WhatsApp (no celular da conta). */
+  whatsappNews: boolean
   studyTime: string
   captions: boolean
   autoplay: boolean
   reduceMotion: boolean
+}
+
+/** Dados do cadastro completo (guardados fora da API; veja src/lib/personal-data.ts). */
+export type PersonalData = {
+  /** +55DDNNNNNNNNN */
+  phone: string
+  /** AAAA-MM-DD */
+  birthDate: string
+  gender: Gender
+  whatsappNews: boolean
 }
 
 export type AppNotification = {
@@ -243,6 +256,11 @@ export type UserState = {
   onboarded: boolean
   /** E-mail usado para entrar (vem da sessão; o do currículo é user.email e pode ser outro). */
   accountEmail: string
+  /**
+   * Cadastro completo (celular, nascimento, gênero), ou null se ainda não concluiu. Só a própria pessoa vê;
+   * nunca vai para o perfil público. O celular não é o telefone do currículo (user.phone).
+   */
+  personal: PersonalData | null
   /** Papel na equipe (aluno = sem acesso ao painel). Só decide o que a tela mostra; quem protege é o banco. */
   role: 'aluno' | 'editor' | 'admin' | 'proprietario'
   user: UserProfile

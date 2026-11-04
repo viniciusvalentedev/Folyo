@@ -33,10 +33,12 @@ import { findCourse, findLesson, sameText } from '@/lib/domain/catalog'
 import { newId, newUuid, todayISO } from '@/lib/format'
 import { computeOnboarding, findTrail, type OnboardingResult } from '@/lib/trails'
 import { pdfProblem } from '@/lib/pdf-file'
+import { COMPLETE_PROFILE_NOTICE_ID } from '@/lib/personal-data'
 import { LIST_MAX, MAX_PDFS, MAX_WORKS, normalizeWorkUrl, WORK_DESC_MAX, WORK_TITLE_MAX } from '@/lib/validation'
 import type {
   Catalog,
   Derived,
+  PersonalData,
   ProfileListKey,
   ResumeSection,
   ResumeState,
@@ -701,6 +703,17 @@ function useActions(
           s.settings[key] = value
         })
         syncSettings(key)
+      },
+      /**
+       * Guarda na tela o cadastro completo depois que o servidor confirmou (o salvamento é a ação própria, não a fila).
+       * Tira o aviso "Conclua seu cadastro" do sino.
+       */
+      setPersonal: (personal: PersonalData) => {
+        commit((s) => {
+          s.personal = personal
+          s.settings.whatsappNews = personal.whatsappNews
+          s.notifications = s.notifications.filter((n) => n.id !== COMPLETE_PROFILE_NOTICE_ID)
+        })
       },
       /** Guarda na tela o endereço do perfil público depois que o servidor confirmou (o salvamento é a ação própria, não a fila). */
       setPublicSlug: (slug: string) => {

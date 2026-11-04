@@ -23,7 +23,7 @@ export const LEGAL = {
   /** Foro (cidade/estado) para resolver conflitos. Vazio = domicílio do usuário (regra do consumidor). */
   forum: '',
   /** Data da última mudança nos textos (AAAA-MM-DD). Atualize junto com os textos. */
-  updatedAt: '2026-11-02',
+  updatedAt: '2026-11-04',
 } as const
 
 const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro']

@@ -8,10 +8,13 @@ import { Field, Select, Toggle } from '@/components/ui/controls'
 import { Icon } from '@/components/ui/Icon'
 import { PageHead } from '@/components/ui/PageHead'
 import { supportEmailOf } from '@/lib/app-config'
+import { COMPLETE_PROFILE_PATH } from '@/lib/personal-data'
+import { formatAccountPhone } from '@/lib/phone'
 import { THEME_OPTIONS } from '@/lib/theme'
 import type { Settings } from '@/lib/types'
 import { fieldErrors, personalDataSchema } from '@/lib/validation'
 import { AccountSection } from './AccountSection'
+import { PersonalDataSection } from './PersonalDataSection'
 import { PublicAddress } from './PublicAddress'
 import { SECTIONS, type Section } from './sections'
 import { ThemePicker } from './ThemePicker'
@@ -81,7 +84,7 @@ export function SettingsView({ purchases, initialSection = 'dados' }: { purchase
                 <Field label="E-mail" id="st-email" hint="É o e-mail que você usa para entrar.">
                   <input id="st-email" type="email" className="inp" value={s.accountEmail} readOnly />
                 </Field>
-                <Field label="Telefone" id="st-phone">
+                <Field label="Telefone do currículo" id="st-phone" hint="Aparece no seu currículo. Pode ser outro número ou ficar em branco.">
                   <input
                     id="st-phone"
                     type="tel"
@@ -103,6 +106,7 @@ export function SettingsView({ purchases, initialSection = 'dados' }: { purchase
               </div>
             </section>
           )}
+          {section === 'dados' && <PersonalDataSection />}
 
           {section === 'compras' && purchases}
 
@@ -167,6 +171,20 @@ export function SettingsView({ purchases, initialSection = 'dados' }: { purchase
                 onChange={(v) => set('notifyWeekly', v)}
               />
               <Toggle id="st-n3" label="Novidades e cursos novos" checked={s.settings.notifyNews} onChange={(v) => set('notifyNews', v)} />
+              {s.personal ? (
+                <Toggle
+                  id="st-wa"
+                  label="Novidades pelo WhatsApp"
+                  hint={`Mensagens com novidades e cursos novos no seu celular (${formatAccountPhone(s.personal.phone)}). Pode desligar quando quiser.`}
+                  checked={s.settings.whatsappNews}
+                  onChange={(v) => set('whatsappNews', v)}
+                />
+              ) : (
+                <p className="muted small">
+                  Quer receber novidades pelo WhatsApp? <Link href={COMPLETE_PROFILE_PATH}>Conclua seu cadastro</Link> com o seu
+                  celular.
+                </p>
+              )}
               <p className="muted small">Por enquanto, as notificações aparecem apenas no sino do topo da tela.</p>
             </section>
           )}
