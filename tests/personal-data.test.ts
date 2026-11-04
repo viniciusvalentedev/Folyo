@@ -6,6 +6,7 @@ import {
   COMPLETE_PROFILE_NOTICE_ID,
   COMPLETE_PROFILE_PATH,
   formatBirthDate,
+  GENDERS,
   maskBirthDate,
   parseBirthDate,
   todayBR,
@@ -87,6 +88,12 @@ describe('data de nascimento', () => {
   })
 })
 
+describe('gênero', () => {
+  it('só três opções, nesta ordem', () => {
+    expect(GENDERS.map((g) => g.label)).toEqual(['Feminino', 'Masculino', 'Prefiro não informar'])
+  })
+})
+
 describe('gravação do cadastro completo', () => {
   const ok = { phone: '(35) 99876-5432', birthDate: '25/08/2001', gender: 'feminino' }
 
@@ -99,13 +106,14 @@ describe('gravação do cadastro completo', () => {
     expect(personalDataInputSchema.safeParse({ ...ok, phone: '' }).success).toBe(false)
     expect(personalDataInputSchema.safeParse({ ...ok, birthDate: '' }).success).toBe(false)
     expect(personalDataInputSchema.safeParse({ ...ok, gender: 'Feminino' }).success).toBe(false)
+    for (const gone of ['nao_binario', 'outro']) expect(personalDataInputSchema.safeParse({ ...ok, gender: gone }).success).toBe(false)
     expect(personalDataInputSchema.safeParse({ ...ok, gender: undefined }).success).toBe(false)
     expect(personalDataInputSchema.safeParse({ ...ok, whatsappNews: 'on' }).success).toBe(false)
   })
 
   it('confere o que vem do banco antes de ir para a tela', () => {
-    expect(storedPersonalDataSchema.safeParse({ phone: '+5535998765432', birthDate: '2001-08-25', gender: 'outro', whatsappNews: false }).success).toBe(true)
-    expect(storedPersonalDataSchema.safeParse({ phone: '35998765432', birthDate: '2001-08-25', gender: 'outro', whatsappNews: false }).success).toBe(false)
+    expect(storedPersonalDataSchema.safeParse({ phone: '+5535998765432', birthDate: '2001-08-25', gender: 'nao_informar', whatsappNews: false }).success).toBe(true)
+    expect(storedPersonalDataSchema.safeParse({ phone: '35998765432', birthDate: '2001-08-25', gender: 'nao_informar', whatsappNews: false }).success).toBe(false)
     expect(storedPersonalDataSchema.safeParse({ phone: '+5535998765432', birthDate: '2001-08-25', gender: 'x', whatsappNews: false }).success).toBe(false)
   })
 })

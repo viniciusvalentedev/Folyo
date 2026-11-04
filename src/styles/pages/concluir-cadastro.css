@@ -34,7 +34,7 @@
 /* ---------- Gênero ---------- */
 .cc-genders { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .cc-gender { animation: rise .4s var(--ease) backwards; animation-delay: calc(var(--i, 0) * 50ms); }
-.cc-gender.quiet { border-style: dashed; }
+.cc-gender.quiet { grid-column: 1 / -1; border-style: dashed; }
 .cc-gender.quiet.on { border-style: solid; }
 .cc-gender.on .onb3-ico { animation: ccPop .4s var(--spring); }
 

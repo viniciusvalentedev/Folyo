@@ -72,7 +72,8 @@ describe.skipIf(!migrations)('dados do cadastro completo', () => {
     for (const phone of ['', '35998765432', '+1555123456', '+5535898765432', '+55359987654321', "+5535998765432' or 1=1"]) {
       expect(await save(bia, phone, '2001-08-25', 'feminino')).toMatchObject({ ok: false, code: 'FA400' })
     }
-    for (const gender of ['', 'Feminino', 'x', 'nao binario']) {
+    // Só três opções: feminino, masculino e nao_informar (as antigas nao_binario e outro saíram).
+    for (const gender of ['', 'Feminino', 'x', 'nao binario', 'nao_binario', 'outro']) {
       expect(await save(bia, '+5535998765432', '2001-08-25', gender)).toMatchObject({ ok: false, code: 'FA400' })
     }
     expect(await mine(bia)).toBeNull()
@@ -92,7 +93,7 @@ describe.skipIf(!migrations)('dados do cadastro completo', () => {
     expect(await save(bia, '+5535998765432', await shift(-121), 'feminino')).toMatchObject({ ok: false, code: 'FA400' })
     expect(await save(bia, '+5535998765432', '1899-12-31', 'feminino')).toMatchObject({ ok: false, code: 'FA400' })
     // Fez 10 anos hoje: pode.
-    expect((await save(bia, '+5535998765432', await shift(-10), 'outro')).ok).toBe(true)
+    expect((await save(bia, '+5535998765432', await shift(-10), 'masculino')).ok).toBe(true)
   })
 
   test('sem login nada funciona', async () => {
@@ -114,7 +115,7 @@ describe.skipIf(!migrations)('dados do cadastro completo', () => {
     }
     await expect(as(db, { uid: ana }, (tx) => tx.query('select * from private.personal_data'))).rejects.toThrow()
     await expect(
-      as(db, { uid: ana }, (tx) => tx.query(`update private.personal_data set gender = 'outro' where user_id = $1`, [ana])),
+      as(db, { uid: ana }, (tx) => tx.query(`update private.personal_data set gender = 'masculino' where user_id = $1`, [ana])),
     ).rejects.toThrow()
     // Visitante não chama as funções.
     for (const fn of ['public.my_personal_data()', 'public.save_my_personal_data(text, date, text, boolean)', 'public.set_my_whatsapp_news(boolean)']) {
@@ -143,4 +144,30 @@ describe.skipIf(!migrations)('dados do cadastro completo', () => {
     )
     expect(r.rows[0].n).toBe(0)
   })
+})
+
+describe.skipIf(!migrations)('gênero: de 5 para 3 opções (migration 20261104000004)', () => {
+  test('quem tinha "Não binário" ou "Outro" passa para "Prefiro não informar"; o resto fica igual', async () => {
+    const fix = migrations!.find((m) => m.name === '20261104000004_genero_tres_opcoes.sql')!
+    const db = await createDb(migrations!.filter((m) => m !== fix))
+    const ids: Record<string, string> = {}
+    for (const gender of ['feminino', 'masculino', 'nao_binario', 'outro', 'nao_informar']) {
+      ids[gender] = await createUser(db, `${gender}@folyo.test`)
+      const r = await rpc(db, { uid: ids[gender] }, 'select public.save_my_personal_data($1, $2::date, $3) as r', ['+5535998765432', '2001-08-25', gender])
+      expect(r.ok).toBe(true)
+    }
+    await db.exec(fix.sql)
+    await db.exec(fix.sql) // pode rodar de novo
+    const genderOf = async (id: string) =>
+      (await db.query<{ g: string }>('select gender as g from private.personal_data where user_id = $1', [id])).rows[0].g
+    expect(await genderOf(ids.feminino)).toBe('feminino')
+    expect(await genderOf(ids.masculino)).toBe('masculino')
+    expect(await genderOf(ids.nao_binario)).toBe('nao_informar')
+    expect(await genderOf(ids.outro)).toBe('nao_informar')
+    expect(await rpc(db, { uid: ids.feminino }, 'select public.save_my_personal_data($1, $2::date, $3) as r', ['+5535998765432', '2001-08-25', 'outro'])).toMatchObject({
+      ok: false,
+      code: 'FA400',
+    })
+    await expect(db.query(`update private.personal_data set gender = 'outro' where user_id = $1`, [ids.feminino])).rejects.toThrow()
+  }, 120_000)
 })

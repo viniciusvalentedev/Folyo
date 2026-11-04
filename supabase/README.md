@@ -1,5 +1,7 @@
 # Supabase — passo a passo
 
+- **Segurança do painel (o que faltava da etapa 4b):** logo abaixo. Rode o SQL **antes ou depois** de publicar (o código não muda).
+- **Gênero com 3 opções:** logo abaixo. Rode o SQL **antes** de publicar o código.
 - **"Excluir minha conta" volta a funcionar:** logo abaixo. Rode o SQL **antes ou depois** de publicar (o código não muda).
 - **Cota de PDFs pelo tamanho real do arquivo:** logo abaixo. Rode o SQL **antes ou depois** de publicar (o código não muda).
 - **Concluir cadastro (celular, data de nascimento e gênero):** logo abaixo. Rode o SQL **antes** de publicar o código.
@@ -25,6 +27,45 @@
 > A **secret key** (`sb_secret_...`) **não é usada** nesta etapa: não cole ela no `.env.local`, na Vercel,
 > no GitHub nem em conversas. Ela passa por cima de todas as regras de segurança do banco. Guarde só no
 > gerenciador de senhas.
+
+---
+
+# Segurança do painel (o que faltava da etapa 4b)
+
+**Problema:** a etapa 4b (`20261022000003_etapa4b_seguranca_painel.sql`, no histórico do git) nunca rodou em produção, e
+não dá para rodá-la como está (ela trocaria as funções do painel por versões antigas).
+
+**O que muda:** `supabase/migrations/20261104000005_seguranca_do_painel.sql`, feita em cima do que está em produção:
+- o histórico do painel só recebe registros novos (alterar, apagar e esvaziar são recusados, até pelo SQL Editor);
+  quem fez continua identificado mesmo se a conta dele for excluída;
+- sempre sobra um proprietário ativo: rebaixar, remover ou suspender o último é recusado por qualquer caminho;
+- mudanças de papel e suspensões feitas fora do painel (SQL Editor, exclusão de conta) entram no histórico, marcadas
+  "(fora do painel)" ou "(conta excluída)";
+- nomes sem caracteres invisíveis, de controle ou "·" (o cadastro limpa; o banco recusa nas alterações).
+
+`admin_set_role` e `admin_set_suspended` continuam com as mesmas regras; só avisam que a mudança veio do painel (para
+não registrar duas vezes). Da etapa 4b **não** entraram: proprietário só pelo SQL Editor, fila única com nova conferência
+do papel, limite de gravações nas ações do painel e a troca das permissões padrão de funções novas.
+
+## Rodar e testar
+Rode o arquivo no SQL Editor (pode rodar de novo). Para conferir:
+```sql
+update private.admin_audit set detail = detail where false;  -- passa (nenhuma linha)
+delete from private.admin_audit where false;                 -- passa (nenhuma linha)
+select action, actor_label, detail from private.admin_audit order by at desc limit 5;
+```
+Uma tentativa de verdade (`delete from private.admin_audit;`) deve dar "O histórico não pode ser alterado."
+
+## Como desfazer
+Está no fim do arquivo SQL (tira os gatilhos e a regra do nome).
+
+---
+
+# Gênero com 3 opções
+
+`supabase/migrations/20261104000004_genero_tres_opcoes.sql`: a tela "Concluir cadastro" e as Configurações passam a
+oferecer só **Feminino**, **Masculino** e **Prefiro não informar**. O banco aceita só esses três; quem tinha escolhido
+"Não binário" ou "Outro" passa para "Prefiro não informar" (em 04/11/2026 não havia ninguém). Rode **antes** de publicar.
 
 ---
 

@@ -15,8 +15,6 @@ export const COMPLETE_PROFILE_NOTICE_ID = 'n-concluir-cadastro'
 export const GENDERS = [
   { id: 'feminino', label: 'Feminino' },
   { id: 'masculino', label: 'Masculino' },
-  { id: 'nao_binario', label: 'Não binário' },
-  { id: 'outro', label: 'Outro' },
   { id: 'nao_informar', label: 'Prefiro não informar' },
 ] as const
 

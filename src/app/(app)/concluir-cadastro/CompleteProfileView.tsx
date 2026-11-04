@@ -34,8 +34,6 @@ const STEPS = [
 const GENDER_ICONS: Record<Gender, IconName> = {
   feminino: 'User',
   masculino: 'User',
-  nao_binario: 'Sparkles',
-  outro: 'Heart',
   nao_informar: 'EyeOff',
 }
 
