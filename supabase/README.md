@@ -1,5 +1,6 @@
 # Supabase — passo a passo
 
+- **"Excluir minha conta" volta a funcionar:** logo abaixo. Rode o SQL **antes ou depois** de publicar (o código não muda).
 - **Cota de PDFs pelo tamanho real do arquivo:** logo abaixo. Rode o SQL **antes ou depois** de publicar (o código não muda).
 - **Concluir cadastro (celular, data de nascimento e gênero):** logo abaixo. Rode o SQL **antes** de publicar o código.
 - **Concluir aula só pelo banco (sequência + acesso) e troca de senha mais segura:** logo abaixo. Publique o código **antes** do SQL.
@@ -24,6 +25,32 @@
 > A **secret key** (`sb_secret_...`) **não é usada** nesta etapa: não cole ela no `.env.local`, na Vercel,
 > no GitHub nem em conversas. Ela passa por cima de todas as regras de segurança do banco. Guarde só no
 > gerenciador de senhas.
+
+---
+
+# "Excluir minha conta" volta a funcionar
+
+**Problema:** a função `public.delete_my_account()` não existia no banco de produção (a migration LGPD
+`20261027000001_lgpd_conta.sql`, no histórico do git, nunca foi aplicada lá). Em Configurações → Conta → "Excluir
+minha conta", depois da senha, a exclusão sempre falhava com "Não foi possível excluir a conta agora".
+
+**O que muda:** `supabase/migrations/20261104000003_excluir_conta.sql`
+- recria `delete_my_account()`: apaga a conta de **quem chama**; perfil, progresso, anotações, trabalhos, dados do
+  cadastro etc. somem junto (on delete cascade). Pedidos e pagamentos ficam, sem o dono (obrigação fiscal);
+- recusa se quem chama é o **último proprietário ativo** (a regra fica dentro da função, porque o gatilho da etapa 4b
+  também não está em produção);
+- o limite de gravações (`private.enforce_write_rate`) deixa de contar alterações de quem está sendo excluído (sem isso
+  a exclusão em cascata falhava).
+
+## Rodar
+No Supabase → **SQL Editor**, rode o arquivo (pode rodar de novo). O código do site não muda.
+
+## Testar
+Crie uma conta de teste, entre, envie um PDF, vá em Configurações → Conta → "Excluir minha conta", digite a senha e
+`EXCLUIR`. Deve voltar para a tela de entrada com o aviso de conta excluída, e o e-mail some de Authentication → Users.
+
+## Como desfazer
+`drop function if exists public.delete_my_account();` (o botão volta a falhar).
 
 ---
 

@@ -132,5 +132,8 @@ Assinatura mensal (cobrança recorrente), certificados e currículo em PDF de ve
 - Supabase Auth: proteção contra senhas vazadas desligada
 - `engines: ">=20.9"` faz a Vercel usar Node 24 (CI usa 22)
 - `folyo-six.vercel.app` também serve a produção (o ideal é redirecionar para o www)
-- `public.delete_my_account()` não existe no banco de produção (está em `20261027000001_lgpd_conta.sql`, no git):
-  "Excluir minha conta" em Configurações falha até rodar essa parte de novo
+- As migrations `20261022000003_etapa4b_seguranca_painel.sql` e `20261027000001_lgpd_conta.sql` (no git) **nunca
+  rodaram em produção**. A parte da exclusão de conta foi refeita em `20261104000003_excluir_conta.sql`. Ainda faltam
+  da 4b: histórico do painel só de inclusão (hoje dá para alterar/apagar), gatilho do último proprietário em
+  `staff_roles`/`suspensions`, registro de mudanças feitas fora do painel e o CHECK de nome sem caracteres invisíveis.
+  Antes de reaplicar, compare com as funções `admin_*` atuais (migrations seguintes as recriaram)
