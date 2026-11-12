@@ -1,12 +1,25 @@
 import type { Metadata } from 'next'
+import localFont from 'next/font/local'
 import { Landing } from '@/components/landing/Landing'
 import { INSTAGRAM_URL } from '@/components/landing/data'
+import { supportEmailOf } from '@/lib/app-config'
 import { getPublicConfig } from '@/lib/data/config'
 import { publicRobots, SITE_NAME, SITE_URL } from '@/lib/seo'
 
-const TITLE = 'Folyo · Aprenda. Crie. Conquiste.'
+const TITLE = 'Folyo · Seu próximo passo começa com o que você aprende hoje.'
 const DESCRIPTION =
-  'Cursos práticos para desenvolver habilidades, criar um projeto real em cada curso e conquistar certificados que vão para o seu currículo. Comece pelo curso gratuito Descomplicando Processos Seletivos.'
+  'Aprenda novas habilidades, explore diferentes áreas do conhecimento e transforme o que você aprende em projetos reais. Crie sua conta grátis e comece pelo curso gratuito Descomplicando Processos Seletivos.'
+
+/**
+ * Fonte dos títulos da landing (Unbounded), servida pelo próprio site como as outras
+ * (src/app/fonts). Só esta página usa, por isso é carregada aqui e não no layout.
+ */
+const unbounded = localFont({
+  src: './fonts/unbounded-latin-var.woff2',
+  weight: '200 900',
+  variable: '--font-unbounded',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },
@@ -53,7 +66,7 @@ export default async function Home() {
         // "<" vira < para o texto nunca conseguir fechar a tag <script>.
         dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD).replace(/</g, '\\u003c') }}
       />
-      <Landing tagline={config.tagline} />
+      <Landing supportEmail={supportEmailOf(config)} fontClass={unbounded.variable} />
     </>
   )
 }
