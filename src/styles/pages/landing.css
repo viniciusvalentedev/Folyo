@@ -351,7 +351,9 @@
 .lx .hm-c.l4{ background: var(--lime); box-shadow: 0 0 10px -2px rgba(201,226,63,.7); }
 
 /* ---------- 4. Progresso ---------- */
-.lx-exp{ background: linear-gradient(180deg, rgba(239,237,251,0), #EFEDFB 18%, #EFEDFB 82%, rgba(239,237,251,0)); }
+.lx-exp{ padding-bottom: 0; background: linear-gradient(180deg, rgba(239,237,251,0), #EFEDFB 22%); }
+/* Selos e aviso abaixo do painel: continuam o fundo lilás da seção e somem em degradê. */
+.lx-exp-foot{ position: relative; display: flow-root; padding: 0 0 130px; background: linear-gradient(180deg, #EFEDFB, #EFEDFB 55%, rgba(239,237,251,0)); }
 .lx-exp-s1{ left: 7%; top: -46px; } .lx-exp-s2{ right: 6%; top: -30px; }
 .lx-exp-q1{ left: 4%; top: 96px; } .lx-exp-q2{ right: 10%; top: 110px; }
 .lx-bento{ position: relative; margin-top: 60px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); grid-template-rows: 168px 168px 200px; gap: 16px; }
@@ -380,6 +382,75 @@
 .lx-feats{ list-style: none; margin: 46px auto 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; max-width: 900px; }
 .lx-feats li{ display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border-radius: 999px; background: #fff; font-size: 14px; font-weight: 600; box-shadow: 0 0 0 1px var(--x-line); }
 .lx-feats .ico{ color: var(--x-blue); }
+
+/* ---------- Cena "Aparelhos → Meu progresso" (scrollytelling, só no desktop) ----------
+   ProgressScene (LandingClient.tsx) liga a classe `on` e acompanha a rolagem (0 a 1).
+   A pista (.lx-scene.on) é mais alta que a tela e o palco (.lx-stage) fica preso nela (sticky).
+   Cada peça `.k` tem a sua janela `--s`/`--e` (roteiro T em Landing.tsx). O JS escreve nela só:
+     --lx-t  progresso linear da peça (0 a 1); daqui sai --lx-k, o mesmo com suavização (smoothstep)
+   O JS só mexe nas peças cuja janela está andando: assim o navegador recalcula poucos elementos
+   por quadro (uma variável no palco inteiro obrigava a recalcular ~600 a cada quadro).
+   Só anima translate/scale/rotate, opacity e traço de SVG (nada de layout).
+   Sem `on` (celular, tablet, movimento reduzido, sem JS) nenhuma regra daqui vale. */
+.lx-stage-only{ display: none; }
+.lx-scene.on{ height: 270vh; }
+.lx-scene.on .lx-stage{ position: sticky; top: 0; height: 100vh; overflow: hidden; }
+.lx-scene.on .lx-stage-only{ display: block; }
+@property --lx-t{ syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --lx-k{ syntax: '<number>'; inherits: true; initial-value: 0; }
+.lx-scene.on .k{ --lx-k: calc(var(--lx-t) * var(--lx-t) * (3 - 2 * var(--lx-t))); }
+/* As duas camadas ocupam o palco inteiro, centradas abaixo do cabeçalho fixo. */
+.lx-scene.on .lx-dev, .lx-scene.on .lx-exp{ position: absolute; inset: 0; padding: var(--hd, 82px) 0 0; display: flex; align-items: center; background: none; }
+.lx-scene.on .lx-dev{ z-index: 1; }
+.lx-scene.on .lx-wave{ z-index: 2; }
+.lx-scene.on .lx-exp{ z-index: 3; pointer-events: none; }
+.lx-scene.on .lx-exp > .lx-wrap{ scale: var(--fit, 1); }
+.lx-scene.on .lx-hint{ z-index: 4; display: flex; }
+
+/* 1. Repouso: dica "role para dar play" e o play do notebook pulsando. */
+.lx-hint{ position: absolute; left: 50%; bottom: 28px; translate: -50% 0; margin: 0; display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 10px; border-radius: 999px; background: #fff; box-shadow: 0 14px 30px -16px rgba(18,18,27,.4), 0 0 0 1px var(--x-line); font-size: 13px; font-weight: 600; color: var(--x-ink); white-space: nowrap; }
+.lx-scene.on .lx-hint{ opacity: calc(1 - var(--lx-k)); translate: -50% calc(var(--lx-k) * 16px); }
+.lx-mouse{ position: relative; width: 16px; height: 24px; border-radius: 9px; border: 2px solid var(--x-ink); }
+.lx-mouse::after{ content: ""; position: absolute; left: 50%; top: 4px; width: 2px; height: 5px; margin-left: -1px; border-radius: 2px; background: var(--x-blue); animation: lxWheel 1.6s var(--x-ease) infinite; }
+@keyframes lxWheel{ 0%{ opacity: 0; translate: 0 -2px; } 30%{ opacity: 1; } 100%{ opacity: 0; translate: 0 8px; } }
+.lx-scene.on .lx-dev-lap .ui-play::before{ content: ""; position: absolute; inset: 0; border-radius: 50%; background: #fff; opacity: 0; transition: opacity .3s; animation: lxPulse 1.8s ease-out infinite; z-index: -1; }
+.lx-scene.on.at-start .lx-dev-lap .ui-play::before{ opacity: .5; }
+@keyframes lxPulse{ from{ scale: 1; } to{ scale: 1.9; opacity: 0; } }
+
+/* 2. Play: o botão afunda, solta um anel e duas ondas (azul e, logo atrás, lilás) cobrem o palco.
+   As ondas são círculos do tamanho final centrados no play, só com `scale` (fica na GPU, sem repintar). */
+.lx-scene.on .lx-dev-lap .ui-play.k{ scale: calc(1 - .24 * sin(var(--lx-t) * 180deg)); }
+.lx-scene.on .lx-dev-lap .ui-play.k::after{ content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid #fff; scale: calc(1 + var(--lx-t) * 3.2); opacity: sin(var(--lx-t) * 180deg); }
+.lx-wave{ position: absolute; pointer-events: none; border-radius: 50%; left: calc(var(--ox, 50%) - var(--reach, 1200px)); top: calc(var(--oy, 50%) - var(--reach, 1200px)); width: calc(var(--reach, 1200px) * 2); aspect-ratio: 1; }
+.lx-scene.on .lx-wave{ scale: var(--lx-k); will-change: scale; }
+.lx-wave-a{ background: radial-gradient(closest-side, var(--x-blue-2), var(--x-blue) 40%, #1E1796); }
+.lx-wave-b{ background: var(--x-pale); }
+.lx-scene.on .lx-dev-text.k{ opacity: calc(1 - var(--lx-k)); translate: 0 calc(var(--lx-k) * -40px); }
+.lx-scene.on .lx-dev-art.k{ opacity: calc(1 - var(--lx-k) * var(--lx-k)); scale: calc(1 - .08 * var(--lx-k)); translate: 0 calc(var(--lx-k) * -36px); }
+
+/* 3. Título novo sobe e entra; o gráfico de skills surge e as bolhas brotam uma a uma (e se grudam). */
+.lx-scene.on .lx-exp .lx-center.k{ opacity: var(--lx-k); translate: 0 calc((1 - var(--lx-k)) * 44px); }
+.lx-scene.on .lx-b-skill.k{ opacity: var(--lx-k); scale: calc(.84 + .16 * var(--lx-k)); }
+.lx-scene.on .lx-skills circle.k{ transform-box: fill-box; transform-origin: center; transform: scale(calc(var(--lx-k) + .22 * sin(var(--lx-t) * 180deg))); }
+.lx-scene.on .lx-bl.k{ transform-origin: 0 0; opacity: var(--lx-k); scale: calc(.4 + .6 * var(--lx-k) + .15 * sin(var(--lx-t) * 180deg)); }
+
+/* 4. Tempo de estudo: o cartão entra pela esquerda e as barras sobem em cascata. */
+.lx-scene.on .lx-b-study.k{ opacity: var(--lx-k); translate: calc((1 - var(--lx-k)) * -90px) 0; }
+.lx-scene.on .pbar-fill.k{ translate: 0 calc((1 - var(--lx-k)) * 100%); }
+
+/* 5. Conquistas: sequência (o foguinho pula a cada dia), certificados e aulas concluídas. */
+.lx-scene.on .lx-b-streak.k, .lx-scene.on .lx-b-cert.k{ opacity: var(--lx-k); translate: calc((1 - var(--lx-k)) * 90px) 0; }
+.lx-scene.on .lx-b-streak h3.k .ico{ scale: calc(1 + .55 * sin(var(--lx-t) * 720deg) * sin(var(--lx-t) * 720deg)); rotate: calc(sin(var(--lx-t) * 1440deg) * 10deg); }
+.lx-scene.on .lx-b-cert b.k{ transform-origin: 30% 80%; scale: calc(1 + .4 * sin(var(--lx-t) * 180deg)); }
+.lx-scene.on .lx-b-lessons.k{ opacity: var(--lx-k); translate: 0 calc((1 - var(--lx-k)) * 70px); }
+.lx-scene.on .lc-line.k{ stroke-dasharray: 1 1; stroke-dashoffset: calc(1 - var(--lx-k)); }
+.lx-scene.on .lc-area.k{ opacity: calc(.1 * var(--lx-k)); }
+.lx-scene.on .lc-dot.k{ scale: calc(var(--lx-k) + .35 * sin(var(--lx-t) * 180deg)); }
+
+/* 6. Hábito e metas: o calendário acende em onda e os anéis se desenham. */
+.lx-scene.on .lx-b-heat.k, .lx-scene.on .lx-b-goals.k{ opacity: var(--lx-k); translate: 0 calc((1 - var(--lx-k)) * 70px); }
+.lx-scene.on .hm-c.k{ opacity: calc(.12 + .88 * var(--lx-k)); scale: calc(.35 + .65 * var(--lx-k)); }
+.lx-scene.on .wr-fill.k{ stroke-dashoffset: calc(var(--len) * (1 - var(--lx-k)) * 1px); }
 
 /* ---------- 5. Prática ---------- */
 .lx-prac-grid{ display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 56px; align-items: center; }
@@ -638,6 +709,7 @@
   .lx-facts span{ font-size: 10.5px; text-align: center; }
   .lx-sec{ padding: 90px 0; }
   .lx-dev{ padding-top: 100px; }
+  .lx-exp-foot{ padding-bottom: 90px; }
   .lx-dev-art{ height: 380px; }
   .lx-dev-lap{ width: 74%; left: 20%; }
   .lx-dev-ph{ width: 25%; left: 4%; }

@@ -31,6 +31,7 @@ import {
   LandingHeader,
   LandingRoot,
   LandingSticky,
+  ProgressScene,
   SectionLink,
   SpinBadge,
   UiDashTop,
@@ -45,6 +46,63 @@ import {
 
 /** Atalho para variáveis CSS no `style` (ex.: atraso da animação `--d`). */
 const vars = (v: Record<string, string | number>) => v as CSSProperties
+
+/* ---------------------------------------------------------------------------------------------
+ * Roteiro da cena "Aparelhos → Meu progresso" (ProgressScene, em LandingClient.tsx)
+ *
+ * No desktop, a pessoa rola e a cena avança de 0 a 1. Cada peça com a classe `k` anima dentro da
+ * sua janela [início, fim] (`--s`/`--e` no style; o JS dá o progresso da peça e o landing.css anima).
+ * Números que contam usam os mesmos valores em `data-*` (o JS troca o texto).
+ * Sem a cena (celular, movimento reduzido, sem JS) nada disso vale: tudo aparece pronto.
+ * ------------------------------------------------------------------------------------------- */
+
+type Win = readonly [number, number]
+
+const T = {
+  hint: [0, 0.05],
+  press: [0.05, 0.15],
+  devOut: [0.12, 0.28],
+  waveA: [0.12, 0.3],
+  waveB: [0.18, 0.36],
+  title: [0.26, 0.36],
+  skill: [0.3, 0.38],
+  study: [0.45, 0.53],
+  studyNum: [0.47, 0.6],
+  streak: [0.55, 0.61],
+  streakNum: [0.58, 0.7],
+  cert: [0.61, 0.67],
+  certNum: [0.64, 0.7],
+  lessons: [0.65, 0.71],
+  lessonsNum: [0.67, 0.79],
+  line: [0.68, 0.79],
+  heat: [0.71, 0.77],
+  goals: [0.75, 0.81],
+} as const satisfies Record<string, Win>
+
+/** Bolhas de skill, na ordem em que nascem (índices de SKILL_BUBBLES): Comunicação, Marketing, Tecnologia, Design e Vendas. */
+const BUBBLE_ORDER = [1, 0, 2, 3, 4]
+const bubbleWin = (i: number): Win => {
+  const s = 0.34 + BUBBLE_ORDER.indexOf(i) * 0.035
+  return [s, s + 0.05]
+}
+/** Janelas em cascata: a peça `i` começa `step` depois da anterior e dura `len`. */
+const cascade = (start: number, step: number, len: number, i: number): Win => [start + i * step, start + i * step + len]
+
+/** Janela da peça no style (`--s`/`--e`). */
+const win = ([s, e]: Win) => vars({ '--s': +s.toFixed(4), '--e': +e.toFixed(4) })
+
+/** Número que conta de `from` até `to` durante a janela (o texto do servidor já é o valor final). */
+function count([s, e]: Win, to: number, opts: { from?: number; dec?: number; suffix?: string; linear?: boolean } = {}) {
+  return {
+    'data-s': +s.toFixed(4),
+    'data-e': +e.toFixed(4),
+    'data-to': to,
+    'data-from': opts.from ?? 0,
+    'data-dec': opts.dec ?? 0,
+    'data-suffix': opts.suffix ?? '',
+    'data-ease': opts.linear ? 'linear' : undefined,
+  }
+}
 
 /* ---------------------------------------------------------------------------------------------
  * Decorações
@@ -236,12 +294,12 @@ function UiCoursePage({ course }: { course: LandingCourse }) {
 }
 
 /** Miniatura da sala de aula (player + aula). `wide`: versão do computador, com a lista de aulas. */
-function UiLesson({ course, wide = false }: { course: LandingCourse; wide?: boolean }) {
+function UiLesson({ course, wide = false, play }: { course: LandingCourse; wide?: boolean; play?: Win }) {
   const lesson = course.lessons[2] ?? course.lessons[0]
   return (
     <div className={'lx-ui ui-lesson' + (wide ? ' wide' : '')}>
       <div className="ui-player">
-        <span className="ui-play">
+        <span className={'ui-play' + (play ? ' k' : '')} style={play && win(play)}>
           <LpIcon name="Play" size={14} />
         </span>
         <span className="ui-scrub">
@@ -431,7 +489,7 @@ function Devices() {
   return (
     <section className="lx-sec lx-dev" aria-labelledby="lx-dev-t">
       <div className="lx-wrap lx-dev-grid">
-        <div className="lx-dev-text lx-rv">
+        <div className="lx-dev-text lx-rv k" style={win(T.devOut)}>
           <h2 id="lx-dev-t" className="lx-h2">
             Seu aprendizado <Hi>acompanha</Hi> você.
           </h2>
@@ -463,7 +521,7 @@ function Devices() {
             Funciona direto no navegador, sem instalar nada. Seu progresso fica salvo na sua conta.
           </p>
         </div>
-        <div className="lx-dev-art lx-rv" aria-hidden="true">
+        <div className="lx-dev-art lx-rv k" style={win(T.devOut)} aria-hidden="true">
           <span className="lx-arch" />
           <span className="lx-half" />
           <span className="lx-pill-lime" />
@@ -471,7 +529,7 @@ function Devices() {
           <Squig className="lx-dev-sq" />
           <Squig className="lx-dev-sq2 lime" />
           <Laptop className="lx-dev-lap">
-            <UiLesson course={FREE_COURSE} wide />
+            <UiLesson course={FREE_COURSE} wide play={T.press} />
           </Laptop>
           <Tablet className="lx-dev-tab">
             <UiCoursePage course={FREE_COURSE} />
@@ -523,17 +581,31 @@ function SkillsChart() {
         <ellipse cx="50" cy="31" rx="50" ry="31" fill="url(#lx-oval)" />
         <g filter="url(#lx-goo)">
           {SKILL_BUBBLES.map((s, i) => (
-            <circle key={s.k} cx={s.x} cy={s.y * 0.62} r={s.r / 5.4} fill={`url(#lx-b${i})`} />
+            <circle
+              key={s.k}
+              className="k"
+              style={win(bubbleWin(i))}
+              cx={s.x}
+              cy={s.y * 0.62}
+              r={s.r / 5.4}
+              fill={`url(#lx-b${i})`}
+            />
           ))}
         </g>
       </svg>
-      {SKILL_BUBBLES.map((s) => (
+      {SKILL_BUBBLES.map((s, i) => (
         <span
           key={s.k}
-          className="lx-bl"
-          style={{ left: s.x + '%', top: s.y + '%', color: SKILL_TONES[s.k].ink, fontSize: Math.max(10, s.r / 4.6) + 'px' }}
+          className="lx-bl k"
+          style={{
+            ...win(bubbleWin(i)),
+            left: s.x + '%',
+            top: s.y + '%',
+            color: SKILL_TONES[s.k].ink,
+            fontSize: Math.max(10, s.r / 4.6) + 'px',
+          }}
         >
-          <b>{s.v}</b>
+          <b {...count(bubbleWin(i), parseInt(s.v, 10), { suffix: '%' })}>{s.v}</b>
           {s.r > 36 && <small>{s.k}</small>}
         </span>
       ))}
@@ -549,7 +621,10 @@ function PillBars() {
       {STUDY_DAYS.map(([day, v], i) => (
         <div key={day} className={'pbar' + (i === 3 ? ' now' : '') + (v > 0 ? ' on' : '')}>
           <span className="pbar-col">
-            <span className="pbar-fill" style={{ height: (v > 0 ? (v / max) * 100 : 0) + '%' }} />
+            <span
+              className="pbar-fill k"
+              style={{ ...win(cascade(0.49, 0.012, 0.05, i)), height: (v > 0 ? (v / max) * 100 : 0) + '%' }}
+            />
           </span>
           <small className="pbar-l">{day}</small>
         </div>
@@ -583,18 +658,34 @@ function LineChart() {
         {[0, 1, 2].map((i) => (
           <line key={i} x1="0" x2="100" y1={8 + i * 39} y2={8 + i * 39} className="lc-grid" />
         ))}
-        <path d={d + ' L 100 100 L 0 100 Z'} className="lc-area" />
-        <path d={d} className="lc-line" />
+        <path d={d + ' L 100 100 L 0 100 Z'} className="lc-area k" style={win(T.line)} />
+        <path d={d} className="lc-line k" style={win(T.line)} pathLength={1} />
       </svg>
       {points.map(([x, y], i) => (
-        <span key={i} className="lc-dot on" style={{ left: x + '%', top: y + '%' }} />
+        <span
+          key={i}
+          className="lc-dot on k"
+          style={{ ...win(cascade(T.line[0], (T.line[1] - T.line[0]) / points.length, 0.025, i)), left: x + '%', top: y + '%' }}
+        />
       ))}
     </div>
   )
 }
 
 /** Anel de meta. */
-function GoalRing({ value, max, tone, children }: { value: number; max: number; tone: string; children: ReactNode }) {
+function GoalRing({
+  value,
+  max,
+  tone,
+  at,
+  children,
+}: {
+  value: number
+  max: number
+  tone: string
+  at: Win
+  children: ReactNode
+}) {
   const size = 70
   const stroke = 8
   const r = (size - stroke) / 2
@@ -608,7 +699,8 @@ function GoalRing({ value, max, tone, children }: { value: number; max: number; 
           cx={size / 2}
           cy={size / 2}
           r={r}
-          className="wr-fill"
+          className="wr-fill k"
+          style={{ ...win(at), ...vars({ '--len': +(c * p).toFixed(2) }) }}
           strokeWidth={stroke}
           strokeDasharray={`${c * p} ${c}`}
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
@@ -649,7 +741,11 @@ function HeatMap() {
         <div className="hm-grid" style={{ gridTemplateColumns: `repeat(${HEAT.length}, minmax(0, 1fr))` }}>
           {HEAT.flatMap((week, w) =>
             week.map((level, d) => (
-              <span key={w + '-' + d} className={'hm-c l' + level} style={{ gridColumn: w + 1, gridRow: d + 1 }} />
+              <span
+                key={w + '-' + d}
+                className={'hm-c k l' + level}
+                style={{ ...win(cascade(0.73, 0.0032, 0.03, w + d * 0.4)), gridColumn: w + 1, gridRow: d + 1 }}
+              />
             )),
           )}
         </div>
@@ -658,11 +754,22 @@ function HeatMap() {
   )
 }
 
+/** Metas de exemplo: [feito, meta, cor, texto]. */
+const GOALS = [
+  [3.6, 5, 'lime', '72%'],
+  [4, 10, 'lilac', '40%'],
+  [1, 2, 'magenta', '50%'],
+] as const
+
+/**
+ * Painel de exemplo do "Meu progresso". Na cena do desktop ele é o fim da animação: cada cartão
+ * entra na sua vez (janelas de T). O estado final é exatamente o painel parado.
+ */
 function ProgressPanel() {
   return (
     <section id="experiencia" className="lx-sec lx-exp" aria-labelledby="lx-exp-t">
       <div className="lx-wrap">
-        <div className="lx-center lx-rv">
+        <div className="lx-center lx-rv k" style={win(T.title)}>
           <Star className="lx-exp-s1" size={28} />
           <Star className="lx-exp-s2 lime" size={30} />
           <Squig className="lx-exp-q1 lime" />
@@ -681,7 +788,7 @@ function ProgressPanel() {
           role="img"
           aria-label="Exemplo do painel Meu progresso: tempo de estudo, sequência, gráfico de skills, calendário de atividade, metas, aulas concluídas e certificados."
         >
-          <div className="lx-b-skill">
+          <div className="lx-b-skill k" style={win(T.skill)}>
             <header>
               <span className="lx-b-k">
                 <LpIcon name="Puzzle" size={14} />
@@ -691,7 +798,7 @@ function ProgressPanel() {
             </header>
             <SkillsChart />
           </div>
-          <section className="wtile tone-blue lx-b-study">
+          <section className="wtile tone-blue lx-b-study k" style={win(T.study)}>
             <div className="wd-in">
               <header className="wd-head">
                 <h3>
@@ -700,28 +807,28 @@ function ProgressPanel() {
                 </h3>
               </header>
               <p className="wd-big">
-                <b>4,5</b>
+                <b {...count(T.studyNum, 4.5, { dec: 1 })}>4,5</b>
                 <small>h</small>
                 <em>esta semana</em>
               </p>
               <PillBars />
             </div>
           </section>
-          <section className="wtile tone-magenta lx-b-streak">
+          <section className="wtile tone-magenta lx-b-streak k" style={win(T.streak)}>
             <div className="wd-in">
               <header className="wd-head">
-                <h3>
+                <h3 className="k" style={win(T.streakNum)}>
                   <LpIcon name="Flame" size={15} />
                   Sequência
                 </h3>
               </header>
               <p className="wd-big">
-                <b>5</b>
+                <b {...count(T.streakNum, 5, { from: 1, linear: true })}>5</b>
                 <small>dias seguidos</small>
               </p>
             </div>
           </section>
-          <section className="wtile tone-lime lx-b-cert">
+          <section className="wtile tone-lime lx-b-cert k" style={win(T.cert)}>
             <div className="wd-in">
               <header className="wd-head">
                 <h3>
@@ -730,12 +837,14 @@ function ProgressPanel() {
                 </h3>
               </header>
               <p className="wd-big">
-                <b>2</b>
+                <b className="k" style={win(T.certNum)} {...count(T.certNum, 2, { linear: true })}>
+                  2
+                </b>
                 <small>conquistados</small>
               </p>
             </div>
           </section>
-          <section className="wtile tone-card lx-b-heat">
+          <section className="wtile tone-card lx-b-heat k" style={win(T.heat)}>
             <div className="wd-in">
               <header className="wd-head">
                 <h3>
@@ -746,7 +855,7 @@ function ProgressPanel() {
               <HeatMap />
             </div>
           </section>
-          <section className="wtile tone-card lx-b-goals">
+          <section className="wtile tone-card lx-b-goals k" style={win(T.goals)}>
             <div className="wd-in">
               <header className="wd-head">
                 <h3>
@@ -755,19 +864,15 @@ function ProgressPanel() {
                 </h3>
               </header>
               <div className="lx-rings">
-                <GoalRing value={3.6} max={5} tone="lime">
-                  <b>72%</b>
-                </GoalRing>
-                <GoalRing value={4} max={10} tone="lilac">
-                  <b>40%</b>
-                </GoalRing>
-                <GoalRing value={1} max={2} tone="magenta">
-                  <b>50%</b>
-                </GoalRing>
+                {GOALS.map(([value, max, tone, label], i) => (
+                  <GoalRing key={tone} value={value} max={max} tone={tone} at={cascade(0.77, 0.02, 0.09, i)}>
+                    <b {...count(cascade(0.77, 0.02, 0.09, i), parseInt(label, 10), { suffix: '%' })}>{label}</b>
+                  </GoalRing>
+                ))}
               </div>
             </div>
           </section>
-          <section className="wtile tone-ink lx-b-lessons">
+          <section className="wtile tone-ink lx-b-lessons k" style={win(T.lessons)}>
             <div className="wd-in">
               <header className="wd-head">
                 <h3>
@@ -776,13 +881,23 @@ function ProgressPanel() {
                 </h3>
               </header>
               <p className="wd-big">
-                <b>23</b>
+                <b {...count(T.lessonsNum, 23)}>23</b>
                 <small>no total</small>
               </p>
               <LineChart />
             </div>
           </section>
         </div>
+      </div>
+    </section>
+  )
+}
+
+/** Selos e aviso abaixo do painel (fora do palco da cena: rolam normalmente). */
+function ProgressFoot() {
+  return (
+    <div className="lx-exp-foot">
+      <div className="lx-wrap">
         <ul className="lx-feats lx-rv">
           {PROGRESS_FEATURES.map((feature) => (
             <li key={feature}>
@@ -796,7 +911,31 @@ function ProgressPanel() {
           jeito.
         </p>
       </div>
-    </section>
+    </div>
+  )
+}
+
+/**
+ * Aparelhos + painel numa cena só. No desktop o palco fica preso enquanto a pessoa rola: o play do
+ * notebook "abre" o painel e as conquistas vão aparecendo. Fora disso, são duas seções comuns.
+ */
+function DevicesToProgress() {
+  return (
+    <>
+      <ProgressScene>
+        <div className="lx-stage">
+          <Devices />
+          <span className="lx-wave lx-wave-a lx-stage-only k" style={win(T.waveA)} aria-hidden="true" />
+          <span className="lx-wave lx-wave-b lx-stage-only k" style={win(T.waveB)} aria-hidden="true" />
+          <ProgressPanel />
+          <p className="lx-hint lx-stage-only k" style={win(T.hint)} aria-hidden="true">
+            <span className="lx-mouse" />
+            Role para dar play
+          </p>
+        </div>
+      </ProgressScene>
+      <ProgressFoot />
+    </>
   )
 }
 
@@ -1215,8 +1354,7 @@ export function Landing({ supportEmail, fontClass }: { supportEmail: string; fon
       <main id="lx-main" tabIndex={-1}>
         <Hero />
         <Band />
-        <Devices />
-        <ProgressPanel />
+        <DevicesToProgress />
         <Practice />
         <Areas />
         <FreeCourse />
